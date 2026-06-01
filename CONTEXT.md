@@ -7,12 +7,13 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 # PROJECT STATE
 
 latest_session: none
-phase: greenfield
+phase: greenfield — scope defined, no code written yet
 status: active
 
 ## Current Focus
 
-No sessions completed yet. Read .ai/backlog.md and start from B001.
+Phase 0 / B001 is next: Gradle project scaffold.
+Scope locked: tick history PvP overlay. See PROJECT.md and docs/tick-history-design.md.
 
 ## Open Threads
 
@@ -25,3 +26,5 @@ none
 ## Architecture Notes
 
 No code written yet. Architecture is spec-only in PROJECT.md and .ai/architecture.md.
+Design doc: docs/tick-history-design.md.
+Game/API reference: .ai/game/ops/runelite-plugin-dev.md, .ai/game/pvp/pvp-combat-events.md.

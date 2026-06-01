@@ -8,7 +8,7 @@ format: caveman lite. complete spec, not a summary.
 
 ## Mission
 
-RuneLite plugin for Old School RuneScape PvP. Provides overlays, alerts, and convenience helpers for player-vs-player combat. Improves situational awareness and reaction speed without automating any game action.
+RuneLite plugin for Old School RuneScape PvP. Initial scope: tick-accurate combat history overlay. Shows a chronological log of events during a fight, separated by category (combat, eating, gear swap). Improves post-fight review and in-fight awareness without automating any game action.
 
 ## Stack
 
@@ -20,35 +20,55 @@ config: PvpEnhancerConfig extends Config (@ConfigGroup("pvpenhancer"))
 events: @Subscribe annotated methods on the RuneLite event bus
 injection: @Inject via RuneLite's Guice injector
 
+## Feature Set — Phase 1: Tick History
+
+### What it does
+
+Records game events tick-by-tick during combat. Displays a scrollable history panel in the overlay, categorised per tick:
+
+| Category | Events tracked |
+|---|---|
+| combat | player X attacked player Y with Z (melee/range/mage), on prayer P, hit N |
+| eating | player X ate item Y |
+| gear swap | player X equipped item Y (slot Z) |
+
+### Data sources
+
+attack_style: infer from animation ID (Actor.getAnimation()). requires animation→style mapping table (see .ai/game/pvp/pvp-combat-events.md).
+overhead_prayer: Player.getOverheadIcon() → HeadIcon enum (MELEE/RANGED/MAGIC/SMITE/etc.).
+hitsplat: HitsplatApplied event — hitsplat.getAmount(), hitsplat.getHitsplatType().
+gear: PlayerComposition.getEquipmentIds() diff between ticks → changed slot → item.
+eating: MenuOptionClicked with option "Eat" or animation 829 (eating animation).
+tick_clock: GameTick event — one event = one 600ms server tick.
+
+### Rendering
+
+overlay_type: OverlayPanel — left sidebar panel.
+max_history: configurable (default 20 ticks).
+filter: toggle per category via PvpEnhancerConfig.
+scope: track local player + all visible players in combat (or local player only — TBD in B005).
+
 ## Plugin Architecture
 
-plugin_class: PvpEnhancerPlugin — registers overlays and services on startUp(), deregisters on shutDown().
-config_class: PvpEnhancerConfig — one @ConfigItem per feature toggle, keybind, or threshold. No runtime mutation of config outside the RuneLite config panel.
-overlay_pattern: one Overlay subclass per distinct rendering concern. Each overlay is independently togglable via config.
-service_pattern: stateless helpers injected via @Inject. No global singletons outside RuneLite's own managers.
+plugin_class: PvpEnhancerPlugin — registers overlays, subscribes to events in startUp(); deregisters in shutDown().
+config_class: PvpEnhancerConfig — one @ConfigItem per feature toggle, category filter, and numeric threshold. RuneLite persists automatically.
+overlay_pattern: one Overlay subclass per distinct rendering concern. Each independently togglable.
+service_pattern: TickHistoryService — stateful, injected. Owns the tick event buffer; updated on GameTick; queried by overlay.
 event_pattern: all game state consumed via @Subscribe. No polling threads.
-
-## Feature Set
-
-TBD — backlog items define features incrementally. Update this section as B-items are completed.
 
 ## RuneLite API Constraints
 
 never: automate game inputs (mouse clicks, keyboard events) — violates Jagex rules and RuneLite policy
 never: read or write memory outside RuneLite's sanctioned plugin API
 never: retain overlay or listener registrations after shutDown()
-always: use @Subscribe for game events (not manual polling loops)
+always: use @Subscribe for game events, not polling loops
 always: deregister overlays via overlayManager.remove() in shutDown()
-always: unsubscribe from event bus by deregistering the plugin (RuneLite handles this automatically on shutDown)
-always: gate rendering behind config toggles so users can disable individual overlays
+always: gate rendering behind config toggles
 
-## Threat Model (detection by Jagex)
+## Out of Scope (v1)
 
-This plugin is passive overlays only — no input injection, no memory manipulation. Detection risk from the plugin itself is negligible. Document any feature that interacts with game state at all and confirm it uses only official RuneLite API methods.
-
-## Out of Scope
-
-automation of any kind (clicks, keys, prayers, eating)
-third-party API integration beyond the official OSRS wiki
+automation of any kind
+prayer flick helper / alerts
+gear suggestion / BIS calculator
+opponent stat tracking beyond what is visible on-screen
 multi-instance coordination
-bot detection or anti-ban logic
