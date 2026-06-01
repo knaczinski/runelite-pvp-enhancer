@@ -23,7 +23,16 @@ NEXT: live validation via HT-001..HT-004. Then Phase 2 (B008 NEXT UP — grow An
 
 ## Known Issues
 
-none confirmed (no live run yet).
+- Dev run path confirmed working: `./gradlew run` loads the plugin (verified in client.log
+  10:39 session — "Side-loading plugin pvp-enhancer-1.0.0.jar" + "Plugin PvpEnhancerPlugin
+  is now running"). Production clients (Jagex Launcher, Desktop RuneLite.jar) do NOT
+  reliably side-load it — Plugin Hub is the real channel for the everyday client.
+- Jagex-account login in the dev client: the gradle-run client shows the legacy login.
+  Fix = `--insecure-write-credentials` on the Jagex-launched client → writes
+  ~/.runelite/credentials.properties → dev client reuses it. See docs/building-and-testing.md.
+- EventBus logs `LambdaConversionException: Invalid caller` for the @Subscribe methods on
+  side-loaded plugins, then falls back to reflective dispatch (lambda=null). Benign for
+  side-loaded dev testing; handlers still register and fire.
 
 ## Architecture Notes
 
