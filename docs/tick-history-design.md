@@ -70,6 +70,30 @@ PvpEnhancerPlugin          startUp/shutDown, event hub
 
 **TickHistoryOverlay** is purely a read-only view. On each `render()` call it reads the service's deque and paints the entries. It does not mutate state.
 
+### The Combatant abstraction
+
+The plugin never branches on RuneLite's concrete `Player` / `NPC` types in its detection
+logic. Instead both are adapted to one small interface, `Combatant`:
+
+```
+Combatant  (getName, getAnimation, getOverheadPrayer, getTarget, isPlayer, isLocalPlayer)
+   ├── PlayerCombatant   wraps a RuneLite Player   (full info)
+   └── NpcCombatant      wraps a RuneLite NPC       (blank where N/A, e.g. prayer = null)
+
+Combatants.of(Actor, localPlayer)            the single point that does `instanceof`
+CombatEventFactory.fromAttack(Combatant)     pure Combatant -> AttackEvent, no client
+```
+
+Two payoffs:
+
+- **NPC testing.** A `Track NPCs` config toggle (off by default) lets `NpcCombatant` flow
+  through the same pipeline, so a developer can exercise combat/hitsplat detection by
+  attacking a training dummy — no second player needed. Fields an NPC cannot provide
+  (overhead prayer) are returned `null` and rendered blank.
+- **Unit testing.** Because the logic consumes `Combatant`, not the heavyweight RuneLite
+  interfaces, tests build attacks from `mock(Combatant.class)` with no live client
+  (`CombatEventFactoryTest`).
+
 ---
 
 ## 4. Data flow

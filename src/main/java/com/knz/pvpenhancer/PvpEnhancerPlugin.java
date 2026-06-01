@@ -1,18 +1,18 @@
 package com.knz.pvpenhancer;
 
 import com.google.inject.Provides;
-import com.knz.pvpenhancer.model.AttackEvent;
-import com.knz.pvpenhancer.model.AttackStyle;
+import com.knz.pvpenhancer.combatant.CombatEventFactory;
+import com.knz.pvpenhancer.combatant.Combatant;
+import com.knz.pvpenhancer.combatant.Combatants;
 import com.knz.pvpenhancer.model.AnimationStyleMap;
+import com.knz.pvpenhancer.model.AttackEvent;
 import com.knz.pvpenhancer.model.EatEvent;
 import com.knz.pvpenhancer.model.GearSwapEvent;
 import com.knz.pvpenhancer.model.HitsplatEvent;
 import com.knz.pvpenhancer.overlay.TickHistoryOverlay;
 import com.knz.pvpenhancer.service.TickHistoryService;
 import javax.inject.Inject;
-import net.runelite.api.Actor;
 import net.runelite.api.Client;
-import net.runelite.api.HeadIcon;
 import net.runelite.api.Hitsplat;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.Player;
@@ -123,12 +123,7 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return;
 		}
-		Actor actor = event.getActor();
-		if (!(actor instanceof Player))
-		{
-			return;
-		}
-		Player attacker = (Player) actor;
+		Combatant attacker = Combatants.of(event.getActor(), client.getLocalPlayer());
 		if (!isTracked(attacker))
 		{
 			return;
@@ -140,24 +135,21 @@ public class PvpEnhancerPlugin extends Plugin
 			return;
 		}
 
-		AttackStyle style = AnimationStyleMap.lookup(animation);
-		if (style == null)
+		AttackEvent attack = CombatEventFactory.fromAttack(attacker);
+		if (attack != null)
 		{
-			// Unmapped animation. If it looks like a PvP attack, log it so the id can be
-			// added to AnimationStyleMap (see .ai/game/pvp/pvp-combat-events.md).
-			Actor interacting = attacker.getInteracting();
-			if (interacting instanceof Player)
-			{
-				log.debug("Unmapped animation {} by {} -> {}", animation, attacker.getName(), interacting.getName());
-			}
-			return;
+			history.addEvent(attack);
 		}
-
-		Actor target = attacker.getInteracting();
-		String targetName = target != null ? safeName(target.getName()) : "?";
-		HeadIcon targetPrayer = target instanceof Player ? ((Player) target).getOverheadIcon() : null;
-
-		history.addEvent(new AttackEvent(safeName(attacker.getName()), targetName, style, targetPrayer));
+		else if (!AnimationStyleMap.isKnown(animation))
+		{
+			// Unmapped attack-like animation: log the id so it can be added to
+			// AnimationStyleMap (see .ai/game/pvp/pvp-combat-events.md).
+			Combatant target = attacker.getTarget();
+			if (target != null)
+			{
+				log.debug("Unmapped animation {} by {} -> {}", animation, attacker.getName(), target.getName());
+			}
+		}
 	}
 
 	/**
@@ -170,19 +162,14 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return;
 		}
-		Actor actor = event.getActor();
-		if (!(actor instanceof Player))
-		{
-			return;
-		}
-		Player target = (Player) actor;
+		Combatant target = Combatants.of(event.getActor(), client.getLocalPlayer());
 		if (!isTracked(target))
 		{
 			return;
 		}
 
 		Hitsplat hitsplat = event.getHitsplat();
-		history.addEvent(new HitsplatEvent(safeName(target.getName()), hitsplat.getAmount(), hitsplatLabel(hitsplat)));
+		history.addEvent(new HitsplatEvent(target.getName(), hitsplat.getAmount(), hitsplatLabel(hitsplat)));
 	}
 
 	/**
@@ -265,20 +252,20 @@ public class PvpEnhancerPlugin extends Plugin
 	}
 
 	/**
-	 * @return true if events for this player should be recorded given the trackOpponents
-	 * config: when disabled, only the local player is tracked.
+	 * @return true if events for this combatant should be recorded. Players: always when
+	 * trackOpponents is on, otherwise only the local player. NPCs: only when trackNpcs is on.
 	 */
-	private boolean isTracked(Player player)
+	private boolean isTracked(Combatant combatant)
 	{
-		if (player == null)
+		if (combatant == null)
 		{
 			return false;
 		}
-		if (config.trackOpponents())
+		if (!combatant.isPlayer())
 		{
-			return true;
+			return config.trackNpcs();
 		}
-		return player == client.getLocalPlayer();
+		return config.trackOpponents() || combatant.isLocalPlayer();
 	}
 
 	private String localPlayerName()

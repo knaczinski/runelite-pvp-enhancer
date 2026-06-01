@@ -5,6 +5,25 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S002 — NPC tracking + Combatant abstraction + dev-env fixes
+
+User-requested (not a pre-listed B-item). Delivered S002 (2026-06-01). Build green, 10 tests.
+
+- **NPC test toggle.** New `Combatant` interface abstracts RuneLite `Player`/`NPC`.
+  `PlayerCombatant`/`NpcCombatant` adapt them; `Combatants.of(Actor, localPlayer)` is the
+  sole `instanceof` site; `CombatEventFactory.fromAttack(Combatant)` is pure and
+  Mockito-tested. Config `trackNpcs` (default off) records NPC combat events for testing
+  without a second player. NPCs return blank for fields they lack (prayer); `AttackEvent`
+  omits the "on <prayer>" clause when null.
+- **Dev-env fixes (carried from the session's debugging):**
+  - Jagex-account login in the dev client → documented `--insecure-write-credentials` →
+    `credentials.properties` flow (the dev client showed the legacy login).
+  - Double "PvP Enhancer" entry → removed `build.finalizedBy installPlugin` (installPlugin
+    is opt-in, mutually exclusive with `run`); added `--add-opens` to the run task for
+    loadBuiltin on JDK 17+.
+- **Docs:** new `docs/dev-faq.md`; updated building-and-testing, tick-history-design,
+  PROJECT, README, combatant/CONTEXT.md.
+
 ## S001 — Phase 0 + Phase 1 (tick history MVP) — B001-B007
 
 All shipped in S001 (2026-06-01). Build green, 5 unit tests pass, jar auto-installs to

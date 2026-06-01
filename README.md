@@ -90,9 +90,18 @@ src/main/java/com/knz/pvpenhancer/
     TickHistoryOverlay.java  OverlayPanel for the tick log
   service/
     TickHistoryService.java  stateful tick event buffer
+  combatant/
+    Combatant.java           interface over Player/NPC (mockable)
+    PlayerCombatant.java     adapts a RuneLite Player
+    NpcCombatant.java        adapts a RuneLite NPC (testing aid)
+    Combatants.java          factory: wraps an Actor
+    CombatEventFactory.java  pure Combatant → AttackEvent
   model/
     TickEntry.java           one entry per game tick
-    CombatEvent.java         sealed event hierarchy
+    CombatEvent.java         event hierarchy (Attack/Hitsplat/Eat/GearSwap)
     AnimationStyleMap.java   animation ID → attack style mapping
   util/                      shared stateless helpers
 ```
+
+See [`docs/building-and-testing.md`](docs/building-and-testing.md) (build, run, Jagex-account
+login) and [`docs/dev-faq.md`](docs/dev-faq.md) (common gotchas) before developing.

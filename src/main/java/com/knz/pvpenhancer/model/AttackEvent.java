@@ -51,19 +51,21 @@ public class AttackEvent extends CombatEvent
 	@Override
 	public String format()
 	{
-		return attacker + " -> " + target + "  " + style.getLabel() + "  on " + prayerLabel(targetPrayer);
+		String line = attacker + " -> " + target + "  " + style.getLabel();
+		// Leave the prayer clause blank when the target has no overhead prayer or cannot
+		// report one (e.g. an NPC target). Only players with an active overhead show it.
+		if (targetPrayer != null)
+		{
+			line += "  on " + prayerLabel(targetPrayer);
+		}
+		return line;
 	}
 
 	/**
-	 * Maps an overhead prayer icon to a short label for the overlay. Returns "no prayer"
-	 * when the target had no overhead prayer active.
+	 * Maps an overhead prayer icon to a short label for the overlay.
 	 */
 	private static String prayerLabel(HeadIcon icon)
 	{
-		if (icon == null)
-		{
-			return "no prayer";
-		}
 		switch (icon)
 		{
 			case MELEE:

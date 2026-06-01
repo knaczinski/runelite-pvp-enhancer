@@ -54,7 +54,10 @@ plugin_class: PvpEnhancerPlugin — registers overlays, subscribes to events in 
 config_class: PvpEnhancerConfig — one @ConfigItem per feature toggle, category filter, and numeric threshold. RuneLite persists automatically.
 overlay_pattern: one Overlay subclass per distinct rendering concern. Each independently togglable.
 service_pattern: TickHistoryService — stateful, injected. Owns the tick event buffer; updated on GameTick; queried by overlay.
+combatant_pattern: detection programs against the Combatant interface, not RuneLite Player/NPC. Combatants.of(Actor) is the sole instanceof site; PlayerCombatant/NpcCombatant adapt the two types; CombatEventFactory is pure (mockable). NPCs report blank for fields they lack (e.g. prayer).
 event_pattern: all game state consumed via @Subscribe. No polling threads.
+
+config_note: trackNpcs (default off) records NPC combat events — a testing aid so detection can be exercised without a second player.
 
 ## RuneLite API Constraints
 

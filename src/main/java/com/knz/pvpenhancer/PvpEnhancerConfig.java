@@ -67,4 +67,17 @@ public interface PvpEnhancerConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+		keyName = "trackNpcs",
+		name = "Track NPCs (testing)",
+		description = "Also record combat events for NPCs. Handy for testing without a "
+			+ "second player. NPCs cannot report some fields (e.g. overhead prayer) — "
+			+ "those are left blank.",
+		position = 5
+	)
+	default boolean trackNpcs()
+	{
+		return false;
+	}
 }

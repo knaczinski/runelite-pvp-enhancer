@@ -11,7 +11,7 @@ backlog: .ai/backlog.md
 backlog_history: .ai/backlog-history.md
 game_docs: .ai/game/INDEX.md
 
-active_session: S001
+active_session: S002
 load_rule: read only rule files relevant to current task. priority order in CLAUDE.md rule_04.
 
 ## Package CONTEXT.md map
@@ -19,6 +19,7 @@ load_rule: read only rule files relevant to current task. priority order in CLAU
 per-directory CONTEXT.md under src/main/java/com/knz/pvpenhancer/:
 
 - pvpenhancer/CONTEXT.md — plugin root; entry point + config + event wiring
+- pvpenhancer/combatant/CONTEXT.md — Combatant interface seam over Player/NPC + pure CombatEventFactory
 - pvpenhancer/model/CONTEXT.md — immutable event/data classes + AnimationStyleMap
 - pvpenhancer/service/CONTEXT.md — TickHistoryService singleton buffer
 - pvpenhancer/overlay/CONTEXT.md — TickHistoryOverlay (OverlayPanel render)
