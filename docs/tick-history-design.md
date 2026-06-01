@@ -32,11 +32,11 @@ Fields: attacker name, target name, attack style (melee/ranged/magic), defender'
 Tracks food and potion consumption:
 
 ```
-[EAT] knz ate Shark (+20hp)
-[EAT] knz drank Super restore
+knz ate Shark
+knz ate Shark + Karambwan (double eat)
 ```
 
-Detected via the "Eat"/"Drink" menu click, before the animation plays. This gives one tick of lead time compared to waiting for the animation.
+Detected via the "Eat"/"Drink" menu click, before the animation plays. This gives one tick of lead time compared to waiting for the animation. Multiple consumes by the same player on the same tick (a combo eat) are merged into one line and labelled "double eat" / "triple eat".
 
 ### Gear Swap
 
@@ -57,7 +57,7 @@ Detected by diffing the `PlayerComposition.getEquipmentIds()` array between cons
 PvpEnhancerPlugin          startUp/shutDown, event hub
     │
     ├── TickHistoryService  stateful buffer: Deque<TickEntry>
-    │       └── TickEntry   tick number + List<CombatEvent>
+    │       └── TickEntry   sequence code ("Tick 0001") + raw tick + List<CombatEvent>
     │           └── CombatEvent  (AttackEvent | HitsplatEvent | EatEvent | GearSwapEvent)
     │
     └── TickHistoryOverlay  OverlayPanel, reads service, renders panel

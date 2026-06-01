@@ -6,16 +6,18 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S002
-phase: Phase 1 complete (tick history MVP + NPC test toggle). Phase 2 refinement gated on live validation.
+latest_session: S003
+phase: Phase 1 complete (tick history MVP + NPC toggle + tick codes/combo-eat). Phase 2 gated on live validation.
 status: active
 
 ## Current Focus
 
-MVP shipped S001 (B001-B007). S002 added NPC tracking behind a Combatant interface +
-fixed the gradle-run double-load + Jagex-account dev login. Build green, 10 unit tests.
-NEXT: user closes the dev client and deletes the leftover sideloaded jar (one-time), then
-`./gradlew run` = single entry. Validate HT-001..HT-004 (+ trackNpcs). Then B008 (grow AnimationStyleMap).
+MVP shipped S001 (B001-B007). S002 added NPC tracking (Combatant interface) + fixed
+gradle-run double-load + Jagex dev login. S003 added per-tick code ("Tick 0001"),
+chronological (oldest-first) display, and combo-eat merge ("ate A + B (double eat)").
+Build green, 17 unit tests.
+NEXT: user deletes the leftover sideloaded jar (one-time), then `./gradlew run` = single
+entry. Validate HT-001..HT-004 (+ trackNpcs, combo-eat, tick codes). Then B008 (grow AnimationStyleMap).
 
 ## Open Threads
 

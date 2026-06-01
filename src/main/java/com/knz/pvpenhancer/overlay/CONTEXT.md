@@ -7,7 +7,8 @@ purpose: render the TickHistoryService buffer. read-only view.
 
 patterns:
   - TickHistoryOverlay extends OverlayPanel. position TOP_LEFT. registered in plugin startUp, removed in shutDown.
-  - render(): clear panelComponent children, add title, then per tick a "Tick N" header + one LineComponent per visible event.
+  - render(): clear panelComponent children, add title, then per tick a "Tick 0001" header (String.format %04d on TickEntry.sequence) + one LineComponent per visible event.
+  - OLDEST-FIRST: getEntries() is newest-first, so render iterates it in reverse → ticks read chronologically top-to-bottom (matches the user's spec).
   - per-category colour + visibility honoured from config (showCombat/showEating/showGearSwap).
 
 constraint:

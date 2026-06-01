@@ -7,7 +7,8 @@ purpose: stateful tick-bucketed event buffer. single source of truth for the ove
 
 patterns:
   - TickHistoryService — @Singleton (Guice). plugin + overlay share one instance.
-  - pending List accumulates events during a tick; flushTick(n) seals them into a TickEntry at the front (newest first).
+  - pending List accumulates events during a tick; flushTick(n) runs ComboEatMerger.merge then seals into a TickEntry at the front (newest first).
+  - each flush assigns the next sequence code (++tickSequence); clear() resets it to 0 so a fresh session starts at "Tick 0001".
   - capped at maxHistory; trim() drops oldest. setMaxHistory clamps to >= 1 and trims now.
 
 constraint:

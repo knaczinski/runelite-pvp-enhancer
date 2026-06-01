@@ -54,8 +54,11 @@ public class TickHistoryOverlay extends OverlayPanel
 			.color(Color.WHITE)
 			.build());
 
-		for (TickEntry entry : entries)
+		// getEntries() is newest-first; render oldest-first so ticks read top-to-bottom
+		// in chronological order (Tick 0001, 0002, 0003 ...).
+		for (int i = entries.size() - 1; i >= 0; i--)
 		{
+			TickEntry entry = entries.get(i);
 			boolean headerWritten = false;
 			for (CombatEvent event : entry.getEvents())
 			{
@@ -66,7 +69,7 @@ public class TickHistoryOverlay extends OverlayPanel
 				if (!headerWritten)
 				{
 					panelComponent.getChildren().add(LineComponent.builder()
-						.left("Tick " + entry.getTick())
+						.left(String.format("Tick %04d", entry.getSequence()))
 						.leftColor(COLOR_TICK)
 						.build());
 					headerWritten = true;

@@ -5,6 +5,23 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S003 — Per-tick code + combo-eat merge + chronological display
+
+User-clarified display model. Delivered S003 (2026-06-01). Build green, 17 tests.
+
+- **Tick code identifier.** `TickEntry` gained a 1-based `sequence` assigned by the service
+  at flush (reset on clear); the overlay renders it as `Tick 0001`. Raw client tick is
+  retained for future timing analysis.
+- **N events per tick / multiple characters.** Already provided by the flush model + each
+  event carrying its actor name — confirmed, no change needed.
+- **Combo-eat merge.** `EatEvent` now holds a list of items; `ComboEatMerger` (pure)
+  collapses same-player eats within a tick into one line — "ate Shark + Karambwan
+  (double eat)" / "triple eat" / "Nx eat". Different players and non-eat events stay
+  separate and ordered.
+- **Chronological order.** Overlay flipped to oldest-first (Tick 0001 at top) to match the
+  requested example (was newest-first in S001).
+- Tests: TickHistoryServiceTest rewritten (7); ComboEatMergerTest added (5).
+
 ## S002 — NPC tracking + Combatant abstraction + dev-env fixes
 
 User-requested (not a pre-listed B-item). Delivered S002 (2026-06-01). Build green, 10 tests.

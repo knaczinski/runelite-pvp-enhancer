@@ -1,6 +1,7 @@
 package com.knz.pvpenhancer.service;
 
 import com.knz.pvpenhancer.model.CombatEvent;
+import com.knz.pvpenhancer.model.ComboEatMerger;
 import com.knz.pvpenhancer.model.TickEntry;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ public class TickHistoryService
 	private final Deque<TickEntry> entries = new ArrayDeque<>();
 	private final List<CombatEvent> pending = new ArrayList<>();
 	private int maxHistory = DEFAULT_MAX_HISTORY;
+	private int tickSequence = 0;
 
 	/**
 	 * Sets the maximum number of tick entries retained and trims immediately if the new
@@ -62,7 +64,10 @@ public class TickHistoryService
 		{
 			return;
 		}
-		entries.addFirst(new TickEntry(tickNumber, pending));
+		// Merge same-player combo eats (e.g. shark + karambwan) into one event, then seal
+		// the tick under the next sequential code.
+		List<CombatEvent> merged = ComboEatMerger.merge(pending);
+		entries.addFirst(new TickEntry(++tickSequence, tickNumber, merged));
 		pending.clear();
 		trim();
 	}
@@ -83,6 +88,7 @@ public class TickHistoryService
 	{
 		entries.clear();
 		pending.clear();
+		tickSequence = 0;
 	}
 
 	private void trim()

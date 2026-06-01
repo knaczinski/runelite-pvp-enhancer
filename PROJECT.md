@@ -29,8 +29,11 @@ Records game events tick-by-tick during combat. Displays a scrollable history pa
 | Category | Events tracked |
 |---|---|
 | combat | player X attacked player Y with Z (melee/range/mage), on prayer P, hit N |
-| eating | player X ate item Y |
+| eating | player X ate item Y; same-player same-tick consumes merge → "ate A + B (double eat)" |
 | gear swap | player X equipped item Y (slot Z) |
+
+Each tick is shown under a 1-based code ("Tick 0001"), holds N events from any number of
+characters, and reads chronologically (oldest tick at the top).
 
 ### Data sources
 
@@ -44,9 +47,11 @@ tick_clock: GameTick event — one event = one 600ms server tick.
 ### Rendering
 
 overlay_type: OverlayPanel — left sidebar panel.
+tick_code: each TickEntry carries a 1-based sequence rendered as "Tick %04d"; raw client tick retained internally.
+order: oldest-first (chronological top-to-bottom).
 max_history: configurable (default 20 ticks).
 filter: toggle per category via PvpEnhancerConfig.
-scope: track local player + all visible players in combat (or local player only — TBD in B005).
+scope: local player always; all visible players when trackOpponents; NPCs when trackNpcs (testing).
 
 ## Plugin Architecture
 

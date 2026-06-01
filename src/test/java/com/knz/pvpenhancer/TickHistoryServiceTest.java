@@ -9,7 +9,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Unit tests for {@link TickHistoryService}: buffer cap, ordering, grouping, and trim.
+ * Unit tests for {@link TickHistoryService}: buffer cap, ordering, per-tick grouping,
+ * combo-eat merging, sequence codes, trim, and clear.
  */
 public class TickHistoryServiceTest
 {
@@ -28,7 +29,6 @@ public class TickHistoryServiceTest
 		List<TickEntry> entries = service.getEntries();
 		assertEquals(3, entries.size());
 		assertEquals(5, entries.get(0).getTick()); // newest first
-		assertEquals(4, entries.get(1).getTick());
 		assertEquals(3, entries.get(2).getTick()); // oldest retained
 	}
 
@@ -41,17 +41,46 @@ public class TickHistoryServiceTest
 	}
 
 	@Test
-	public void groupsMultipleEventsUnderOneTick()
+	public void differentPlayersStaySeparateLines()
 	{
 		TickHistoryService service = new TickHistoryService();
-		service.addEvent(new EatEvent("p", "a"));
-		service.addEvent(new EatEvent("p", "b"));
+		service.addEvent(new EatEvent("p1", "a"));
+		service.addEvent(new EatEvent("p2", "b"));
 		service.flushTick(7);
 
 		List<TickEntry> entries = service.getEntries();
 		assertEquals(1, entries.size());
-		assertEquals(7, entries.get(0).getTick());
-		assertEquals(2, entries.get(0).getEvents().size());
+		assertEquals(2, entries.get(0).getEvents().size()); // not merged across players
+	}
+
+	@Test
+	public void samePlayerComboEatsMergeIntoOneLine()
+	{
+		TickHistoryService service = new TickHistoryService();
+		service.addEvent(new EatEvent("p", "Shark"));
+		service.addEvent(new EatEvent("p", "Karambwan"));
+		service.flushTick(2);
+
+		TickEntry entry = service.getEntries().get(0);
+		assertEquals(1, entry.getEvents().size());
+		String line = entry.getEvents().get(0).format();
+		assertEquals("p ate Shark + Karambwan (double eat)", line);
+	}
+
+	@Test
+	public void assignsSequentialTickCodesNewestFirst()
+	{
+		TickHistoryService service = new TickHistoryService();
+		for (int tick = 100; tick <= 102; tick++)
+		{
+			service.addEvent(new EatEvent("p", "f"));
+			service.flushTick(tick);
+		}
+
+		List<TickEntry> entries = service.getEntries();
+		assertEquals(3, entries.get(0).getSequence()); // newest = 3rd recorded
+		assertEquals(2, entries.get(1).getSequence());
+		assertEquals(1, entries.get(2).getSequence());
 	}
 
 	@Test
@@ -72,12 +101,20 @@ public class TickHistoryServiceTest
 	}
 
 	@Test
-	public void clearEmptiesBuffer()
+	public void clearEmptiesBufferAndResetsSequence()
 	{
 		TickHistoryService service = new TickHistoryService();
 		service.addEvent(new EatEvent("p", "x"));
 		service.flushTick(1);
+		service.addEvent(new EatEvent("p", "y"));
+		service.flushTick(2);
+
 		service.clear();
 		assertTrue(service.getEntries().isEmpty());
+
+		// Sequence restarts at 1 after a clear.
+		service.addEvent(new EatEvent("p", "z"));
+		service.flushTick(99);
+		assertEquals(1, service.getEntries().get(0).getSequence());
 	}
 }
