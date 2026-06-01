@@ -1,0 +1,67 @@
+plugins {
+	id 'java'
+}
+
+repositories {
+	mavenLocal()
+	maven {
+		url = 'https://repo.runelite.net'
+		content {
+			includeGroupByRegex("net\\.runelite.*")
+		}
+	}
+	mavenCentral()
+}
+
+def runeLiteVersion = 'latest.release'
+def pluginMainClass = 'com.knz.pvpenhancer.PvpEnhancerTest'
+
+// Directory the RuneLite client scans for side-loaded plugins when launched
+// with --developer-mode. The installPlugin task drops the built jar here.
+def sideloadDir = "${System.getProperty('user.home')}/.runelite/sideloaded-plugins"
+
+dependencies {
+	compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
+
+	testImplementation 'junit:junit:4.13.2'
+	testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
+	testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
+}
+
+group = 'com.knz.pvpenhancer'
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+	// Production target is Java 11 (RuneLite constraint). A newer JDK may build it.
+	options.release.set(11)
+}
+
+// Launches a full RuneLite client in developer mode with this plugin loaded.
+// This is the primary development loop — no jar copying required.
+tasks.register('run', JavaExec) {
+	group = 'runelite'
+	description = 'Run RuneLite with the plugin side-loaded from the classpath'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = pluginMainClass
+	jvmArgs '-ea'
+	args '--developer-mode', '--debug'
+}
+
+// Copies the built plugin jar into the RuneLite side-loaded-plugins directory
+// so it loads in the user's normal RuneLite client (started with --developer-mode).
+tasks.register('installPlugin', Copy) {
+	group = 'runelite'
+	description = 'Copy the plugin jar into ~/.runelite/sideloaded-plugins'
+	dependsOn tasks.named('jar')
+	from tasks.named('jar').flatMap { it.archiveFile }
+	into sideloadDir
+	doLast {
+		println "Installed plugin jar to ${sideloadDir}"
+	}
+}
+
+// `gradle build` automatically installs the jar to the side-load directory.
+// Disable with: ./gradlew build -x installPlugin
+tasks.named('build') {
+	finalizedBy tasks.named('installPlugin')
+}

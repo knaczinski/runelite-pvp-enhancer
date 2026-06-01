@@ -8,9 +8,9 @@ rule: read this file first. read CONTEXT.md second. read PROJECT.md before any c
 
 project: runelite-pvp-enhancer
 platform: RuneLite (OSRS client plugin)
-phase: greenfield — no code written yet. start from .ai/backlog.md B001.
+phase: Phase 1 complete (tick history MVP). Phase 2 refinement gated on live validation.
 status: active
-latest_session: none
+latest_session: S001
 
 ## State
 

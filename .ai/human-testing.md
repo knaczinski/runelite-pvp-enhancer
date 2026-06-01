@@ -14,7 +14,7 @@ Some behaviour (overlay rendering, visual accuracy, in-game feel, performance) c
 1. **Pick the top OPEN item** (priority-ordered — top = do first).
 2. **Ask the AI to guide you:** say *"run HT-001"* or *"start human testing"*.
    The AI walks through **one step at a time**, waits for your observation, then gives the next step.
-3. **Build the plugin first:** `./gradlew build` → load via RuneLite developer mode or external plugin loader.
+3. **Build & install first:** `./gradlew build` (auto-copies the jar to `~/.runelite/sideloaded-plugins`), then start RuneLite with `--developer-mode`.
 4. **Follow the SCENARIO SETUP** in the item. Complete all setup steps before starting the test.
 5. **Report using the RESULT TEMPLATE** at the bottom. Concrete observations only — "seems ok" is not actionable.
 6. **The AI decides the outcome:**
@@ -26,4 +26,60 @@ Some behaviour (overlay rendering, visual accuracy, in-game feel, performance) c
 
 ---
 
-No items yet.
+## ▶ PRIORITY 1 — MVP gate (validate before any Phase 2 work)
+
+### HT-001 — Combat events appear with correct attacker/target/style/prayer (B003)
+**Linked:** B003.
+**SCENARIO SETUP:**
+1. Build + install, start RuneLite `--developer-mode`, enable **PvP Enhancer**.
+2. Go to a safe PvP area (e.g. an LMS practice match, or PvP world with a friend).
+3. Equip a melee weapon you know (e.g. whip). Have a ranged or mage switch ready.
+**STEPS / OBSERVE:**
+1. Attack your opponent with melee. Watch the overlay top-left.
+2. Confirm a line like `you -> <opponent>  melee  on <prayer>` appears.
+3. Switch to ranged/mage, attack again. Confirm the style label changes accordingly.
+4. Have the opponent turn on Protect from Melee. Attack. Confirm the prayer reads "pro melee".
+**PASS CRITERIA:** attacker, target, style, and overhead prayer are all correct. Note any attack that shows `?` style (unmapped animation id — feeds B008).
+
+### HT-002 — Overlay renders ticks newest-first, grouped, colour-coded (B005)
+**Linked:** B005.
+**SCENARIO SETUP:** plugin enabled, in any combat.
+**STEPS / OBSERVE:**
+1. Trade a few hits with an opponent.
+2. Confirm the panel shows "PvP Tick History" title, then "Tick N" headers, newest at the top.
+3. Confirm combat lines are one colour, eating another, gear swaps another.
+4. Confirm old ticks drop off once more than `maxHistoryTicks` accumulate.
+**PASS CRITERIA:** ordering newest-first, events grouped under the right tick, colours distinct, buffer caps.
+
+### HT-003 — Hitsplats and gear swaps logged on the right tick (B003/B004)
+**Linked:** B003, B004.
+**SCENARIO SETUP:** plugin enabled, in combat, with an inventory weapon/armour to swap.
+**STEPS / OBSERVE:**
+1. Take a few hits. Confirm `<you> took N (hit)` lines appear; a blocked/0 hit reads "(block)".
+2. Equip a different weapon mid-fight. Confirm `you equipped <item> (weapon)` appears within ~1 tick.
+3. Eat a food. Confirm `you ate <food>` appears on the click tick.
+**PASS CRITERIA:** hitsplat amounts correct, gear swap names + slots correct, eat item name correct, each on the expected tick.
+
+### HT-004 — Config toggles take effect live (B006)
+**Linked:** B006.
+**SCENARIO SETUP:** plugin enabled, some history on screen.
+**STEPS / OBSERVE:**
+1. Open PvP Enhancer config. Toggle **Show eating** off → eating lines disappear.
+2. Toggle **Show gear swaps** off → gear lines disappear.
+3. Set **Max history ticks** to 5 → panel shrinks to at most 5 ticks.
+4. Toggle **Track opponents** off → only your own events record going forward.
+**PASS CRITERIA:** every toggle changes the overlay without a client restart.
+
+---
+
+## RESULT TEMPLATE
+
+```
+HT-NNN result
+build: <jar version / commit>
+scenario: <what you set up>
+observed: <concrete, per-step — names, numbers, tick counts, colours>
+unmapped animation ids seen: <list, or none>
+verdict: PASS | FAIL
+notes: <anything off>
+```

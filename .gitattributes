@@ -1,0 +1,11 @@
+# Normalise text line endings; keep platform-correct endings for scripts.
+* text=auto
+
+# Binary artifacts — never apply EOL conversion (would corrupt them).
+*.jar binary
+
+# Gradle wrapper script must stay LF (runs under sh on macOS/Linux/git-bash).
+gradlew text eol=lf
+
+# Windows batch + wrapper batch must stay CRLF.
+*.bat text eol=crlf
