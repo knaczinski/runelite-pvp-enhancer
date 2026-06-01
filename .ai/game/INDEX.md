@@ -26,11 +26,15 @@ Do not bulk-load all docs — each is self-contained and context-budget-aware.
 
 ## engine/ — Core Engine Mechanics
 
-Docs created on-demand as features require them.
+Ported from knz-multi-tasker. These describe platform-agnostic OSRS engine mechanics —
+any DreamBot API references are illustrative; the mechanics apply equally under RuneLite.
 
 | File | Purpose | Load when |
 |------|---------|-----------|
-| (none yet) | | |
+| [engine-ticks.md](engine/engine-ticks.md) | 600ms tick cadence, action queue, tick manipulation | reasoning about tick-aligned detection, attack→hitsplat tick offsets, the GameTick flush model, B010 correlation |
+| [engine-action-priority.md](engine/engine-action-priority.md) | Eating vs attacking timing, prayer activation, hit delay, combo eating, queue priority | combat event timing, eat-tick reasoning, prayer-flick detection, B009/B010 |
+| [engine-pid.md](engine/engine-pid.md) | Player ID assignment, re-randomization cadence, PvP priority impact | same-tick exchange reasoning, who-hit-first attribution, PvP threat ordering |
+| [engine-combat-math.md](engine/engine-combat-math.md) | Attack/defence roll formulas, hit chance, max hit, DPS | interpreting hitsplat amounts, max-hit context, damage analytics |
 
 ## Source Policy
 
