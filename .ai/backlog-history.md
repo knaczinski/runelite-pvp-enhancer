@@ -5,6 +5,28 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S004 — Gear name fix + prayer events + sectioned config + deprecation cleanup
+
+User-requested. Delivered S004 (2026-06-01). Build green (-Xlint:deprecation clean), 21 tests.
+
+- **Wrong gear item names fixed.** Root cause: decoding `PlayerComposition` appearance ids
+  (raw - 512) produced wrong names for many items (AGS, infernal cape). Now reads the local
+  player's worn item container (`gameval.InventoryID.WORN`) → real item ids → exact names
+  via `ItemManager`. Slots use `EquipmentInventorySlot`. Remote-player gear stays out of v1.
+- **Prayers in the tick history.** New `EventCategory.PRAYER` + `PrayerEvent` +
+  `PrayerNames` (shared HeadIcon→label). `detectPrayerChanges()` diffs each tracked player's
+  `getOverheadIcon()` per tick → "prayed Protect Magic" / "prayer off". Overhead protection
+  prayer only (the sole prayer observable on remote players).
+- **Config split into sections.** `@ConfigSection` "Tracking" (functionality: trackOpponents,
+  trackNpcs — gate recording) vs "Overlay" (display: maxHistoryTicks, show combat/eating/
+  gearSwap/prayer). The `show*` toggles are now display-only filters; the plugin records
+  everything tracked (removed the early-return gating in handlers).
+- **Max ticks: no minimum.** `@Range(min=5,max=100)` → `@Range(max=5000)` (min defaults 0).
+- **Deprecation cleanup.** Migrated `InventoryID.EQUIPMENT` → `gameval.InventoryID.WORN`
+  and `getPlayers()` → `getTopLevelWorldView().players()`; added `-Xlint:deprecation` to keep
+  the tree warning-clean.
+- Tests: CombatEventFactoryTest label update; Combo... unchanged; new PrayerEventTest (4).
+
 ## S003 — Per-tick code + combo-eat merge + chronological display
 
 User-clarified display model. Delivered S003 (2026-06-01). Build green, 17 tests.

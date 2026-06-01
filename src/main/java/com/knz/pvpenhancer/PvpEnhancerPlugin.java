@@ -9,19 +9,27 @@ import com.knz.pvpenhancer.model.AttackEvent;
 import com.knz.pvpenhancer.model.EatEvent;
 import com.knz.pvpenhancer.model.GearSwapEvent;
 import com.knz.pvpenhancer.model.HitsplatEvent;
+import com.knz.pvpenhancer.model.PrayerEvent;
 import com.knz.pvpenhancer.overlay.TickHistoryOverlay;
 import com.knz.pvpenhancer.service.TickHistoryService;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import javax.inject.Inject;
 import net.runelite.api.Client;
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.HeadIcon;
 import net.runelite.api.Hitsplat;
+import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
-import net.runelite.api.PlayerComposition;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.kit.KitType;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -35,26 +43,26 @@ import org.slf4j.LoggerFactory;
 /**
  * PvP Enhancer — records a tick-by-tick combat history and renders it as an overlay.
  *
- * <p>This class owns the RuneLite event subscriptions and translates raw game events
- * into {@link com.knz.pvpenhancer.model.CombatEvent}s fed to the {@link TickHistoryService}.
- * The service buffers them; the {@link TickHistoryOverlay} renders them. The plugin is
- * the only component coupled to the live {@link Client}, which keeps the service unit
- * testable.
+ * <p>This class owns the RuneLite event subscriptions and translates raw game events into
+ * {@link com.knz.pvpenhancer.model.CombatEvent}s fed to the {@link TickHistoryService}.
+ * It is the only component coupled to the live {@link Client}, which keeps the service
+ * unit testable.
+ *
+ * <p>Config split: <b>Tracking</b> toggles (trackOpponents/trackNpcs) gate what is
+ * recorded; the <b>Overlay</b> {@code show*} toggles are display filters applied by the
+ * overlay, so everything tracked is always recorded and can be revealed retroactively.
  */
 @PluginDescriptor(
 	name = "PvP Enhancer",
-	description = "Tick-by-tick PvP combat history overlay (attacks, eating, gear swaps).",
-	tags = {"pvp", "combat", "tick", "history", "overlay"}
+	description = "Tick-by-tick PvP combat history overlay (attacks, eating, gear swaps, prayers).",
+	tags = {"pvp", "combat", "tick", "history", "overlay", "prayer"}
 )
 public class PvpEnhancerPlugin extends Plugin
 {
 	private static final Logger log = LoggerFactory.getLogger(PvpEnhancerPlugin.class);
 
-	/** Generic eat/drink animation. Eating is detected via the menu click; this is only used to suppress it as an attack. */
+	/** Generic eat/drink animation. Eating is detected via the menu click; this only suppresses it as an attack. */
 	private static final int EAT_ANIMATION = 829;
-
-	/** Equipment-id decode offsets (OSRS Wiki): id >= ITEM_OFFSET is a real item; id-ITEM_OFFSET is the item id. */
-	private static final int ITEM_OFFSET = 512;
 
 	@Inject
 	private Client client;
@@ -74,8 +82,11 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject
 	private ItemManager itemManager;
 
-	/** Local player's equipment ids from the previous tick, for gear-swap diffing. */
-	private int[] previousEquipment;
+	/** Local player's worn item ids from the previous tick, for gear-swap diffing. */
+	private Map<EquipmentInventorySlot, Integer> previousEquipment;
+
+	/** Each tracked player's overhead prayer from the previous tick, keyed by name. */
+	private final Map<String, HeadIcon> previousOverheads = new HashMap<>();
 
 	@Provides
 	PvpEnhancerConfig provideConfig(ConfigManager configManager)
@@ -87,7 +98,7 @@ public class PvpEnhancerPlugin extends Plugin
 	protected void startUp()
 	{
 		history.clear();
-		previousEquipment = null;
+		resetDiffState();
 		overlayManager.add(overlay);
 	}
 
@@ -96,33 +107,35 @@ public class PvpEnhancerPlugin extends Plugin
 	{
 		overlayManager.remove(overlay);
 		history.clear();
+		resetDiffState();
+	}
+
+	private void resetDiffState()
+	{
 		previousEquipment = null;
+		previousOverheads.clear();
 	}
 
 	/**
-	 * Once per server tick: detect local-player gear swaps, sync the history cap from
-	 * config, then seal the tick's accumulated events into the buffer.
+	 * Once per server tick: detect local-player gear swaps and overhead prayer changes,
+	 * sync the history cap from config, then seal the tick's accumulated events.
 	 */
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
 		detectGearSwaps();
+		detectPrayerChanges();
 		history.setMaxHistory(config.maxHistoryTicks());
 		history.flushTick(client.getTickCount());
 	}
 
 	/**
-	 * Detects an attack: when a tracked player's animation changes to a known attack
-	 * animation, records the attacker, target, inferred style, and the target's overhead
-	 * prayer at that instant.
+	 * Records an attack when a tracked player's animation changes to a known attack
+	 * animation. Display filtering by category happens in the overlay, not here.
 	 */
 	@Subscribe
 	public void onAnimationChanged(AnimationChanged event)
 	{
-		if (!config.showCombat())
-		{
-			return;
-		}
 		Combatant attacker = Combatants.of(event.getActor(), client.getLocalPlayer());
 		if (!isTracked(attacker))
 		{
@@ -153,36 +166,28 @@ public class PvpEnhancerPlugin extends Plugin
 	}
 
 	/**
-	 * Records damage or a block applied to a tracked player.
+	 * Records damage or a block applied to a tracked combatant.
 	 */
 	@Subscribe
 	public void onHitsplatApplied(HitsplatApplied event)
 	{
-		if (!config.showCombat())
-		{
-			return;
-		}
 		Combatant target = Combatants.of(event.getActor(), client.getLocalPlayer());
 		if (!isTracked(target))
 		{
 			return;
 		}
-
 		Hitsplat hitsplat = event.getHitsplat();
 		history.addEvent(new HitsplatEvent(target.getName(), hitsplat.getAmount(), hitsplatLabel(hitsplat)));
 	}
 
 	/**
 	 * Records the local player eating or drinking. The "Eat"/"Drink" menu click fires on
-	 * the tick of the click, before the animation, giving the earliest signal.
+	 * the click tick, before the animation. Same-tick consumes merge into a combo eat at
+	 * flush time.
 	 */
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (!config.showEating())
-		{
-			return;
-		}
 		String option = event.getMenuOption();
 		if (option == null)
 		{
@@ -190,65 +195,84 @@ public class PvpEnhancerPlugin extends Plugin
 		}
 		if (option.equals("Eat") || option.equals("Drink"))
 		{
-			String item = Text.removeTags(event.getMenuTarget());
-			history.addEvent(new EatEvent(localPlayerName(), item));
+			history.addEvent(new EatEvent(localPlayerName(), Text.removeTags(event.getMenuTarget())));
 		}
 	}
 
 	/**
-	 * Diffs the local player's equipment against the previous tick and emits a
-	 * {@link GearSwapEvent} for each changed slot. Local player only in v1.
+	 * Diffs the local player's worn equipment against the previous tick and emits a
+	 * {@link GearSwapEvent} per changed slot. Reads the equipment item container, so item
+	 * ids — and therefore names — are exact (no appearance-id decoding). Local player only.
 	 */
 	private void detectGearSwaps()
 	{
-		if (!config.showGearSwap())
-		{
-			// Keep the baseline current so re-enabling mid-session does not replay a backlog of swaps.
-			previousEquipment = currentEquipment();
-			return;
-		}
-
-		int[] current = currentEquipment();
+		Map<EquipmentInventorySlot, Integer> current = snapshotEquipment();
 		if (current == null)
 		{
 			return;
 		}
-
-		if (previousEquipment != null && previousEquipment.length == current.length)
+		if (previousEquipment != null)
 		{
 			String player = localPlayerName();
-			KitType[] slots = KitType.values();
-			for (int i = 0; i < current.length; i++)
+			for (Map.Entry<EquipmentInventorySlot, Integer> entry : current.entrySet())
 			{
-				if (current[i] == previousEquipment[i])
+				int currentId = entry.getValue();
+				int previousId = previousEquipment.getOrDefault(entry.getKey(), -1);
+				if (currentId != previousId)
 				{
-					continue;
+					String itemName = currentId > 0 ? itemName(currentId) : "(nothing)";
+					history.addEvent(new GearSwapEvent(player, entry.getKey().name(), currentId, itemName));
 				}
-				String slot = i < slots.length ? slots[i].name() : ("slot" + i);
-				int raw = current[i];
-				int itemId = raw >= ITEM_OFFSET ? raw - ITEM_OFFSET : -1;
-				String itemName = itemId > 0 ? itemName(itemId) : "(nothing)";
-				history.addEvent(new GearSwapEvent(player, slot, itemId, itemName));
 			}
 		}
-
 		previousEquipment = current;
 	}
 
-	private int[] currentEquipment()
+	private Map<EquipmentInventorySlot, Integer> snapshotEquipment()
 	{
-		Player local = client.getLocalPlayer();
-		if (local == null)
+		ItemContainer equipment = client.getItemContainer(InventoryID.WORN);
+		if (equipment == null)
 		{
 			return null;
 		}
-		PlayerComposition composition = local.getPlayerComposition();
-		if (composition == null)
+		Map<EquipmentInventorySlot, Integer> snapshot = new EnumMap<>(EquipmentInventorySlot.class);
+		for (EquipmentInventorySlot slot : EquipmentInventorySlot.values())
 		{
-			return null;
+			Item item = equipment.getItem(slot.getSlotIdx());
+			snapshot.put(slot, item != null ? item.getId() : -1);
 		}
-		int[] ids = composition.getEquipmentIds();
-		return ids != null ? ids.clone() : null;
+		return snapshot;
+	}
+
+	/**
+	 * Diffs each tracked player's overhead protection prayer against the previous tick and
+	 * emits a {@link PrayerEvent} on change. Newly seen players set a baseline silently.
+	 */
+	private void detectPrayerChanges()
+	{
+		Player localPlayer = client.getLocalPlayer();
+		Map<String, HeadIcon> current = new HashMap<>();
+		for (Player player : client.getTopLevelWorldView().players())
+		{
+			if (player == null || player.getName() == null)
+			{
+				continue;
+			}
+			Combatant combatant = Combatants.of(player, localPlayer);
+			if (!isTracked(combatant))
+			{
+				continue;
+			}
+			String name = combatant.getName();
+			HeadIcon icon = combatant.getOverheadPrayer();
+			current.put(name, icon);
+			if (previousOverheads.containsKey(name) && !Objects.equals(previousOverheads.get(name), icon))
+			{
+				history.addEvent(new PrayerEvent(name, icon));
+			}
+		}
+		previousOverheads.clear();
+		previousOverheads.putAll(current);
 	}
 
 	/**
@@ -271,7 +295,7 @@ public class PvpEnhancerPlugin extends Plugin
 	private String localPlayerName()
 	{
 		Player local = client.getLocalPlayer();
-		return local != null ? safeName(local.getName()) : "you";
+		return local != null && local.getName() != null ? Text.removeTags(local.getName()) : "you";
 	}
 
 	private String itemName(int itemId)
@@ -279,17 +303,12 @@ public class PvpEnhancerPlugin extends Plugin
 		try
 		{
 			ItemComposition comp = itemManager.getItemComposition(itemId);
-			return comp != null ? safeName(comp.getName()) : ("item " + itemId);
+			return comp != null ? Text.removeTags(comp.getName()) : ("item " + itemId);
 		}
 		catch (RuntimeException e)
 		{
 			return "item " + itemId;
 		}
-	}
-
-	private static String safeName(String name)
-	{
-		return name != null ? Text.removeTags(name) : "?";
 	}
 
 	/**

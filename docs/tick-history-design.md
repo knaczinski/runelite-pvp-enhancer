@@ -43,11 +43,27 @@ Detected via the "Eat"/"Drink" menu click, before the animation plays. This give
 Tracks equipment changes tick-by-tick:
 
 ```
-[GEAR] knz equipped Twisted bow  (weapon slot)
-[GEAR] knz equipped Armadyl helmet  (head slot)
+knz equipped Twisted bow (weapon)
+knz equipped Armadyl helmet (head)
 ```
 
-Detected by diffing the `PlayerComposition.getEquipmentIds()` array between consecutive game ticks.
+Detected by diffing the local player's worn-equipment item container
+(`InventoryID.WORN`) between consecutive game ticks. The container holds real item ids, so
+names are exact — decoding `PlayerComposition` appearance ids was abandoned because it
+produced wrong names for many items (e.g. Armadyl godsword, infernal cape).
+
+### Prayer
+
+Tracks overhead protection prayer changes:
+
+```
+knz prayed Protect Magic
+knz prayer off
+```
+
+Detected by diffing each tracked player's `getOverheadIcon()` between ticks. Only the
+overhead protection prayer is visible on other players; offensive prayers (Piety, Rigour)
+have no overhead and are out of scope.
 
 ---
 

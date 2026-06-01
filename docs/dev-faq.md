@@ -116,3 +116,29 @@ Useful greps:
 - `Loaded plugin PvpEnhancerPlugin` / `is now running` — our plugin loaded/started.
 
 Hand the path to the AI agent and it will read it with the dedicated tools.
+
+---
+
+## Code & API notes
+
+### Q: A gear swap shows the wrong item name.
+
+Read worn items from the **item container**, not `PlayerComposition`. The container
+(`client.getItemContainer(InventoryID.WORN)`) holds real item ids, so
+`ItemManager.getItemComposition(id).getName()` is exact. Decoding
+`PlayerComposition.getEquipmentIds()` (the `id - 512` appearance trick) returns wrong names
+for many items (Armadyl godsword, infernal cape, …) and must not be used for the local
+player. (Remote players only expose `PlayerComposition`, so their gear is out of v1 scope.)
+
+### Q: The build prints "uses or overrides a deprecated API".
+
+The build runs with `-Xlint:deprecation`; keep the tree warning-clean. Known migrations
+already applied — prefer the modern API:
+
+| Deprecated | Use instead |
+|---|---|
+| `net.runelite.api.InventoryID` | `net.runelite.api.gameval.InventoryID` (int constants, e.g. `WORN = 94`) |
+| `client.getPlayers()` / `getNpcs()` | `client.getTopLevelWorldView().players()` / `.npcs()` (`IndexedObjectSet`, iterable) |
+
+When you hit a new deprecation, check the Javadoc / the `gameval` package for the
+replacement before suppressing it.

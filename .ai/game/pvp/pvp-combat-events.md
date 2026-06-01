@@ -163,36 +163,54 @@ Animation 829 is the generic eat animation. Use as a fallback if `MenuOptionClic
 
 ## 6. Detecting Gear Swaps
 
-No dedicated event. Use a `PlayerComposition` snapshot diff on each `GameTick`.
+No dedicated event. Diff a worn-equipment snapshot each `GameTick`.
+
+**Local player (recommended) — read the worn item container.** This gives REAL item ids,
+so `ItemManager.getItemComposition(id).getName()` returns the correct name. Do NOT decode
+`PlayerComposition.getEquipmentIds()` for the local player — those are appearance ids and
+the +512 decode produces wrong names for many items (observed: Armadyl godsword, infernal
+cape). The plugin uses this approach.
 
 ```java
-int[] previousEquipment = null;
+import net.runelite.api.gameval.InventoryID; // WORN = 94 (net.runelite.api.InventoryID is @Deprecated)
+import net.runelite.api.EquipmentInventorySlot;
 
-@Subscribe
-public void onGameTick(GameTick event) {
-    Player localPlayer = client.getLocalPlayer();
-    if (localPlayer == null) return;
-    PlayerComposition comp = localPlayer.getPlayerComposition();
-    if (comp == null) return;
-    int[] current = comp.getEquipmentIds().clone();
-
-    if (previousEquipment != null) {
-        for (int i = 0; i < current.length; i++) {
-            if (current[i] != previousEquipment[i]) {
-                KitType slot = KitType.values()[i];
-                int rawId = current[i];
-                int itemId = rawId >= PlayerComposition.ITEM_OFFSET
-                    ? rawId - PlayerComposition.ITEM_OFFSET : -1;
-                // emit GearSwapEvent(localPlayer, slot, itemId)
-            }
-        }
+ItemContainer eq = client.getItemContainer(InventoryID.WORN);
+if (eq != null) {
+    for (EquipmentInventorySlot slot : EquipmentInventorySlot.values()) {
+        Item item = eq.getItem(slot.getSlotIdx());
+        int itemId = item != null ? item.getId() : -1; // real item id, names are exact
+        // diff against previous tick's snapshot, emit GearSwapEvent(slot, itemId) on change
     }
-    previousEquipment = current;
 }
 ```
 
-`KitType` constants: `HEAD`, `CAPE`, `AMULET`, `WEAPON`, `TORSO`, `SHIELD`, `LEGS`, `GLOVES`, `BOOTS`, `RING`, `AMMO`.
-Item ID = raw equipment ID minus `PlayerComposition.ITEM_OFFSET`. If the result is negative, the slot is empty or shows a cosmetic kit.
+`EquipmentInventorySlot`: `HEAD, CAPE, AMULET, WEAPON, BODY, SHIELD, LEGS, GLOVES, BOOTS, RING, AMMO`.
+
+**Remote players — only `PlayerComposition` is available** (you can't read another player's
+container). `getEquipmentIds()` values: 0 = empty; `>= 512` → item id = value - 512;
+`256..511` → cosmetic kit. Names from appearance ids can be imperfect; out of v1 scope.
+
+## 6b. Detecting Prayer Changes
+
+Overhead protection prayer is the only prayer observable for remote players
+(`Player.getOverheadIcon()` → `HeadIcon` or null). Diff it per tick per tracked player:
+
+```java
+// previousOverheads: Map<String /*player name*/, HeadIcon>
+for (Player p : client.getTopLevelWorldView().players()) { // getPlayers() is @Deprecated
+    if (p == null || p.getName() == null) continue;
+    HeadIcon icon = p.getOverheadIcon();            // null = no overhead prayer
+    HeadIcon prev = previousOverheads.get(p.getName());
+    if (previousOverheads.containsKey(p.getName()) && !Objects.equals(prev, icon)) {
+        // emit PrayerEvent(name, icon)  (icon null => "prayer off")
+    }
+}
+```
+
+Offensive prayers (Piety/Rigour/Augury) have no overhead and are not observable on other
+players — out of scope. For the local player only, `client.isPrayerActive(Prayer)` exposes
+all prayers if ever needed.
 
 ## 7. Tracking Opponent Equipment
 

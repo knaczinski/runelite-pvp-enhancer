@@ -26,6 +26,7 @@ public class TickHistoryOverlay extends OverlayPanel
 	private static final Color COLOR_COMBAT = new Color(0xFF6B6B);
 	private static final Color COLOR_EATING = new Color(0x6BCB77);
 	private static final Color COLOR_GEAR = new Color(0x4D96FF);
+	private static final Color COLOR_PRAYER = new Color(0xFFD93D);
 
 	private final PvpEnhancerConfig config;
 	private final TickHistoryService history;
@@ -94,6 +95,8 @@ public class TickHistoryOverlay extends OverlayPanel
 				return config.showEating();
 			case GEAR_SWAP:
 				return config.showGearSwap();
+			case PRAYER:
+				return config.showPrayer();
 			default:
 				return true;
 		}
@@ -109,6 +112,8 @@ public class TickHistoryOverlay extends OverlayPanel
 				return COLOR_EATING;
 			case GEAR_SWAP:
 				return COLOR_GEAR;
+			case PRAYER:
+				return COLOR_PRAYER;
 			default:
 				return Color.WHITE;
 		}

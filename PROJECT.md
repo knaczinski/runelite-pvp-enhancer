@@ -31,6 +31,7 @@ Records game events tick-by-tick during combat. Displays a scrollable history pa
 | combat | player X attacked player Y with Z (melee/range/mage), on prayer P, hit N |
 | eating | player X ate item Y; same-player same-tick consumes merge → "ate A + B (double eat)" |
 | gear swap | player X equipped item Y (slot Z) |
+| prayer | player X prayed Protect Magic / prayer off (overhead protection prayer change) |
 
 Each tick is shown under a 1-based code ("Tick 0001"), holds N events from any number of
 characters, and reads chronologically (oldest tick at the top).
@@ -40,9 +41,10 @@ characters, and reads chronologically (oldest tick at the top).
 attack_style: infer from animation ID (Actor.getAnimation()). requires animation→style mapping table (see .ai/game/pvp/pvp-combat-events.md).
 overhead_prayer: Player.getOverheadIcon() → HeadIcon enum (MELEE/RANGED/MAGIC/SMITE/etc.).
 hitsplat: HitsplatApplied event — hitsplat.getAmount(), hitsplat.getHitsplatType().
-gear: PlayerComposition.getEquipmentIds() diff between ticks → changed slot → item.
-eating: MenuOptionClicked with option "Eat" or animation 829 (eating animation).
-tick_clock: GameTick event — one event = one 600ms server tick.
+gear: local player's worn item container (gameval InventoryID.WORN) diff between ticks → changed slot → REAL item id → name via ItemManager. (Not PlayerComposition appearance ids — those decode to wrong names.)
+prayer_change: Player.getOverheadIcon() diff per tick per tracked player → PrayerEvent (overhead protection prayer only).
+eating: MenuOptionClicked with option "Eat"/"Drink"; same-player same-tick consumes merge into a combo eat.
+tick_clock: GameTick event — one event = one 600ms server tick. Each tick gets a 1-based display code ("Tick 0001").
 
 ### Rendering
 
@@ -62,7 +64,7 @@ service_pattern: TickHistoryService — stateful, injected. Owns the tick event 
 combatant_pattern: detection programs against the Combatant interface, not RuneLite Player/NPC. Combatants.of(Actor) is the sole instanceof site; PlayerCombatant/NpcCombatant adapt the two types; CombatEventFactory is pure (mockable). NPCs report blank for fields they lack (e.g. prayer).
 event_pattern: all game state consumed via @Subscribe. No polling threads.
 
-config_note: trackNpcs (default off) records NPC combat events — a testing aid so detection can be exercised without a second player.
+config_note: config is split into @ConfigSection "Tracking" (functionality: trackOpponents, trackNpcs — what is recorded) and "Overlay" (display: maxHistoryTicks, show combat/eating/gearSwap/prayer — what is shown). show* are display-only filters; they do not gate recording. trackNpcs (default off) is a testing aid. maxHistoryTicks has no minimum.
 
 ## RuneLite API Constraints
 

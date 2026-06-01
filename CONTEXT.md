@@ -6,18 +6,20 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S003
-phase: Phase 1 complete (tick history MVP + NPC toggle + tick codes/combo-eat). Phase 2 gated on live validation.
+latest_session: S004
+phase: Phase 1 complete (tick history: codes, combo-eat, prayers, NPC toggle, sectioned config). Phase 2 gated on live validation.
 status: active
 
 ## Current Focus
 
-MVP shipped S001 (B001-B007). S002 added NPC tracking (Combatant interface) + fixed
-gradle-run double-load + Jagex dev login. S003 added per-tick code ("Tick 0001"),
-chronological (oldest-first) display, and combo-eat merge ("ate A + B (double eat)").
-Build green, 17 unit tests.
-NEXT: user deletes the leftover sideloaded jar (one-time), then `./gradlew run` = single
-entry. Validate HT-001..HT-004 (+ trackNpcs, combo-eat, tick codes). Then B008 (grow AnimationStyleMap).
+MVP S001 (B001-B007). S002 NPC tracking (Combatant interface) + dev-env fixes. S003 per-tick
+code + chronological order + combo-eat. S004 fixed gear item names (worn container, real ids,
+not appearance decode), added PRAYER events (overhead diff), split config into Tracking vs
+Overlay sections (show* are display-only), removed max-ticks minimum, and cleaned all
+deprecations (gameval.InventoryID.WORN, getTopLevelWorldView().players()). Build green
+(-Xlint:deprecation clean), 21 unit tests.
+NEXT: user deletes the leftover sideloaded jar (one-time), then `./gradlew run` = single entry.
+Validate HT-001..HT-004 (+ gear names, prayers, combo-eat, tick codes, config). Then B008 (grow AnimationStyleMap).
 
 ## Open Threads
 

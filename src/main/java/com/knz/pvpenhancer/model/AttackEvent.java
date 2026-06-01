@@ -56,26 +56,8 @@ public class AttackEvent extends CombatEvent
 		// report one (e.g. an NPC target). Only players with an active overhead show it.
 		if (targetPrayer != null)
 		{
-			line += "  on " + prayerLabel(targetPrayer);
+			line += "  on " + PrayerNames.label(targetPrayer);
 		}
 		return line;
-	}
-
-	/**
-	 * Maps an overhead prayer icon to a short label for the overlay.
-	 */
-	private static String prayerLabel(HeadIcon icon)
-	{
-		switch (icon)
-		{
-			case MELEE:
-				return "pro melee";
-			case RANGED:
-				return "pro range";
-			case MAGIC:
-				return "pro mage";
-			default:
-				return icon.name().toLowerCase().replace('_', ' ');
-		}
 	}
 }

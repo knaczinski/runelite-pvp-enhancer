@@ -35,6 +35,7 @@ tasks.withType(JavaCompile).configureEach {
 	options.encoding = 'UTF-8'
 	// Production target is Java 11 (RuneLite constraint). A newer JDK may build it.
 	options.release.set(11)
+	options.compilerArgs += ['-Xlint:deprecation']
 }
 
 // Launches a full RuneLite client in developer mode with this plugin loaded from the

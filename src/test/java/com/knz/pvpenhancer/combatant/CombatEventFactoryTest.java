@@ -37,7 +37,7 @@ public class CombatEventFactoryTest
 		assertEquals("attacker", event.getAttacker());
 		assertEquals("victim", event.getTarget());
 		assertEquals(HeadIcon.MAGIC, event.getTargetPrayer());
-		assertTrue(event.format().contains("on pro mage"));
+		assertTrue(event.format().contains("on Protect Magic"));
 	}
 
 	@Test
