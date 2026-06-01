@@ -30,9 +30,16 @@ NEXT: live validation via HT-001..HT-004. Then Phase 2 (B008 NEXT UP — grow An
 - Jagex-account login in the dev client: the gradle-run client shows the legacy login.
   Fix = `--insecure-write-credentials` on the Jagex-launched client → writes
   ~/.runelite/credentials.properties → dev client reuses it. See docs/building-and-testing.md.
-- EventBus logs `LambdaConversionException: Invalid caller` for the @Subscribe methods on
-  side-loaded plugins, then falls back to reflective dispatch (lambda=null). Benign for
-  side-loaded dev testing; handlers still register and fire.
+- RESOLVED (S001 follow-up): plugin appeared TWICE under `gradle run`. Cause: `build`
+  auto-installed the jar to sideloaded-plugins AND `run` loads via loadBuiltin, so
+  --developer-mode side-loaded it a second time. Fix: removed `build.finalizedBy
+  installPlugin` (installPlugin is now opt-in only); `run` uses loadBuiltin from classpath
+  only. Added `--add-opens=java.base/java.lang.reflect,java.lang` to the run task for
+  loadBuiltin reflection on JDK 17+. Rule: never have the jar in sideloaded-plugins while
+  using `gradle run`.
+- EventBus `LambdaConversionException: Invalid caller` only occurred on the side-loaded
+  copy (child classloader). With loadBuiltin (app classloader) the lambda binds normally;
+  the warning should disappear.
 
 ## Architecture Notes
 

@@ -36,32 +36,36 @@ tasks.withType(JavaCompile).configureEach {
 	options.release.set(11)
 }
 
-// Launches a full RuneLite client in developer mode with this plugin loaded.
-// This is the primary development loop — no jar copying required.
+// Launches a full RuneLite client in developer mode with this plugin loaded from the
+// classpath via ExternalPluginManager.loadBuiltin (see PvpEnhancerTest). This is the
+// primary development loop — no jar is built or copied, and code changes take effect on
+// the next run. Do NOT also keep the jar in ~/.runelite/sideloaded-plugins while using
+// this task, or the plugin loads twice (once from the classpath, once side-loaded).
+// The --add-opens is required so loadBuiltin's reflection works on JDK 17+.
 tasks.register('run', JavaExec) {
 	group = 'runelite'
-	description = 'Run RuneLite with the plugin side-loaded from the classpath'
+	description = 'Run RuneLite in developer mode with the plugin loaded from the classpath'
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = pluginMainClass
-	jvmArgs '-ea'
+	jvmArgs '-ea', '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED', '--add-opens=java.base/java.lang=ALL-UNNAMED'
 	args '--developer-mode', '--debug'
 }
 
-// Copies the built plugin jar into the RuneLite side-loaded-plugins directory
-// so it loads in the user's normal RuneLite client (started with --developer-mode).
+// OPT-IN ONLY. Copies the built plugin jar into the RuneLite side-load directory so a
+// standalone client started with --developer-mode can load it. Run explicitly:
+//   ./gradlew installPlugin
+// WARNING: do NOT use this together with `./gradlew run`. `run` already loads the plugin
+// from the classpath; if the jar is also present in sideloaded-plugins, developer mode
+// loads it a SECOND time and the plugin appears twice. This task is deliberately NOT
+// wired into `build` for that reason.
 tasks.register('installPlugin', Copy) {
 	group = 'runelite'
-	description = 'Copy the plugin jar into ~/.runelite/sideloaded-plugins'
+	description = 'Opt-in: copy the plugin jar into ~/.runelite/sideloaded-plugins (do not combine with run)'
 	dependsOn tasks.named('jar')
 	from tasks.named('jar').flatMap { it.archiveFile }
 	into sideloadDir
 	doLast {
 		println "Installed plugin jar to ${sideloadDir}"
+		println "NOTE: use this for a standalone --developer-mode client only. Do not also run `gradlew run`, or the plugin loads twice."
 	}
-}
-
-// `gradle build` automatically installs the jar to the side-load directory.
-// Disable with: ./gradlew build -x installPlugin
-tasks.named('build') {
-	finalizedBy tasks.named('installPlugin')
 }

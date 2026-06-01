@@ -67,49 +67,29 @@ Fix: have the Jagex Launcher write its session to a credentials file the dev cli
 
 ---
 
-## Install loop (use the plugin in a developer-mode client)
+## Side-loading (opt-in, advanced — usually not needed)
 
-To run the plugin inside the RuneLite client you normally play on:
-
-```
-./gradlew build
-```
-
-`build` compiles, runs the unit tests, produces `build/libs/pvp-enhancer-<version>.jar`,
-and — because `build` is wired to finalize with `installPlugin` — copies that jar into:
-
-```
-~/.runelite/sideloaded-plugins/
-```
-
-(`~` is your home directory; on Windows that is `C:\Users\<you>`.) The directory is
-created if it does not exist.
-
-Side-loaded jars are only scanned when the client runs in **developer mode**
-(`PluginManager.loadSideLoadPlugins()` is gated on it). To enable it on a launcher-started
-client, add `--developer-mode` to **"RuneLite (configure)" → Client arguments**.
-
-> ⚠️ In practice this is unreliable on the **Jagex Launcher** production client and is
-> not its intended use — the supported channel for the everyday client is the Plugin Hub.
-> For development and personal use, prefer `./gradlew run` (above) with the Jagex-account
-> credentials file. When side-loading does work, the plugin appears as **PvP Enhancer**.
-
-To build without installing:
-
-```
-./gradlew build -x installPlugin
-```
-
-To install without a full rebuild (after a prior build):
+`./gradlew run` is the way to run the plugin. Side-loading is a separate, optional path
+for loading the built jar into a standalone client started with `--developer-mode`.
 
 ```
 ./gradlew installPlugin
 ```
 
-> **Why `sideloaded-plugins` and not `plugins/`?** The `~/.runelite/plugins/` directory
-> holds Plugin Hub jars managed (and overwritten) by the client's hub updater — manually
-> placed jars there are fragile. `sideloaded-plugins/` is the sanctioned location for
-> local developer side-loading.
+This copies `build/libs/pvp-enhancer-<version>.jar` into `~/.runelite/sideloaded-plugins/`
+(created if missing). Side-loaded jars load only when the client runs in **developer
+mode** (`PluginManager.loadSideLoadPlugins()` is gated on it).
+
+> ⚠️ **Do not combine `installPlugin` with `./gradlew run`.** `run` already loads the
+> plugin from the classpath; if the jar is also sitting in `sideloaded-plugins/`,
+> developer mode loads it a **second time** and **the plugin appears twice**. For this
+> reason `installPlugin` is opt-in and is **not** wired into `build`. If you ever see two
+> "PvP Enhancer" entries, delete the jar from `~/.runelite/sideloaded-plugins/` and just
+> use `./gradlew run`.
+
+> ⚠️ Side-loading into the **Jagex Launcher** production client is unreliable and not its
+> intended use — the supported channel for the everyday client is the Plugin Hub. Prefer
+> `./gradlew run` (above) with the Jagex-account credentials file.
 
 ---
 
