@@ -6,11 +6,18 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S004
-phase: Phase 1 complete (tick history: codes, combo-eat, prayers, NPC toggle, sectioned config). Phase 2 gated on live validation.
+latest_session: S005
+phase: Phase 1 complete. Phase 3 (combat awareness & combos) IN PROGRESS — foundation (B013) shipped.
 status: active
 
 ## Current Focus
+
+S005: grilled 4 new combat-awareness features (docs/combat-features-design.md) and shipped
+Phase 3 foundation B013 — CombatStateService (in-combat) + AttackHitsplatCorrelator. Build
+green, 30 tests. NEXT phases: B014 heartbeat + B015 not-retaliating (Phase B), B016 hit
+summary (Phase C), B017 combos (Phase D).
+
+## (Phase 1) Focus history
 
 MVP S001 (B001-B007). S002 NPC tracking (Combatant interface) + dev-env fixes. S003 per-tick
 code + chronological order + combo-eat. S004 fixed gear item names (worn container, real ids,

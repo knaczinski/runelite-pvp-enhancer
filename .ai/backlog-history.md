@@ -5,6 +5,19 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S005 — Phase 3 design interview + foundation (B013)
+
+Grilled the 4 combat-awareness features (10 decisions) → `docs/combat-features-design.md`;
+added Phase 3 backlog (B013–B017). Shipped **B013** foundation:
+
+- `CombatStateService` (@Singleton): isInCombat = local combat activity within 8 ticks OR
+  interacting with a player; fed by the plugin (interaction per tick, activity on local
+  hit/attack); no game state of its own (unit tested).
+- `AttackHitsplatCorrelator` (pure): best-effort match of an attack to its hitsplat by target
+  + style delay window (melee 1, ranged/magic 3 ticks); stale attacks expire. Unit tested.
+
+Build green, 30 tests. B014–B017 remain open (heartbeat, not-retaliating, hit summary, combos).
+
 ## S004 — Gear name fix + prayer events + sectioned config + deprecation cleanup
 
 User-requested. Delivered S004 (2026-06-01). Build green (-Xlint:deprecation clean), 21 tests.

@@ -11,6 +11,7 @@ import com.knz.pvpenhancer.model.GearSwapEvent;
 import com.knz.pvpenhancer.model.HitsplatEvent;
 import com.knz.pvpenhancer.model.PrayerEvent;
 import com.knz.pvpenhancer.overlay.TickHistoryOverlay;
+import com.knz.pvpenhancer.service.CombatStateService;
 import com.knz.pvpenhancer.service.TickHistoryService;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -77,6 +78,9 @@ public class PvpEnhancerPlugin extends Plugin
 	private TickHistoryService history;
 
 	@Inject
+	private CombatStateService combatState;
+
+	@Inject
 	private TickHistoryOverlay overlay;
 
 	@Inject
@@ -114,6 +118,7 @@ public class PvpEnhancerPlugin extends Plugin
 	{
 		previousEquipment = null;
 		previousOverheads.clear();
+		combatState.clear();
 	}
 
 	/**
@@ -123,6 +128,8 @@ public class PvpEnhancerPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		Player local = client.getLocalPlayer();
+		combatState.setInteractingWithPlayer(local != null && local.getInteracting() instanceof Player);
 		detectGearSwaps();
 		detectPrayerChanges();
 		history.setMaxHistory(config.maxHistoryTicks());
@@ -152,6 +159,10 @@ public class PvpEnhancerPlugin extends Plugin
 		if (attack != null)
 		{
 			history.addEvent(attack);
+			if (attacker.isLocalPlayer())
+			{
+				combatState.recordCombatActivity(client.getTickCount());
+			}
 		}
 		else if (!AnimationStyleMap.isKnown(animation))
 		{
@@ -171,6 +182,10 @@ public class PvpEnhancerPlugin extends Plugin
 	@Subscribe
 	public void onHitsplatApplied(HitsplatApplied event)
 	{
+		if (event.getActor() == client.getLocalPlayer())
+		{
+			combatState.recordCombatActivity(client.getTickCount());
+		}
 		Combatant target = Combatants.of(event.getActor(), client.getLocalPlayer());
 		if (!isTracked(target))
 		{
