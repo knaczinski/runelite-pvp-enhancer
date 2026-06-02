@@ -24,9 +24,11 @@ import com.knz.pvpenhancer.model.HitsplatLabels;
 import com.knz.pvpenhancer.model.PrayerEvent;
 import com.knz.pvpenhancer.model.PrayerNames;
 import com.knz.pvpenhancer.model.TickEntry;
+import com.knz.pvpenhancer.model.XpDamage;
 import com.knz.pvpenhancer.overlay.ComboFeedbackOverlay;
 import com.knz.pvpenhancer.overlay.HealOverlay;
 import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
+import com.knz.pvpenhancer.overlay.HitPredictOverlay;
 import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator;
@@ -56,6 +58,7 @@ import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.config.ConfigManager;
@@ -111,6 +114,7 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private NotRetaliatingOverlay notRetaliatingOverlay;
 	@Inject private ComboFeedbackOverlay comboFeedbackOverlay;
 	@Inject private HealOverlay healOverlay;
+	@Inject private HitPredictOverlay hitPredictOverlay;
 
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private PvpEnhancerPanel panel;
@@ -133,6 +137,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Each tracked player's health ratio last tick, keyed by name (remote heal detection). */
 	private final Map<String, Integer> previousHealthRatio = new HashMap<>();
 
+	/** Local player's total Hitpoints XP last seen (-1 = not yet baselined), for hit prediction. */
+	private int previousHpXp = -1;
+
 	// ─── Lifecycle ───────────────────────────────────────────────────────
 
 	@Provides
@@ -150,6 +157,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(notRetaliatingOverlay);
 		overlayManager.add(comboFeedbackOverlay);
 		overlayManager.add(healOverlay);
+		overlayManager.add(hitPredictOverlay);
 
 		navButton = NavigationButton.builder()
 			.tooltip("PvP Enhancer")
@@ -167,6 +175,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(notRetaliatingOverlay);
 		overlayManager.remove(comboFeedbackOverlay);
 		overlayManager.remove(healOverlay);
+		overlayManager.remove(hitPredictOverlay);
 		clientToolbar.removeNavigation(navButton);
 		resetState();
 	}
@@ -179,10 +188,12 @@ public class PvpEnhancerPlugin extends Plugin
 		hitSummary.clear();
 		comboDetector.clear();
 		healOverlay.clear();
+		hitPredictOverlay.clear();
 		previousEquipment = null;
 		previousOverheads.clear();
 		previousLocalHp = -1;
 		previousHealthRatio.clear();
+		previousHpXp = -1;
 	}
 
 	/** Snapshots service data on the client thread and rebuilds the sidebar panel on the EDT. */
@@ -383,6 +394,32 @@ public class PvpEnhancerPlugin extends Plugin
 				comboDetector.onEatClick(actionParam, itemId, qty);
 			}
 		}
+	}
+
+	/**
+	 * Predicts the local player's outgoing damage from the Hitpoints XP drop. The XP is
+	 * granted at attack time — before ranged/magic projectiles land — so the number appears
+	 * on the target ahead of the hitsplat.
+	 */
+	@Subscribe
+	public void onStatChanged(StatChanged event)
+	{
+		if (event.getSkill() != Skill.HITPOINTS)
+		{
+			return;
+		}
+		int xp = event.getXp();
+		if (config.hitPrediction() && previousHpXp >= 0 && xp > previousHpXp)
+		{
+			int damage = XpDamage.fromHitpointsXp(xp - previousHpXp);
+			Player local = client.getLocalPlayer();
+			Actor target = local != null ? local.getInteracting() : null;
+			if (damage > 0 && target != null)
+			{
+				hitPredictOverlay.addPrediction(target, damage);
+			}
+		}
+		previousHpXp = xp;
 	}
 
 	// ─── Gear swap detection ─────────────────────────────────────────────

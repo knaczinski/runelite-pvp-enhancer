@@ -35,6 +35,9 @@ public interface PvpEnhancerConfig extends Config
 	@ConfigSection(name = "Healing", description = "Show recovered HP near health bars.", position = 3)
 	String healingSection = "healing";
 
+	@ConfigSection(name = "Combat (PvP)", description = "PvP overlays: focus, hit prediction, debuff timers, prayer.", position = 4)
+	String pvpSection = "pvp";
+
 	// ─── Tracking ───────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "trackOpponents", name = "Track opponents",
@@ -68,6 +71,14 @@ public interface PvpEnhancerConfig extends Config
 			+ "amounts are estimates (~) — the API only exposes their health ratio, not real HP.",
 		section = healingSection, position = 0)
 	default HealDisplayMode healDisplayMode() { return HealDisplayMode.EVERYONE; }
+
+	// ─── Combat (PvP) ─────────────────────────────────────────────────────────
+
+	@ConfigItem(keyName = "hitPrediction", name = "Hit prediction (XP)",
+		description = "Show predicted outgoing damage near your target, derived from the "
+			+ "Hitpoints XP drop — appears before ranged/magic projectiles land.",
+		section = pvpSection, position = 1)
+	default boolean hitPrediction() { return true; }
 
 	// ─── Controlled inline in the sidebar panel (hidden from the config panel) ──
 	// These are edited next to their block in PvpEnhancerPanel.
