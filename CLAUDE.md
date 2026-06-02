@@ -10,7 +10,7 @@ project: runelite-pvp-enhancer
 platform: RuneLite (OSRS client plugin)
 phase: Phase 1 complete (tick history MVP). Phase 2 refinement gated on live validation.
 status: active
-latest_session: S005
+latest_session: S006
 
 ## State
 

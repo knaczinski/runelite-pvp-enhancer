@@ -9,5 +9,6 @@ public enum EventCategory
 	COMBAT,
 	EATING,
 	GEAR_SWAP,
-	PRAYER
+	PRAYER,
+	COMBO
 }

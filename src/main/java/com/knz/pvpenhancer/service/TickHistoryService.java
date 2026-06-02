@@ -82,6 +82,17 @@ public class TickHistoryService
 	}
 
 	/**
+	 * @return the sequence code of the most recently flushed tick (the one at the front of
+	 * the buffer), or 0 if nothing has been flushed yet. Used by the Hit Summary to stamp
+	 * attack rows with the same code shown in the tick-history overlay.
+	 */
+	public int getLastSequence()
+	{
+		TickEntry front = entries.peekFirst();
+		return front != null ? front.getSequence() : tickSequence;
+	}
+
+	/**
 	 * Clears all history and any pending events. Called on plugin start/stop and on logout.
 	 */
 	public void clear()

@@ -6,6 +6,7 @@ import com.knz.pvpenhancer.model.EventCategory;
 import com.knz.pvpenhancer.model.TickEntry;
 import com.knz.pvpenhancer.service.TickHistoryService;
 import java.awt.Color;
+import com.knz.pvpenhancer.model.CombatEvent;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.util.List;
@@ -75,9 +76,14 @@ public class TickHistoryOverlay extends OverlayPanel
 						.build());
 					headerWritten = true;
 				}
+				Color eventColor = event.getColor();
+				if (eventColor == null)
+				{
+					eventColor = categoryColor(event.getCategory());
+				}
 				panelComponent.getChildren().add(LineComponent.builder()
 					.left(event.format())
-					.leftColor(categoryColor(event.getCategory()))
+					.leftColor(eventColor)
 					.build());
 			}
 		}
@@ -97,6 +103,8 @@ public class TickHistoryOverlay extends OverlayPanel
 				return config.showGearSwap();
 			case PRAYER:
 				return config.showPrayer();
+			case COMBO:
+				return config.showCombos();
 			default:
 				return true;
 		}

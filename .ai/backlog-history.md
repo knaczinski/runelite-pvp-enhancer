@@ -5,6 +5,25 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S006 — Phase 3 complete (B014-B017): heartbeat, not-retaliating, hit summary, combos
+
+All four combat-awareness features fully shipped. Build green, 46 tests, deprecation-clean.
+
+- **B014 Heartbeat**: `HeartbeatOverlay` — red edge vignette, exponential decay over 600ms.
+  `CombatStateService.setEngaged(bool, tick)` added (+`isNotRetaliating`).
+- **B015 Not-retaliating**: `NotRetaliatingOverlay` — panel warning when in combat but
+  `getInteracting()` off opponent for >= 2 ticks.
+- **B016 Hit Summary**: `HitSummaryService` + `HitSummaryOverlay` (table). Wired with
+  `AttackHitsplatCorrelator`. Offen.Pray local-only via `isPrayerActive` (@SuppressWarnings
+  deprecation — no API replacement available).
+- **B017 Combos**: `ComboDetectorService` (pure, tested) — double/triple eat, potlock
+  (same item+qty next tick), clean switch (>=3 swaps), offensive swap tier (gap 0/1/2).
+  `ComboFeedbackOverlay` transient popup, `ComboEvent` + `ComboTier/Type/Result` model.
+  Config: 6 sections (Tracking/Overlay/Heartbeat/Indicators/HitSummary/Combos).
+
+Deprecation cleanup: OverlayPriority removed; `getActionParam/getWidgetId` → `getParam0/1`;
+`getPlayers()` was already migrated in S004; `isPrayerActive` suppressed with rationale.
+
 ## S005 — Phase 3 design interview + foundation (B013)
 
 Grilled the 4 combat-awareness features (10 decisions) → `docs/combat-features-design.md`;

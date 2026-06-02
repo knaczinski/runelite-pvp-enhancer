@@ -6,16 +6,17 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S005
-phase: Phase 1 complete. Phase 3 (combat awareness & combos) IN PROGRESS — foundation (B013) shipped.
+latest_session: S006
+phase: Phase 1 complete. Phase 3 (combat awareness & combos) SHIPPED — B013-B017.
 status: active
 
 ## Current Focus
 
-S005: grilled 4 new combat-awareness features (docs/combat-features-design.md) and shipped
-Phase 3 foundation B013 — CombatStateService (in-combat) + AttackHitsplatCorrelator. Build
-green, 30 tests. NEXT phases: B014 heartbeat + B015 not-retaliating (Phase B), B016 hit
-summary (Phase C), B017 combos (Phase D).
+S006: all 4 combat-awareness features fully implemented — heartbeat vignette (B014),
+not-retaliating indicator (B015), hit summary table (B016), combo system with popup (B017).
+Build green, 46 tests, deprecation-clean.
+NEXT: live validation (delete leftover sideloaded jar, ./gradlew run, test all features).
+Then B008 (grow AnimationStyleMap from live fight data).
 
 ## (Phase 1) Focus history
 

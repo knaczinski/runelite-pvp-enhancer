@@ -68,40 +68,5 @@ tick history to the clipboard as text, for post-fight review/sharing.
 
 ## ▶ PHASE 3 — Combat awareness & combos
 
-Design resolved in S005 (interview). Full spec: `docs/combat-features-design.md`. Deliver in
-order B013 → B014/B015 → B016 → B017; each is build-green + commit + live-validatable.
-
-Done (history): B013 (foundation — CombatStateService + AttackHitsplatCorrelator, S005).
-
-### B014 — Heartbeat indicator
-**Effort:** S
-**Status:** OPEN — NEXT UP (B013 done).
-**Scope:** `HeartbeatOverlay` — red edge vignette pulsing once per `GameTick` while in combat
-(constant intensity, decays over the tick). Config enable/disable.
-**Acceptance:** HT — pulse is tick-synced and only in combat.
-
-### B015 — Not-retaliating indicator
-**Effort:** S
-**Status:** OPEN — depends on B013.
-**Scope:** while in combat, if local `getInteracting()` is not an opponent for ≥2 ticks → show
-"NOT ATTACKING — re-click target"; clear on re-engage. Config enable/disable.
-**Acceptance:** HT — fires on walk/loot/click-away, not between hits or on eat.
-
-### B016 — Hit Summary overlay
-**Effort:** M
-**Status:** OPEN — depends on B013.
-**Scope:** `HitSummaryService` + `HitSummaryOverlay` — table Tick·Player·Offen.Pray·Attack·
-Target·Target Prayer·Hit. One row per attack (all tracked players). Offen.Pray local-only
-(client.isPrayerActive), blank for others. Hit filled via AttackHitsplatCorrelator. Config
-enable/disable + row cap.
-**Acceptance:** HT — rows correct in 1v1; Hit fills within a few ticks; opponents' Offen.Pray blank.
-
-### B017 — Combo system + floating popup
-**Effort:** L
-**Status:** OPEN — depends on B013 (correlator), B016 helpful.
-**Scope:** local-player combo detection + transient popup feedback. Recipes (fixed v1):
-double eat, triple eat, combo failed (eat/drink click with no inventory consumption; drag-aware),
-offensive swap→attack (tier by equip→attack gap 0/1/2 = perfect/great/good), clean switch
-(≥3 worn slots changed same tick). `ComboEvent` in tick-history + `ComboFeedbackOverlay`
-(floating colour-coded popup ~1.5s). Single enable/disable config. Unit-test the pure detectors.
-**Acceptance:** HT — each recipe triggers correctly; tiers match timing; failed-eat not fooled by inventory reorg.
+Design resolved in S005 (interview). Full spec: `docs/combat-features-design.md`.
+Done (history): B013-B017 (all shipped S005-S006). See backlog-history.md.

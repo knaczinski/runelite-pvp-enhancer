@@ -18,4 +18,13 @@ public abstract class CombatEvent
 	 * @return a single human-readable line describing the event, rendered in the overlay.
 	 */
 	public abstract String format();
+
+	/**
+	 * Optional per-event color override for the overlay. Returns {@code null} to use the
+	 * default color for this event's {@link EventCategory}.
+	 */
+	public java.awt.Color getColor()
+	{
+		return null;
+	}
 }

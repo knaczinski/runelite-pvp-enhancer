@@ -21,6 +21,8 @@ public class CombatStateService
 	private int combatWindowTicks = DEFAULT_COMBAT_WINDOW_TICKS;
 	private int lastActivityTick = Integer.MIN_VALUE;
 	private boolean interactingWithPlayer;
+	/** Last tick the local player was targeting an opponent (for not-retaliating detection). */
+	private int lastEngagedTick = Integer.MIN_VALUE;
 
 	/**
 	 * Sets how many ticks after the last combat activity the player is still considered in
@@ -41,8 +43,22 @@ public class CombatStateService
 	}
 
 	/**
-	 * Reports whether the local player is interacting with another player this tick.
+	 * Reports whether the local player is interacting with an opponent player this tick.
+	 * Also stamps engagement for not-retaliating detection when {@code engaged} is true.
 	 */
+	public void setEngaged(boolean engaged, int currentTick)
+	{
+		this.interactingWithPlayer = engaged;
+		if (engaged)
+		{
+			this.lastEngagedTick = currentTick;
+		}
+	}
+
+	/**
+	 * @deprecated Use {@link #setEngaged(boolean, int)} so engagement timestamps are kept.
+	 */
+	@Deprecated
 	public void setInteractingWithPlayer(boolean interacting)
 	{
 		this.interactingWithPlayer = interacting;
@@ -75,9 +91,28 @@ public class CombatStateService
 	/**
 	 * Resets all state. Called on plugin start/stop and logout.
 	 */
+	/**
+	 * @return true when in combat but the local player has not targeted the opponent for
+	 * at least 2 ticks — i.e., they walked away, looted, or clicked elsewhere and need to
+	 * re-click the target.
+	 */
+	public boolean isNotRetaliating(int currentTick)
+	{
+		if (!isInCombat(currentTick))
+		{
+			return false;
+		}
+		if (lastEngagedTick == Integer.MIN_VALUE)
+		{
+			return false;
+		}
+		return (currentTick - lastEngagedTick) >= 2;
+	}
+
 	public void clear()
 	{
 		lastActivityTick = Integer.MIN_VALUE;
 		interactingWithPlayer = false;
+		lastEngagedTick = Integer.MIN_VALUE;
 	}
 }

@@ -11,7 +11,7 @@ backlog: .ai/backlog.md
 backlog_history: .ai/backlog-history.md
 game_docs: .ai/game/INDEX.md
 
-active_session: S005
+active_session: S006
 load_rule: read only rule files relevant to current task. priority order in CLAUDE.md rule_04.
 
 ## Package CONTEXT.md map
