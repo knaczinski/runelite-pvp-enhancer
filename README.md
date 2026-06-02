@@ -86,8 +86,12 @@ See `docs/tick-history-design.md` for the full design.
 src/main/java/com/knz/pvpenhancer/
   PvpEnhancerPlugin.java     plugin entry point (startUp / shutDown)
   PvpEnhancerConfig.java     user-configurable settings (@ConfigGroup)
+  panel/
+    PvpEnhancerPanel.java    RuneLite sidebar panel (tick history + hit summary + status)
   overlay/
-    TickHistoryOverlay.java  OverlayPanel for the tick log
+    HeartbeatOverlay.java    tick-synced red combat vignette
+    NotRetaliatingOverlay.java  "NOT ATTACKING" alert
+    ComboFeedbackOverlay.java   transient combo popup
   service/
     TickHistoryService.java  stateful tick event buffer
   combatant/

@@ -1,19 +1,16 @@
 ---
 scope: com.knz.pvpenhancer.overlay
-load_when: changing overlay rendering, layout, colours, or adding a new overlay
+load_when: changing screen-view overlays (heartbeat, not-attacking alert, combo popup)
 ---
 
-purpose: render the TickHistoryService buffer. read-only view.
+purpose: screen-view effects and alerts. DATA overlays (tick history, hit summary) moved to the sidebar panel (com.knz.pvpenhancer.panel) — only effects/alerts live here.
 
 patterns:
-  - TickHistoryOverlay extends OverlayPanel. position TOP_LEFT. registered in plugin startUp, removed in shutDown.
-  - render(): clear panelComponent children, add title, then per tick a "Tick 0001" header (String.format %04d on TickEntry.sequence) + one LineComponent per visible event.
-  - OLDEST-FIRST: getEntries() is newest-first, so render iterates it in reverse → ticks read chronologically top-to-bottom (matches the user's spec).
-  - per-category colour + visibility honoured from config (showCombat/showEating/showGearSwap/showPrayer). colours: combat red, eating green, gear blue, prayer yellow.
-  - show* are DISPLAY-ONLY filters here. the plugin records everything tracked regardless; toggling a category reveals/hides already-recorded events.
+  - HeartbeatOverlay extends Overlay (ABOVE_SCENE, DYNAMIC). Red edge vignette, pulses once per game tick while in combat (CombatStateService). Plugin calls recordTick() each GameTick; exponential decay over 600ms. Constant intensity.
+  - ComboFeedbackOverlay extends Overlay (ABOVE_SCENE). Transient centered popup (~1.5s fade), tier-colored. Plugin calls showCombo(result) when a combo fires.
+  - NotRetaliatingOverlay extends OverlayPanel (ABOVE_CHATBOX_RIGHT). "NOT ATTACKING" warning when CombatStateService.isNotRetaliating(). Stays on-screen (must be seen mid-fight).
+  - registered/removed in the plugin startUp/shutDown via overlayManager.
 
 constraint:
-  - never mutate the service. read getEntries() only.
-  - clear panelComponent.getChildren() at the top of every render() to avoid stale lines.
-  - do NOT call setPriority(OverlayPriority...) — the enum is removed on current API. position only.
-  - one Overlay subclass per rendering concern; add new overlays here and register in the plugin.
+  - do NOT call setPriority(OverlayPriority...) — enum removed on current API.
+  - these are screen effects by design; do not move them into the sidebar panel (they lose their purpose). Tick history / hit summary belong in the panel, not here.

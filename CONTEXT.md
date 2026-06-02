@@ -6,7 +6,7 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S007
+latest_session: S008
 phase: Phase 1 complete. Phase 3 (combat awareness & combos) SHIPPED — B013-B017.
 status: active
 
@@ -55,6 +55,12 @@ Validate HT-001..HT-004 (+ gear names, prayers, combo-eat, tick codes, config). 
   the warning should disappear.
 
 ## Architecture Notes
+
+S008: tick history + hit summary moved from on-screen overlays into a RuneLite sidebar
+PluginPanel (panel.PvpEnhancerPanel, registered via ClientToolbar + NavigationButton with
+an in-code crossed-swords icon). The plugin snapshots service data on the client thread and
+refreshes the panel on the EDT each tick. Screen-view effects (heartbeat vignette, combo
+popup, not-attacking alert) stay as overlays — they can't serve their purpose in a sidebar.
 
 Code exists now. Layering:
 - PvpEnhancerPlugin (root pkg) — @PluginDescriptor entry point, owns all @Subscribe handlers,

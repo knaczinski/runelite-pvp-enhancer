@@ -1,6 +1,12 @@
 package com.knz.pvpenhancer;
 
 import com.google.inject.Provides;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import javax.swing.SwingUtilities;
 import com.knz.pvpenhancer.combatant.CombatEventFactory;
 import com.knz.pvpenhancer.combatant.Combatant;
 import com.knz.pvpenhancer.combatant.Combatants;
@@ -11,14 +17,15 @@ import com.knz.pvpenhancer.model.ComboEvent;
 import com.knz.pvpenhancer.model.ComboResult;
 import com.knz.pvpenhancer.model.EatEvent;
 import com.knz.pvpenhancer.model.GearSwapEvent;
+import com.knz.pvpenhancer.model.HitSummaryRow;
 import com.knz.pvpenhancer.model.HitsplatEvent;
 import com.knz.pvpenhancer.model.PrayerEvent;
 import com.knz.pvpenhancer.model.PrayerNames;
+import com.knz.pvpenhancer.model.TickEntry;
 import com.knz.pvpenhancer.overlay.ComboFeedbackOverlay;
 import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
-import com.knz.pvpenhancer.overlay.HitSummaryOverlay;
 import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
-import com.knz.pvpenhancer.overlay.TickHistoryOverlay;
+import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator.Correlation;
 import com.knz.pvpenhancer.service.CombatStateService;
@@ -52,6 +59,8 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Text;
 import org.slf4j.Logger;
@@ -94,11 +103,13 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private HitSummaryService hitSummary;
 	@Inject private ComboDetectorService comboDetector;
 
-	@Inject private TickHistoryOverlay tickHistoryOverlay;
 	@Inject private HeartbeatOverlay heartbeatOverlay;
 	@Inject private NotRetaliatingOverlay notRetaliatingOverlay;
-	@Inject private HitSummaryOverlay hitSummaryOverlay;
 	@Inject private ComboFeedbackOverlay comboFeedbackOverlay;
+
+	@Inject private ClientToolbar clientToolbar;
+	@Inject private PvpEnhancerPanel panel;
+	private NavigationButton navButton;
 
 	// ─── Diff state ──────────────────────────────────────────────────────
 
@@ -120,21 +131,27 @@ public class PvpEnhancerPlugin extends Plugin
 	protected void startUp()
 	{
 		resetState();
-		overlayManager.add(tickHistoryOverlay);
+		// Screen-view effects/alerts stay as overlays; the data lives in the sidebar panel.
 		overlayManager.add(heartbeatOverlay);
 		overlayManager.add(notRetaliatingOverlay);
-		overlayManager.add(hitSummaryOverlay);
 		overlayManager.add(comboFeedbackOverlay);
+
+		navButton = NavigationButton.builder()
+			.tooltip("PvP Enhancer")
+			.icon(buildIcon())
+			.priority(7)
+			.panel(panel)
+			.build();
+		clientToolbar.addNavigation(navButton);
 	}
 
 	@Override
 	protected void shutDown()
 	{
-		overlayManager.remove(tickHistoryOverlay);
 		overlayManager.remove(heartbeatOverlay);
 		overlayManager.remove(notRetaliatingOverlay);
-		overlayManager.remove(hitSummaryOverlay);
 		overlayManager.remove(comboFeedbackOverlay);
+		clientToolbar.removeNavigation(navButton);
 		resetState();
 	}
 
@@ -147,6 +164,33 @@ public class PvpEnhancerPlugin extends Plugin
 		comboDetector.clear();
 		previousEquipment = null;
 		previousOverheads.clear();
+	}
+
+	/** Snapshots service data on the client thread and rebuilds the sidebar panel on the EDT. */
+	private void refreshPanel()
+	{
+		List<TickEntry> entries = history.getEntries();
+		List<HitSummaryRow> rows = hitSummary.getRows();
+		int tick = client.getTickCount();
+		boolean inCombat = combatState.isInCombat(tick);
+		boolean notRetaliating = combatState.isNotRetaliating(tick);
+		SwingUtilities.invokeLater(() -> panel.update(entries, rows, inCombat, notRetaliating));
+	}
+
+	/** Builds the sidebar navigation icon (crossed swords) in code — no image resource needed. */
+	private static BufferedImage buildIcon()
+	{
+		int size = 24;
+		BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		g.setColor(new Color(0xC8, 0x32, 0x32));
+		g.drawLine(5, 5, 19, 19);
+		g.setColor(new Color(0xDD, 0xDD, 0xDD));
+		g.drawLine(19, 5, 5, 19);
+		g.dispose();
+		return img;
 	}
 
 	// ─── GameTick ────────────────────────────────────────────────────────
@@ -191,8 +235,9 @@ public class PvpEnhancerPlugin extends Plugin
 		hitSummary.setMaxRows(config.hitSummaryRows());
 		history.flushTick(tick);
 
-		// 7. Heartbeat pulse
+		// 7. Heartbeat pulse + sidebar panel refresh
 		heartbeatOverlay.recordTick();
+		refreshPanel();
 	}
 
 	// ─── AnimationChanged ────────────────────────────────────────────────
