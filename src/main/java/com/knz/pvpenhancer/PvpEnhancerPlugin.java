@@ -54,12 +54,15 @@ import net.runelite.api.Hitsplat;
 import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.MenuAction;
+import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InventoryID;
@@ -545,6 +548,39 @@ public class PvpEnhancerPlugin extends Plugin
 			}
 		}
 		previousHpXp = xp;
+	}
+
+	/**
+	 * While in combat, de-prioritises the ground-item "Take" option so a left-click walks
+	 * instead of picking up (which would break your attack). "Take" remains on right-click.
+	 */
+	@Subscribe
+	public void onMenuEntryAdded(MenuEntryAdded event)
+	{
+		if (!config.swapPickupInCombat() || !combatState.isInCombat(client.getTickCount()))
+		{
+			return;
+		}
+		MenuEntry entry = event.getMenuEntry();
+		if ("Take".equals(entry.getOption()) && isGroundItemAction(entry.getType()))
+		{
+			entry.setDeprioritized(true);
+		}
+	}
+
+	private static boolean isGroundItemAction(MenuAction type)
+	{
+		switch (type)
+		{
+			case GROUND_ITEM_FIRST_OPTION:
+			case GROUND_ITEM_SECOND_OPTION:
+			case GROUND_ITEM_THIRD_OPTION:
+			case GROUND_ITEM_FOURTH_OPTION:
+			case GROUND_ITEM_FIFTH_OPTION:
+				return true;
+			default:
+				return false;
+		}
 	}
 
 	// ─── Gear swap detection ─────────────────────────────────────────────

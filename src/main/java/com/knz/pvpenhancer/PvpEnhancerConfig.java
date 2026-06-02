@@ -95,8 +95,14 @@ public interface PvpEnhancerConfig extends Config
 	@ConfigItem(keyName = "hitPrediction", name = "Hit prediction (XP)",
 		description = "Show predicted outgoing damage near your target, derived from the "
 			+ "Hitpoints XP drop — appears before ranged/magic projectiles land.",
-		section = pvpSection, position = 1)
+		section = pvpSection, position = 2)
 	default boolean hitPrediction() { return true; }
+
+	@ConfigItem(keyName = "swapPickupInCombat", name = "Walk-here over Take (in combat)",
+		description = "While in combat, de-prioritise ground-item \"Take\" so a left-click "
+			+ "walks instead of picking up (avoids breaking your attack). Take stays on right-click.",
+		section = pvpSection, position = 3)
+	default boolean swapPickupInCombat() { return false; }
 
 	// ─── Controlled inline in the sidebar panel (hidden from the config panel) ──
 	// These are edited next to their block in PvpEnhancerPanel.
