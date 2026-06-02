@@ -6,7 +6,7 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S009
+latest_session: S010
 phase: Phase 1 complete. Phase 3 (combat awareness & combos) SHIPPED — B013-B017.
 status: active
 

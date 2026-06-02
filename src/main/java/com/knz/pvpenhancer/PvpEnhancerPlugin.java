@@ -17,12 +17,14 @@ import com.knz.pvpenhancer.model.ComboEvent;
 import com.knz.pvpenhancer.model.ComboResult;
 import com.knz.pvpenhancer.model.EatEvent;
 import com.knz.pvpenhancer.model.GearSwapEvent;
+import com.knz.pvpenhancer.model.HealMath;
 import com.knz.pvpenhancer.model.HitSummaryRow;
 import com.knz.pvpenhancer.model.HitsplatEvent;
 import com.knz.pvpenhancer.model.PrayerEvent;
 import com.knz.pvpenhancer.model.PrayerNames;
 import com.knz.pvpenhancer.model.TickEntry;
 import com.knz.pvpenhancer.overlay.ComboFeedbackOverlay;
+import com.knz.pvpenhancer.overlay.HealOverlay;
 import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
 import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
@@ -48,6 +50,7 @@ import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
 import net.runelite.api.Prayer;
+import net.runelite.api.Skill;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
@@ -106,6 +109,7 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private HeartbeatOverlay heartbeatOverlay;
 	@Inject private NotRetaliatingOverlay notRetaliatingOverlay;
 	@Inject private ComboFeedbackOverlay comboFeedbackOverlay;
+	@Inject private HealOverlay healOverlay;
 
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private PvpEnhancerPanel panel;
@@ -118,6 +122,15 @@ public class PvpEnhancerPlugin extends Plugin
 
 	/** Each tracked player's overhead prayer from the previous tick, keyed by name. */
 	private final Map<String, HeadIcon> previousOverheads = new HashMap<>();
+
+	/** Assumed max HP for estimating remote players' heal amounts from their health ratio. */
+	private static final int ASSUMED_MAX_HP = 99;
+
+	/** Local player's exact HP last tick (-1 = not tracked). */
+	private int previousLocalHp = -1;
+
+	/** Each tracked player's health ratio last tick, keyed by name (remote heal detection). */
+	private final Map<String, Integer> previousHealthRatio = new HashMap<>();
 
 	// ─── Lifecycle ───────────────────────────────────────────────────────
 
@@ -135,6 +148,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(heartbeatOverlay);
 		overlayManager.add(notRetaliatingOverlay);
 		overlayManager.add(comboFeedbackOverlay);
+		overlayManager.add(healOverlay);
 
 		navButton = NavigationButton.builder()
 			.tooltip("PvP Enhancer")
@@ -151,6 +165,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(heartbeatOverlay);
 		overlayManager.remove(notRetaliatingOverlay);
 		overlayManager.remove(comboFeedbackOverlay);
+		overlayManager.remove(healOverlay);
 		clientToolbar.removeNavigation(navButton);
 		resetState();
 	}
@@ -162,8 +177,11 @@ public class PvpEnhancerPlugin extends Plugin
 		correlator.clear();
 		hitSummary.clear();
 		comboDetector.clear();
+		healOverlay.clear();
 		previousEquipment = null;
 		previousOverheads.clear();
+		previousLocalHp = -1;
+		previousHealthRatio.clear();
 	}
 
 	/** Snapshots service data on the client thread and rebuilds the sidebar panel on the EDT. */
@@ -218,6 +236,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 		// 4. Detect prayer changes
 		detectPrayerChanges();
+
+		// 4b. Detect healing (overlay only — near the healer's health bar)
+		detectHeals();
 
 		// 5. Detect combos (before flush so ComboEvents land in this tick)
 		if (config.showCombos())
@@ -449,6 +470,76 @@ public class PvpEnhancerPlugin extends Plugin
 		}
 		previousOverheads.clear();
 		previousOverheads.putAll(current);
+	}
+
+	/**
+	 * Detects HP recovery and shows a floating number near the healer's health bar. Local
+	 * healing is exact (Hitpoints skill delta); remote players only expose a health ratio,
+	 * so their amounts are estimated ("~") via {@link HealMath}. Scope is the heal config.
+	 */
+	private void detectHeals()
+	{
+		HealDisplayMode mode = config.healDisplayMode();
+
+		// Local player — exact HP delta
+		if (mode.includesLocal())
+		{
+			Player local = client.getLocalPlayer();
+			if (local == null)
+			{
+				previousLocalHp = -1;
+			}
+			else
+			{
+				int hp = client.getBoostedSkillLevel(Skill.HITPOINTS);
+				if (previousLocalHp >= 0 && hp - previousLocalHp >= 2) // skip +1 natural regen
+				{
+					healOverlay.addHeal(local, hp - previousLocalHp, false);
+				}
+				previousLocalHp = hp;
+			}
+		}
+		else
+		{
+			previousLocalHp = -1;
+		}
+
+		// Remote players — estimate from health-ratio increase
+		if (mode.includesOthers())
+		{
+			Player local = client.getLocalPlayer();
+			Map<String, Integer> current = new HashMap<>();
+			for (Player player : client.getTopLevelWorldView().players())
+			{
+				if (player == null || player == local || player.getName() == null)
+				{
+					continue;
+				}
+				int ratio = player.getHealthRatio();
+				int scale = player.getHealthScale();
+				if (ratio < 0 || scale <= 0)
+				{
+					continue;
+				}
+				String name = Text.removeTags(player.getName());
+				Integer prev = previousHealthRatio.get(name);
+				if (prev != null && ratio > prev)
+				{
+					int estimate = HealMath.estimateRemoteHeal(prev, ratio, scale, ASSUMED_MAX_HP);
+					if (estimate >= 1)
+					{
+						healOverlay.addHeal(player, estimate, true);
+					}
+				}
+				current.put(name, ratio);
+			}
+			previousHealthRatio.clear();
+			previousHealthRatio.putAll(current);
+		}
+		else
+		{
+			previousHealthRatio.clear();
+		}
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────────

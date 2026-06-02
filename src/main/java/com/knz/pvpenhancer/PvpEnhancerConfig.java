@@ -32,6 +32,9 @@ public interface PvpEnhancerConfig extends Config
 	@ConfigSection(name = "Indicators", description = "In-fight status warnings.", position = 2)
 	String indicatorsSection = "indicators";
 
+	@ConfigSection(name = "Healing", description = "Show recovered HP near health bars.", position = 3)
+	String healingSection = "healing";
+
 	// ─── Tracking ───────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "trackOpponents", name = "Track opponents",
@@ -57,6 +60,14 @@ public interface PvpEnhancerConfig extends Config
 		description = "Warn when in combat but not attacking the opponent (disengaged for >= 2 ticks).",
 		section = indicatorsSection, position = 0)
 	default boolean showNotRetaliating() { return true; }
+
+	// ─── Healing ────────────────────────────────────────────────────────────
+
+	@ConfigItem(keyName = "healDisplayMode", name = "Show healing",
+		description = "Show recovered HP near the health bar of whoever healed. Opponent "
+			+ "amounts are estimates (~) — the API only exposes their health ratio, not real HP.",
+		section = healingSection, position = 0)
+	default HealDisplayMode healDisplayMode() { return HealDisplayMode.EVERYONE; }
 
 	// ─── Controlled inline in the sidebar panel (hidden from the config panel) ──
 	// These are edited next to their block in PvpEnhancerPanel.

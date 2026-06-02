@@ -43,6 +43,7 @@ overhead_prayer: Player.getOverheadIcon() → HeadIcon enum (MELEE/RANGED/MAGIC/
 hitsplat: HitsplatApplied event — hitsplat.getAmount(), hitsplat.getHitsplatType().
 gear: local player's worn item container (gameval InventoryID.WORN) diff between ticks → changed slot → REAL item id → name via ItemManager. (Not PlayerComposition appearance ids — those decode to wrong names.)
 prayer_change: Player.getOverheadIcon() diff per tick per tracked player → PrayerEvent (overhead protection prayer only).
+healing: local = exact Hitpoints-skill delta; remote = estimate from getHealthRatio() delta (assumed 99 HP, shown "~"). Shown near the healer's health bar (HealOverlay). Scope config: OFF/SELF/OPPONENTS/EVERYONE.
 eating: MenuOptionClicked with option "Eat"/"Drink"; same-player same-tick consumes merge into a combo eat.
 tick_clock: GameTick event — one event = one 600ms server tick. Each tick gets a 1-based display code ("Tick 0001").
 

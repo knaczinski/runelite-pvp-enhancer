@@ -9,6 +9,7 @@ patterns:
   - HeartbeatOverlay extends Overlay (ABOVE_SCENE, DYNAMIC). Red edge vignette, pulses once per game tick while in combat (CombatStateService). Plugin calls recordTick() each GameTick; exponential decay over 600ms. Constant intensity.
   - ComboFeedbackOverlay extends Overlay (ABOVE_SCENE). Transient centered popup (~1.5s fade), tier-colored. Plugin calls showCombo(result) when a combo fires.
   - NotRetaliatingOverlay extends OverlayPanel (ABOVE_CHATBOX_RIGHT). "NOT ATTACKING" warning when CombatStateService.isNotRetaliating(). Stays on-screen (must be seen mid-fight).
+  - HealOverlay extends Overlay (ABOVE_SCENE). Floating green "+N" near the healer's health bar (actor.getCanvasTextLocation at logicalHeight), rises + fades ~1.5s. Plugin calls addHeal(actor, amount, estimate). Local heals exact ("+"); remote heals estimated ("~", via HealMath from health-ratio delta, assumed 99 HP). Scope = config.healDisplayMode (OFF/SELF/OPPONENTS/EVERYONE).
   - registered/removed in the plugin startUp/shutDown via overlayManager.
 
 constraint:
