@@ -122,6 +122,7 @@ public class PvpEnhancerPlugin extends Plugin
 
 	@Inject private CombatFocusService combatFocus;
 	@Inject private Hooks hooks;
+	@SuppressWarnings("deprecation") // RenderableDrawListener is the API EntityHider uses; RenderCallback is newer
 	private Hooks.RenderableDrawListener focusListener;
 
 	@Inject private ClientToolbar clientToolbar;
@@ -147,6 +148,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 	/** Local player's total Hitpoints XP last seen (-1 = not yet baselined), for hit prediction. */
 	private int previousHpXp = -1;
+
+	/** Per-actor tick until which they stay "involved" in a fight (combat-focus persistence). */
+	private final Map<Actor, Integer> focusInvolvedUntil = new HashMap<>();
 
 	// ─── Lifecycle ───────────────────────────────────────────────────────
 
@@ -200,6 +204,7 @@ public class PvpEnhancerPlugin extends Plugin
 		healOverlay.clear();
 		hitPredictOverlay.clear();
 		combatFocus.clear();
+		focusInvolvedUntil.clear();
 		previousEquipment = null;
 		previousOverheads.clear();
 		previousLocalHp = -1;
@@ -226,36 +231,42 @@ public class PvpEnhancerPlugin extends Plugin
 
 	/**
 	 * Recomputes which actors are involved in the current fight and updates the focus
-	 * service so the render hook hides everyone else. The local player is always kept visible.
+	 * service so the render hook hides everyone else.
+	 *
+	 * <p>Involvement is persistent: an actor stamped as engaged stays involved for
+	 * {@code combatFocusTimeout} ticks after their last attack/interaction. This keeps your
+	 * target (and other participants) visible while they eat, pause, or stop fighting back,
+	 * and turns focus off only once everyone has been quiet for the timeout. The local
+	 * player is always kept visible while focus is active.
 	 */
 	private void detectCombatFocus(int tick)
 	{
 		CombatFocusMode mode = config.combatFocusMode();
 		if (mode == CombatFocusMode.OFF)
 		{
+			focusInvolvedUntil.clear();
 			combatFocus.clear();
 			return;
 		}
 
+		int until = tick + Math.max(1, config.combatFocusTimeout());
 		Player local = client.getLocalPlayer();
-		Set<Actor> involved = new HashSet<>();
-		boolean active = false;
 
+		// Stamp actors engaged THIS tick.
 		if (mode == CombatFocusMode.SELF)
 		{
-			if (local != null && combatState.isInCombat(tick))
+			if (local != null)
 			{
-				active = true;
 				Actor target = local.getInteracting();
 				if (target != null)
 				{
-					involved.add(target);
+					focusInvolvedUntil.put(target, until); // who you are fighting
 				}
 				for (Player p : client.getTopLevelWorldView().players())
 				{
 					if (p != null && p.getInteracting() == local)
 					{
-						involved.add(p);
+						focusInvolvedUntil.put(p, until); // who is fighting you
 					}
 				}
 			}
@@ -271,20 +282,26 @@ public class PvpEnhancerPlugin extends Plugin
 				Actor target = p.getInteracting();
 				if (target != null)
 				{
-					involved.add(p);
-					involved.add(target);
-					active = true;
+					focusInvolvedUntil.put(p, until);
+					focusInvolvedUntil.put(target, until);
 				}
-			}
-			if (local != null && combatState.isInCombat(tick))
-			{
-				active = true;
 			}
 		}
 
+		// Drop expired, then build the involved set from what remains.
+		focusInvolvedUntil.values().removeIf(expiry -> expiry < tick);
+		Set<Actor> involved = new HashSet<>(focusInvolvedUntil.keySet());
+
+		// In SELF mode focus is only active while YOU are in a fight (you stay involved via
+		// your target/attacker). If nothing is involved, focus is off.
+		boolean active = !involved.isEmpty();
 		if (active && local != null)
 		{
 			involved.add(local); // never hide yourself
+		}
+		else
+		{
+			involved = java.util.Collections.emptySet();
 		}
 		combatFocus.update(active, involved);
 	}
@@ -505,14 +522,21 @@ public class PvpEnhancerPlugin extends Plugin
 			return;
 		}
 		int xp = event.getXp();
-		if (config.hitPrediction() && previousHpXp >= 0 && xp > previousHpXp)
+		if (previousHpXp >= 0 && xp > previousHpXp)
 		{
-			int damage = XpDamage.fromHitpointsXp(xp - previousHpXp);
-			Player local = client.getLocalPlayer();
-			Actor target = local != null ? local.getInteracting() : null;
-			if (damage > 0 && target != null)
+			// Gaining Hitpoints XP means the local player dealt damage — so this also marks
+			// "in combat" (fixes combat state/focus triggering only when you TAKE a hit).
+			combatState.recordCombatActivity(client.getTickCount());
+
+			if (config.hitPrediction())
 			{
-				hitPredictOverlay.addPrediction(target, damage);
+				int damage = XpDamage.fromHitpointsXp(xp - previousHpXp);
+				Player local = client.getLocalPlayer();
+				Actor target = local != null ? local.getInteracting() : null;
+				if (damage > 0 && target != null)
+				{
+					hitPredictOverlay.addPrediction(target, damage);
+				}
 			}
 		}
 		previousHpXp = xp;

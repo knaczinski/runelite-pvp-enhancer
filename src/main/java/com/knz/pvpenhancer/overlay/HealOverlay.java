@@ -91,7 +91,8 @@ public class HealOverlay extends Overlay
 				continue;
 			}
 
-			Point base = popup.actor.getCanvasTextLocation(graphics, popup.text, popup.actor.getLogicalHeight());
+			// Raise above the head + skull/overhead-prayer icons so they don't cover the number.
+			Point base = popup.actor.getCanvasTextLocation(graphics, popup.text, popup.actor.getLogicalHeight() + 50);
 			if (base == null)
 			{
 				continue;

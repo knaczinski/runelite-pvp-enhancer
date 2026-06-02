@@ -4,6 +4,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 
 /**
  * User-configurable settings for the PvP Enhancer plugin.
@@ -81,6 +82,14 @@ public interface PvpEnhancerConfig extends Config
 			+ "non-involved players too — a third party can be invisible until they engage.)",
 		section = pvpSection, position = 0)
 	default CombatFocusMode combatFocusMode() { return CombatFocusMode.OFF; }
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(keyName = "combatFocusTimeout", name = "Combat focus timeout (ticks)",
+		description = "How long a participant stays 'in the fight' (and visible) after their "
+			+ "last attack/interaction. Higher keeps them visible through eats and pauses. "
+			+ "Also how long focus stays on after you stop hitting. ~16 ticks ≈ 10s.",
+		section = pvpSection, position = 1)
+	default int combatFocusTimeout() { return 16; }
 
 	@ConfigItem(keyName = "hitPrediction", name = "Hit prediction (XP)",
 		description = "Show predicted outgoing damage near your target, derived from the "
