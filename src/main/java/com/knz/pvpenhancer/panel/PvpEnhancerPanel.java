@@ -5,22 +5,27 @@ import com.knz.pvpenhancer.model.CombatEvent;
 import com.knz.pvpenhancer.model.EventCategory;
 import com.knz.pvpenhancer.model.HitSummaryRow;
 import com.knz.pvpenhancer.model.TickEntry;
+import com.knz.pvpenhancer.model.TickLogFormatter;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.util.Collections;
 import java.util.List;
 import javax.inject.Inject;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.ColorScheme;
@@ -114,6 +119,8 @@ public class PvpEnhancerPanel extends PluginPanel
 		filters.add(prayerCheck);
 		filters.add(comboCheck);
 		container.add(filters);
+
+		container.add(makeCopyButton());
 		container.add(gap(4));
 
 		configList(tickList);
@@ -285,6 +292,26 @@ public class PvpEnhancerPanel extends PluginPanel
 			return "?";
 		}
 		return s.length() > max ? s.substring(0, max) : s;
+	}
+
+	/** "Copy log" button — copies the full tick history to the system clipboard. */
+	private JComponent makeCopyButton()
+	{
+		JButton button = new JButton("Copy log");
+		button.setFont(LINE_FONT);
+		button.setFocusable(false);
+		button.setAlignmentX(Component.LEFT_ALIGNMENT);
+		button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+		button.addActionListener(e ->
+		{
+			String log = TickLogFormatter.format(lastEntries);
+			Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(log), null);
+			button.setText("Copied!");
+			Timer revert = new Timer(1200, ev -> button.setText("Copy log"));
+			revert.setRepeats(false);
+			revert.start();
+		});
+		return button;
 	}
 
 	// ─── Inline control factories ───────────────────────────────────────────

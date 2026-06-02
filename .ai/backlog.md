@@ -57,13 +57,6 @@ overlay can show "X hit Y for N" as one correlated line.
 eat animation (829) + a heuristic to avoid false positives.
 **Acceptance:** opponent eats are logged with acceptable precision (document the false-positive rate).
 
-### B012 — Copy / export tick log
-**Effort:** S
-**Status:** OPEN
-**Scope:** add a right-click overlay menu option (or config-bound hotkey) to copy the current
-tick history to the clipboard as text, for post-fight review/sharing.
-**Acceptance:** clicking the option puts a readable text dump on the clipboard.
-
 ---
 
 ## ▶ PHASE 3 — Combat awareness & combos
