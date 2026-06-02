@@ -6,16 +6,18 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S010
-phase: Phase 1 complete. Phase 3 (combat awareness & combos) SHIPPED — B013-B017.
+latest_session: S011
+phase: Phases 1-3 shipped + Phase 2 cleared (except B008 live-gated). Live validation pending.
 status: active
 
 ## Current Focus
 
-S006: all 4 combat-awareness features fully implemented — heartbeat vignette (B014),
-not-retaliating indicator (B015), hit summary table (B016), combo system with popup (B017).
-Build green, 46 tests, deprecation-clean.
-NEXT: live validation (delete leftover sideloaded jar, ./gradlew run, test all features).
+S011 cleared the Phase 2 backlog autonomously: B012 copy-log button, B009 richer hitsplat
+typing, B011 opponent-eating (anim 829), B010 closed (satisfied by Hit Summary). B008 left
+OPEN — live-data-gated (animation ids must come from real fights, not guesses). Build green,
+58 tests.
+NEXT: live validation of all features (HT-001..HT-004 + heartbeat/hit-summary/combos/healing/
+copy-log/opponent-eat). For B008, harvest "Unmapped animation" debug ids in a fight.
 Then B008 (grow AnimationStyleMap from live fight data).
 
 ## (Phase 1) Focus history

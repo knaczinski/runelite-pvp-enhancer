@@ -8,9 +8,9 @@ rule: read this file first. read CONTEXT.md second. read PROJECT.md before any c
 
 project: runelite-pvp-enhancer
 platform: RuneLite (OSRS client plugin)
-phase: Phase 1 complete (tick history MVP). Phase 2 refinement gated on live validation.
+phase: Phases 1-3 shipped. Phase 2 complete except B008 (live-data-gated). Live validation pending.
 status: active
-latest_session: S010
+latest_session: S011
 
 ## State
 
