@@ -33,15 +33,18 @@ import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator.Correlation;
+import com.knz.pvpenhancer.service.CombatFocusService;
 import com.knz.pvpenhancer.service.CombatStateService;
 import com.knz.pvpenhancer.service.ComboDetectorService;
 import com.knz.pvpenhancer.service.HitSummaryService;
 import com.knz.pvpenhancer.service.TickHistoryService;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import javax.inject.Inject;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
@@ -61,6 +64,7 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.kit.KitType;
+import net.runelite.client.callback.Hooks;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -116,6 +120,10 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private HealOverlay healOverlay;
 	@Inject private HitPredictOverlay hitPredictOverlay;
 
+	@Inject private CombatFocusService combatFocus;
+	@Inject private Hooks hooks;
+	private Hooks.RenderableDrawListener focusListener;
+
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private PvpEnhancerPanel panel;
 	private NavigationButton navButton;
@@ -166,6 +174,7 @@ public class PvpEnhancerPlugin extends Plugin
 			.panel(panel)
 			.build();
 		clientToolbar.addNavigation(navButton);
+		registerFocusListener();
 	}
 
 	@Override
@@ -176,6 +185,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(comboFeedbackOverlay);
 		overlayManager.remove(healOverlay);
 		overlayManager.remove(hitPredictOverlay);
+		unregisterFocusListener();
 		clientToolbar.removeNavigation(navButton);
 		resetState();
 	}
@@ -189,11 +199,94 @@ public class PvpEnhancerPlugin extends Plugin
 		comboDetector.clear();
 		healOverlay.clear();
 		hitPredictOverlay.clear();
+		combatFocus.clear();
 		previousEquipment = null;
 		previousOverheads.clear();
 		previousLocalHp = -1;
 		previousHealthRatio.clear();
 		previousHpXp = -1;
+	}
+
+	@SuppressWarnings("deprecation") // EntityHider uses the same hook; the RenderCallback replacement is newer
+	private void registerFocusListener()
+	{
+		focusListener = combatFocus::shouldDraw;
+		hooks.registerRenderableDrawListener(focusListener);
+	}
+
+	@SuppressWarnings("deprecation")
+	private void unregisterFocusListener()
+	{
+		if (focusListener != null)
+		{
+			hooks.unregisterRenderableDrawListener(focusListener);
+			focusListener = null;
+		}
+	}
+
+	/**
+	 * Recomputes which actors are involved in the current fight and updates the focus
+	 * service so the render hook hides everyone else. The local player is always kept visible.
+	 */
+	private void detectCombatFocus(int tick)
+	{
+		CombatFocusMode mode = config.combatFocusMode();
+		if (mode == CombatFocusMode.OFF)
+		{
+			combatFocus.clear();
+			return;
+		}
+
+		Player local = client.getLocalPlayer();
+		Set<Actor> involved = new HashSet<>();
+		boolean active = false;
+
+		if (mode == CombatFocusMode.SELF)
+		{
+			if (local != null && combatState.isInCombat(tick))
+			{
+				active = true;
+				Actor target = local.getInteracting();
+				if (target != null)
+				{
+					involved.add(target);
+				}
+				for (Player p : client.getTopLevelWorldView().players())
+				{
+					if (p != null && p.getInteracting() == local)
+					{
+						involved.add(p);
+					}
+				}
+			}
+		}
+		else // ANY_FIGHT
+		{
+			for (Player p : client.getTopLevelWorldView().players())
+			{
+				if (p == null)
+				{
+					continue;
+				}
+				Actor target = p.getInteracting();
+				if (target != null)
+				{
+					involved.add(p);
+					involved.add(target);
+					active = true;
+				}
+			}
+			if (local != null && combatState.isInCombat(tick))
+			{
+				active = true;
+			}
+		}
+
+		if (active && local != null)
+		{
+			involved.add(local); // never hide yourself
+		}
+		combatFocus.update(active, involved);
 	}
 
 	/** Snapshots service data on the client thread and rebuilds the sidebar panel on the EDT. */
@@ -251,6 +344,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 		// 4b. Detect healing (overlay only — near the healer's health bar)
 		detectHeals();
+
+		// 4c. Combat focus — hide non-involved entities
+		detectCombatFocus(tick);
 
 		// 5. Detect combos (before flush so ComboEvents land in this tick)
 		if (config.showCombos())

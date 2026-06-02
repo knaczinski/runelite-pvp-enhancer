@@ -74,6 +74,14 @@ public interface PvpEnhancerConfig extends Config
 
 	// ─── Combat (PvP) ─────────────────────────────────────────────────────────
 
+	@ConfigItem(keyName = "combatFocusMode", name = "Combat focus (hide others)",
+		description = "Hide players + NPCs NOT involved in the fight, to focus on the "
+			+ "participants. RuneLite can't dim entities, only hide them. SELF = while you "
+			+ "fight; ANY_FIGHT = while anyone nearby fights. You stay visible. (Hides "
+			+ "non-involved players too — a third party can be invisible until they engage.)",
+		section = pvpSection, position = 0)
+	default CombatFocusMode combatFocusMode() { return CombatFocusMode.OFF; }
+
 	@ConfigItem(keyName = "hitPrediction", name = "Hit prediction (XP)",
 		description = "Show predicted outgoing damage near your target, derived from the "
 			+ "Hitpoints XP drop — appears before ranged/magic projectiles land.",
