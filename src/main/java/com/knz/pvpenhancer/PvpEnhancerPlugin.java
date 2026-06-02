@@ -152,6 +152,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Per-actor tick until which they stay "involved" in a fight (combat-focus persistence). */
 	private final Map<Actor, Integer> focusInvolvedUntil = new HashMap<>();
 
+	/** Names of players currently fighting you (target + attackers), for SELF_AND_OPPONENTS scope. */
+	private final Set<String> currentOpponents = new HashSet<>();
+
 	// ─── Lifecycle ───────────────────────────────────────────────────────
 
 	@Provides
@@ -205,6 +208,7 @@ public class PvpEnhancerPlugin extends Plugin
 		hitPredictOverlay.clear();
 		combatFocus.clear();
 		focusInvolvedUntil.clear();
+		currentOpponents.clear();
 		previousEquipment = null;
 		previousOverheads.clear();
 		previousLocalHp = -1;
@@ -345,9 +349,10 @@ public class PvpEnhancerPlugin extends Plugin
 		int tick = client.getTickCount();
 		Player local = client.getLocalPlayer();
 
-		// 1. Update combat engagement state
+		// 1. Update combat engagement state + current opponents (for SELF_AND_OPPONENTS scope)
 		boolean engaged = local != null && local.getInteracting() instanceof Player;
 		combatState.setEngaged(engaged, tick);
+		updateCurrentOpponents(local);
 
 		// 2. Inventory snapshot for combo-failed detection
 		int[] invIds = inventoryIds();
@@ -713,6 +718,28 @@ public class PvpEnhancerPlugin extends Plugin
 
 	// ─── Helpers ─────────────────────────────────────────────────────────
 
+	/** Recomputes the set of players currently fighting the local player (target + attackers). */
+	private void updateCurrentOpponents(Player local)
+	{
+		currentOpponents.clear();
+		if (local == null)
+		{
+			return;
+		}
+		Actor target = local.getInteracting();
+		if (target instanceof Player && target.getName() != null)
+		{
+			currentOpponents.add(Text.removeTags(target.getName()));
+		}
+		for (Player p : client.getTopLevelWorldView().players())
+		{
+			if (p != null && p.getName() != null && p.getInteracting() == local)
+			{
+				currentOpponents.add(Text.removeTags(p.getName()));
+			}
+		}
+	}
+
 	private boolean isTracked(Combatant combatant)
 	{
 		if (combatant == null)
@@ -723,7 +750,16 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return config.trackNpcs();
 		}
-		return config.trackOpponents() || combatant.isLocalPlayer();
+		if (combatant.isLocalPlayer())
+		{
+			return true;
+		}
+		if (config.trackScope() == TrackScope.EVERYONE)
+		{
+			return true;
+		}
+		// SELF_AND_OPPONENTS: only players currently in combat with you.
+		return currentOpponents.contains(combatant.getName());
 	}
 
 	private String localPlayerName()

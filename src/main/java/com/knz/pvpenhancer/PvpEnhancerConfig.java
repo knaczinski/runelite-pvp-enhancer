@@ -41,10 +41,11 @@ public interface PvpEnhancerConfig extends Config
 
 	// ─── Tracking ───────────────────────────────────────────────────────────
 
-	@ConfigItem(keyName = "trackOpponents", name = "Track opponents",
-		description = "Record combat events for all visible players, not just yourself.",
+	@ConfigItem(keyName = "trackScope", name = "Track scope",
+		description = "Which players the tick history and hit summary record. SELF_AND_OPPONENTS "
+			+ "= only you and players currently fighting you; EVERYONE = all visible players.",
 		section = trackingSection, position = 0)
-	default boolean trackOpponents() { return true; }
+	default TrackScope trackScope() { return TrackScope.EVERYONE; }
 
 	@ConfigItem(keyName = "trackNpcs", name = "Track NPCs (testing)",
 		description = "Record combat events for NPCs. Useful for testing without a second player.",
