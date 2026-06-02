@@ -32,15 +32,6 @@ data (animation ids, offsets) needs live correction.
 - Add spec-attack ids; consider an `isSpecial` flag on AttackEvent if specs should be marked.
 **Acceptance:** common weapons in the user's PvP loadout all resolve to the correct style, no UNKNOWN.
 
-### B009 — Refine hitsplat typing (poison / venom / heal)
-**Effort:** S
-**Status:** OPEN
-**Scope:** v1 collapses hitsplats to "block" (0 dmg) or "hit". Use the real hitsplat type to
-distinguish poison, venom, heal, and prayer-drain (smite).
-- Investigate the current API: `Hitsplat.getHitsplatType()` return type + `HitsplatID` constants.
-- Map to a richer label in `HitsplatEvent` / the plugin's `hitsplatLabel`.
-**Acceptance:** poison/venom/heal hitsplats render with distinct labels in the overlay.
-
 ### B010 — Correlate attacks with their hitsplats
 **Effort:** M
 **Status:** OPEN

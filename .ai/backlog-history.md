@@ -7,6 +7,12 @@ format: append-only. newest at top. full spec preserved per item.
 
 ## S011 — Phase 2 batch (autonomous)
 
+### B009 — Refine hitsplat typing (poison / venom / heal)
+**Effort:** S — **Done S011.**
+`HitsplatLabels.label(type, amount)` (pure, tested ×4) maps the real hitsplat type id
+(HitsplatID) to poison / venom / heal / disease / smite / block / hit. The plugin's
+hitsplatLabel delegates to it. Build green, 58 tests.
+
 ### B012 — Copy / export tick log
 **Effort:** S — **Done S011.**
 `TickLogFormatter` (pure, tested ×3) renders the full tick history oldest-first as plain

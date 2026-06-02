@@ -20,6 +20,7 @@ import com.knz.pvpenhancer.model.GearSwapEvent;
 import com.knz.pvpenhancer.model.HealMath;
 import com.knz.pvpenhancer.model.HitSummaryRow;
 import com.knz.pvpenhancer.model.HitsplatEvent;
+import com.knz.pvpenhancer.model.HitsplatLabels;
 import com.knz.pvpenhancer.model.PrayerEvent;
 import com.knz.pvpenhancer.model.PrayerNames;
 import com.knz.pvpenhancer.model.TickEntry;
@@ -643,6 +644,6 @@ public class PvpEnhancerPlugin extends Plugin
 
 	private static String hitsplatLabel(Hitsplat hitsplat)
 	{
-		return hitsplat.getAmount() == 0 ? "block" : "hit";
+		return HitsplatLabels.label(hitsplat.getHitsplatType(), hitsplat.getAmount());
 	}
 }
