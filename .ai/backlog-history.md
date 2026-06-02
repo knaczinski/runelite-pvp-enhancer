@@ -7,6 +7,19 @@ format: append-only. newest at top. full spec preserved per item.
 
 ## S011 — Phase 2 batch (autonomous)
 
+### B011 — Opponent eating detection
+**Effort:** M — **Done S011.**
+Opponent eating detected via the eat animation (829) in onAnimationChanged: when a tracked
+non-local player plays 829, emit EatEvent(name, "food"). Local eating stays on the menu-click
+path (exact item, no double-count). Caveat: 829 cannot distinguish food vs potion and the
+item is unknown for remote players; rare overlap with other consume animations is possible.
+
+### B010 — Correlate attacks with their hitsplats
+**Effort:** M — **Done S011 (satisfied by Hit Summary, S006).**
+Already delivered: AttackHitsplatCorrelator matches each attack to the hitsplat landing on the
+target within the style's window (melee 1, ranged/magic 3 ticks); HitSummaryService fills the
+Hit column so each attack shows its damage on one row. Closed as satisfied — no new code.
+
 ### B009 — Refine hitsplat typing (poison / venom / heal)
 **Effort:** S — **Done S011.**
 `HitsplatLabels.label(type, amount)` (pure, tested ×4) maps the real hitsplat type id

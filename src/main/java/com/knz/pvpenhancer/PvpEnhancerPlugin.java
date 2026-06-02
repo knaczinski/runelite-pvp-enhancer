@@ -274,8 +274,19 @@ public class PvpEnhancerPlugin extends Plugin
 		}
 
 		int animation = attacker.getAnimation();
-		if (animation == EAT_ANIMATION || animation == -1)
+		if (animation == -1)
 		{
+			return;
+		}
+		if (animation == EAT_ANIMATION)
+		{
+			// Opponent eating: the local player's eating is captured more precisely via the
+			// menu click (with the item name), so only emit here for OTHER players to avoid
+			// double-counting. The item is unknown for remote players, hence a generic label.
+			if (!attacker.isLocalPlayer())
+			{
+				history.addEvent(new EatEvent(attacker.getName(), "food"));
+			}
 			return;
 		}
 

@@ -24,7 +24,10 @@ data (animation ids, offsets) needs live correction.
 
 ### B008 — Grow AnimationStyleMap from live data
 **Effort:** S–M
-**Status:** OPEN — NEXT UP after HT validation.
+**Status:** OPEN — LIVE-DATA-GATED. Cannot be completed autonomously: adding animation ids
+from memory risks the wrong-mapping bug the user already flagged. The plugin debug-logs
+"Unmapped animation N by X -> Y" in a live fight; the user harvests those verified ids and
+they get added here. Correctness requires live data, not guesses.
 **Scope:** the v1 AnimationStyleMap is a small seed. Collect real animation ids from live PvP
 (the plugin debug-logs unmapped attack-like animations) and expand the map.
 - Run a fight, harvest the "Unmapped animation N by X -> Y" debug lines.
@@ -32,21 +35,7 @@ data (animation ids, offsets) needs live correction.
 - Add spec-attack ids; consider an `isSpecial` flag on AttackEvent if specs should be marked.
 **Acceptance:** common weapons in the user's PvP loadout all resolve to the correct style, no UNKNOWN.
 
-### B010 — Correlate attacks with their hitsplats
-**Effort:** M
-**Status:** OPEN
-**Scope:** hitsplats land 1-3 ticks after the attack animation. Match an AttackEvent to the
-resulting HitsplatEvent (by attacker→target pair + expected tick offset per attack type) so the
-overlay can show "X hit Y for N" as one correlated line.
-- Needs per-style projectile/hit delay table (melee 0, ranged/magic vary by distance).
-**Acceptance:** in a live fight, most attacks display their resulting damage on one line.
-
-### B011 — Opponent eating detection
-**Effort:** M
-**Status:** OPEN
-**Scope:** MenuOptionClicked only fires for the local player. Detect opponent eating via the
-eat animation (829) + a heuristic to avoid false positives.
-**Acceptance:** opponent eats are logged with acceptable precision (document the false-positive rate).
+Done (history): B009, B010 (satisfied by Hit Summary), B011, B012 — see backlog-history.md.
 
 ---
 
