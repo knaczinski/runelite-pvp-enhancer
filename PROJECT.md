@@ -64,7 +64,7 @@ service_pattern: TickHistoryService — stateful, injected. Owns the tick event 
 combatant_pattern: detection programs against the Combatant interface, not RuneLite Player/NPC. Combatants.of(Actor) is the sole instanceof site; PlayerCombatant/NpcCombatant adapt the two types; CombatEventFactory is pure (mockable). NPCs report blank for fields they lack (e.g. prayer).
 event_pattern: all game state consumed via @Subscribe. No polling threads.
 
-config_note: config is split into @ConfigSection "Tracking" (functionality: trackOpponents, trackNpcs — what is recorded) and "Overlay" (display: maxHistoryTicks, show combat/eating/gearSwap/prayer — what is shown). show* are display-only filters; they do not gate recording. trackNpcs (default off) is a testing aid. maxHistoryTicks has no minimum.
+config_note: RuneLite config panel shows Tracking (trackOpponents, trackNpcs), Heartbeat (showHeartbeat), Indicators (showNotRetaliating). The tick-history filters/depth (maxHistoryTicks, show combat/eating/gearSwap/prayer/combos) and hit-summary (showHitSummary, hitSummaryRows) are hidden=true and edited INLINE in the sidebar panel next to their block (via ConfigManager). show* are display-only filters; they do not gate recording (except trackNpcs/trackOpponents which do). maxHistoryTicks has no minimum.
 
 ## RuneLite API Constraints
 
