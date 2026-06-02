@@ -38,6 +38,42 @@ is the Plugin Hub), so until the plugin is published there, `./gradlew run` is h
 
 ---
 
+## Auto clean-build (`scripts/clean-build.sh`)
+
+`scripts/clean-build.sh` does two things:
+
+1. removes any leftover `pvp-enhancer*.jar` from `~/.runelite/sideloaded-plugins/` (so
+   `./gradlew run` never loads the plugin twice — see the duplicate-plugin note below), then
+2. runs `./gradlew build`, logging to `build/clean-build.log`.
+
+Run it manually any time:
+
+```
+bash scripts/clean-build.sh
+```
+
+It is also wired as a **Stop hook** so it runs automatically after each change. The hook
+lives in `.claude/settings.local.json` (personal, git-ignored — it references your local
+`~/.runelite` path):
+
+```json
+{
+  "hooks": {
+    "Stop": [{ "hooks": [{
+      "type": "command",
+      "command": "bash <abs-path>/scripts/clean-build.sh",
+      "async": true, "asyncRewake": true
+    }]}]
+  }
+}
+```
+
+`async` means it never delays the turn; `asyncRewake` means a **failed** build pings the
+agent to fix it (a green build is silent). Note: after first creating that file you must
+open `/hooks` once (or restart) so Claude Code's settings watcher picks it up.
+
+---
+
 ## Logging in with a Jagex account
 
 `./gradlew run` launches RuneLite **outside** the Jagex Launcher. Without the Jagex
