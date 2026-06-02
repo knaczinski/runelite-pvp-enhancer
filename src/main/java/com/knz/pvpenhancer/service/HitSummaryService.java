@@ -1,6 +1,7 @@
 package com.knz.pvpenhancer.service;
 
 import com.knz.pvpenhancer.model.AttackStyle;
+import com.knz.pvpenhancer.model.HitDirection;
 import com.knz.pvpenhancer.model.HitSummaryRow;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator.Correlation;
 import java.util.ArrayDeque;
@@ -44,10 +45,10 @@ public class HitSummaryService
 	 *                     for opponents (not readable by the API)
 	 */
 	public void addAttack(int tickSequence, String player, AttackStyle style,
-		String target, String targetPrayer, String offenPrayer)
+		String target, String targetPrayer, String offenPrayer, HitDirection direction)
 	{
 		int id = nextId.incrementAndGet();
-		rows.addFirst(new HitSummaryRow(id, tickSequence, player, style, target, targetPrayer, offenPrayer));
+		rows.addFirst(new HitSummaryRow(id, tickSequence, player, style, target, targetPrayer, offenPrayer, direction));
 		trim();
 	}
 

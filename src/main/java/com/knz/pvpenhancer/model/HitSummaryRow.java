@@ -25,11 +25,14 @@ public class HitSummaryRow
 	/** The attacker's offensive prayer (Piety/Rigour/Augury). Null for opponents. */
 	public final String offensivePrayer;
 
+	/** Direction relative to the local player (drives the row colour). */
+	public final HitDirection direction;
+
 	/** Damage amount; null until the hitsplat lands and is correlated. */
 	public volatile Integer hit;
 
 	public HitSummaryRow(int id, int tickSequence, String player, AttackStyle style,
-		String target, String targetPrayer, String offensivePrayer)
+		String target, String targetPrayer, String offensivePrayer, HitDirection direction)
 	{
 		this.id = id;
 		this.tickSequence = tickSequence;
@@ -38,5 +41,6 @@ public class HitSummaryRow
 		this.target = target;
 		this.targetPrayer = targetPrayer;
 		this.offensivePrayer = offensivePrayer;
+		this.direction = direction;
 	}
 }

@@ -3,6 +3,7 @@ package com.knz.pvpenhancer;
 import com.google.inject.Provides;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -18,6 +19,7 @@ import com.knz.pvpenhancer.model.ComboResult;
 import com.knz.pvpenhancer.model.EatEvent;
 import com.knz.pvpenhancer.model.GearSwapEvent;
 import com.knz.pvpenhancer.model.HealMath;
+import com.knz.pvpenhancer.model.HitDirection;
 import com.knz.pvpenhancer.model.HitSummaryRow;
 import com.knz.pvpenhancer.model.HitsplatEvent;
 import com.knz.pvpenhancer.model.HitsplatLabels;
@@ -69,13 +71,17 @@ import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.kit.KitType;
 import net.runelite.client.callback.Hooks;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.util.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,7 +136,26 @@ public class PvpEnhancerPlugin extends Plugin
 
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private PvpEnhancerPanel panel;
+	@Inject private EventBus eventBus;
 	private NavigationButton navButton;
+
+	/**
+	 * Non-rendered overlay used purely to carry this plugin's reference so the panel's config
+	 * button can open the RuneLite config via {@link OverlayMenuClicked}. ConfigPlugin resolves
+	 * the target config from {@code overlay.getPlugin()}, so this must be constructed with
+	 * {@code super(this)}. It is never added to the OverlayManager.
+	 */
+	private final Overlay configAnchor = new Overlay(this)
+	{
+		@Override
+		public Dimension render(Graphics2D graphics)
+		{
+			return null;
+		}
+	};
+
+	private final OverlayMenuEntry configMenuEntry =
+		new OverlayMenuEntry(MenuAction.RUNELITE_OVERLAY_CONFIG, "Configure", "PvP Enhancer");
 
 	// ─── Diff state ──────────────────────────────────────────────────────
 
@@ -176,6 +201,8 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(comboFeedbackOverlay);
 		overlayManager.add(healOverlay);
 		overlayManager.add(hitPredictOverlay);
+
+		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 
 		navButton = NavigationButton.builder()
 			.tooltip("PvP Enhancer")
@@ -441,13 +468,18 @@ public class PvpEnhancerPlugin extends Plugin
 				comboDetector.onAttack(attack.getStyle(), tick);
 			}
 
+			String localName = localPlayerName();
+			HitDirection direction = attacker.isLocalPlayer() ? HitDirection.OUTGOING
+				: localName.equals(attack.getTarget()) ? HitDirection.INCOMING : HitDirection.OTHER;
+
 			hitSummary.addAttack(
 				history.getLastSequence(),
 				attack.getAttacker(),
 				attack.getStyle(),
 				attack.getTarget(),
 				attack.getTargetPrayer() != null ? PrayerNames.label(attack.getTargetPrayer()) : null,
-				offenPray
+				offenPray,
+				direction
 			);
 		}
 		else if (!AnimationStyleMap.isKnown(animation))

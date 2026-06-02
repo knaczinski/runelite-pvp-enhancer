@@ -3,6 +3,7 @@ package com.knz.pvpenhancer.panel;
 import com.knz.pvpenhancer.PvpEnhancerConfig;
 import com.knz.pvpenhancer.model.CombatEvent;
 import com.knz.pvpenhancer.model.EventCategory;
+import com.knz.pvpenhancer.model.HitDirection;
 import com.knz.pvpenhancer.model.HitSummaryRow;
 import com.knz.pvpenhancer.model.TickEntry;
 import com.knz.pvpenhancer.model.TickLogFormatter;
@@ -14,19 +15,26 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import javax.inject.Inject;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
+import javax.swing.JTable;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
@@ -34,15 +42,10 @@ import net.runelite.client.ui.PluginPanel;
 /**
  * RuneLite sidebar panel for the PvP Enhancer.
  *
- * <p>Hosts the data that used to be on-screen overlays (tick history + hit summary) plus a
- * combat status header. Each block also carries its own inline config controls — the
- * tick-history filters/depth and the hit-summary toggle/row-cap live here, not in the
- * RuneLite config panel (those items are {@code hidden = true} in the config). The controls
- * read/write the config via {@link ConfigManager}, so everything stays persisted and in sync.
- *
- * <p>Rebuilt each game tick: the plugin snapshots service data on the client thread and
- * calls {@link #update} on the Swing EDT. Interactive controls are created once and never
- * rebuilt.
+ * <p>Hosts the tick history (scrollable, coloured by category) and the hit summary (a
+ * scrollable table coloured green when you attack and red when you are attacked), each with
+ * inline config controls. A header has a combat-status label and a button that opens the
+ * plugin's config. Rebuilt each tick on the EDT via {@link #update}.
  */
 public class PvpEnhancerPanel extends PluginPanel
 {
@@ -54,14 +57,28 @@ public class PvpEnhancerPanel extends PluginPanel
 	private static final Color COLOR_GEAR = new Color(0x4D96FF);
 	private static final Color COLOR_PRAYER = new Color(0xFFD93D);
 	private static final Color COLOR_MUTED = new Color(0x9E, 0x9E, 0x9E);
+	private static final Color COLOR_OUTGOING = new Color(0x6BCB77); // you attack — green
+	private static final Color COLOR_INCOMING = new Color(0xFF6B6B); // you are attacked — red
 	private static final Font LINE_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 11);
 
 	private final PvpEnhancerConfig config;
 	private final ConfigManager configManager;
 
 	private final JLabel statusLabel = new JLabel();
+	private final JButton configButton = new JButton("⚙");
 	private final JPanel tickList = new JPanel();
-	private final JPanel hitList = new JPanel();
+
+	// Hit summary table
+	private final DefaultTableModel hitModel = new DefaultTableModel(new Object[]{"Tk", "Atk", "Tgt", "Hit"}, 0)
+	{
+		@Override
+		public boolean isCellEditable(int row, int column)
+		{
+			return false;
+		}
+	};
+	private final JTable hitTable = new JTable(hitModel);
+	private final List<HitDirection> rowDirections = new ArrayList<>();
 
 	// Inline config controls (created once)
 	private final JSpinner maxTicksSpinner;
@@ -73,14 +90,15 @@ public class PvpEnhancerPanel extends PluginPanel
 	private final JCheckBox hitSummaryCheck;
 	private final JSpinner hitRowsSpinner;
 
-	// Cached snapshot from the last update(), so a control toggle re-renders instantly.
+	// Cached snapshot from the last update().
 	private List<TickEntry> lastEntries = Collections.emptyList();
 	private List<HitSummaryRow> lastRows = Collections.emptyList();
 	private boolean lastInCombat;
 	private boolean lastNotRetaliating;
 
-	/** Guards programmatic control updates from re-triggering their own listeners. */
 	private boolean suppressEvents;
+	/** Set by the plugin; opens the RuneLite config for this plugin. */
+	private Runnable onOpenConfig;
 
 	@Inject
 	PvpEnhancerPanel(PvpEnhancerConfig config, ConfigManager configManager)
@@ -94,12 +112,11 @@ public class PvpEnhancerPanel extends PluginPanel
 		container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
 		container.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
-		statusLabel.setFont(LINE_FONT.deriveFont(Font.BOLD, 12f));
-		statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		container.add(statusLabel);
+		// Header: status + config button
+		container.add(buildHeader());
 		container.add(gap(8));
 
-		// ── Tick History block: header + inline controls + list ──
+		// ── Tick History block ──
 		container.add(sectionHeader("Tick History"));
 
 		maxTicksSpinner = makeIntSpinner(config.maxHistoryTicks(), 0, 5000, "maxHistoryTicks");
@@ -123,12 +140,13 @@ public class PvpEnhancerPanel extends PluginPanel
 		container.add(makeCopyButton());
 		container.add(gap(4));
 
-		configList(tickList);
-		container.add(tickList);
+		tickList.setLayout(new BoxLayout(tickList, BoxLayout.Y_AXIS));
+		tickList.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		container.add(scroll(tickList, 240));
 
 		container.add(gap(12));
 
-		// ── Hit Summary block: header + inline controls + list ──
+		// ── Hit Summary block ──
 		container.add(sectionHeader("Hit Summary"));
 
 		hitSummaryCheck = makeCheck("Enabled", "showHitSummary", config.showHitSummary());
@@ -139,12 +157,17 @@ public class PvpEnhancerPanel extends PluginPanel
 		container.add(spinnerRow("Max rows", hitRowsSpinner));
 		container.add(gap(4));
 
-		configList(hitList);
-		container.add(hitList);
+		container.add(buildHitTable());
 
 		add(container, BorderLayout.NORTH);
 
 		rebuild();
+	}
+
+	/** Called by the plugin to wire the config-open action. */
+	public void setOnOpenConfig(Runnable onOpenConfig)
+	{
+		this.onOpenConfig = onOpenConfig;
 	}
 
 	/**
@@ -165,10 +188,9 @@ public class PvpEnhancerPanel extends PluginPanel
 
 	private void rebuild()
 	{
-		// Status header
 		if (lastNotRetaliating)
 		{
-			statusLabel.setText("NOT ATTACKING — re-click target");
+			statusLabel.setText("NOT ATTACKING");
 			statusLabel.setForeground(COLOR_COMBAT);
 		}
 		else if (lastInCombat)
@@ -209,22 +231,23 @@ public class PvpEnhancerPanel extends PluginPanel
 		{
 			tickList.add(line("No events yet.", COLOR_MUTED));
 		}
+		tickList.revalidate();
+		tickList.repaint();
 
-		// Hit summary, newest-first
-		hitList.removeAll();
-		if (!config.showHitSummary())
-		{
-			hitList.add(line("(disabled)", COLOR_MUTED));
-		}
-		else if (lastRows.isEmpty())
-		{
-			hitList.add(line("No hits yet.", COLOR_MUTED));
-		}
-		else
+		// Hit summary table
+		hitModel.setRowCount(0);
+		rowDirections.clear();
+		if (config.showHitSummary())
 		{
 			for (HitSummaryRow row : lastRows)
 			{
-				hitList.add(line(formatHitRow(row), COLOR_TICK));
+				hitModel.addRow(new Object[]{
+					String.format("%04d", row.tickSequence),
+					abbrev(row.player, 6),
+					abbrev(row.target, 6),
+					row.hit != null ? String.valueOf(row.hit) : "-"
+				});
+				rowDirections.add(row.direction);
 			}
 		}
 
@@ -268,23 +291,6 @@ public class PvpEnhancerPanel extends PluginPanel
 		}
 	}
 
-	private static String formatHitRow(HitSummaryRow row)
-	{
-		String hit = row.hit != null ? String.valueOf(row.hit) : "-";
-		String style = row.style.getLabel();
-		String text = String.format("%04d %s→%s %s %s",
-			row.tickSequence,
-			abbrev(row.player, 6),
-			abbrev(row.target, 6),
-			style.substring(0, Math.min(3, style.length())),
-			hit);
-		if (row.targetPrayer != null)
-		{
-			text += " (" + row.targetPrayer + ")";
-		}
-		return text;
-	}
-
 	private static String abbrev(String s, int max)
 	{
 		if (s == null)
@@ -294,24 +300,74 @@ public class PvpEnhancerPanel extends PluginPanel
 		return s.length() > max ? s.substring(0, max) : s;
 	}
 
-	/** "Copy log" button — copies the full tick history to the system clipboard. */
-	private JComponent makeCopyButton()
+	// ─── UI construction ──────────────────────────────────────────────────────
+
+	private JComponent buildHeader()
 	{
-		JButton button = new JButton("Copy log");
-		button.setFont(LINE_FONT);
-		button.setFocusable(false);
-		button.setAlignmentX(Component.LEFT_ALIGNMENT);
-		button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
-		button.addActionListener(e ->
+		JPanel header = new JPanel();
+		header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS));
+		header.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		header.setAlignmentX(Component.LEFT_ALIGNMENT);
+		header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+
+		statusLabel.setFont(LINE_FONT.deriveFont(Font.BOLD, 12f));
+		header.add(statusLabel);
+		header.add(Box.createHorizontalGlue());
+
+		configButton.setFont(configButton.getFont().deriveFont(14f));
+		configButton.setToolTipText("Open PvP Enhancer config");
+		configButton.setFocusable(false);
+		configButton.setMargin(new java.awt.Insets(0, 6, 0, 6));
+		configButton.addActionListener(e ->
 		{
-			String log = TickLogFormatter.format(lastEntries);
-			Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(log), null);
-			button.setText("Copied!");
-			Timer revert = new Timer(1200, ev -> button.setText("Copy log"));
-			revert.setRepeats(false);
-			revert.start();
+			if (onOpenConfig != null)
+			{
+				onOpenConfig.run();
+			}
 		});
-		return button;
+		header.add(configButton);
+		return header;
+	}
+
+	private JComponent buildHitTable()
+	{
+		hitTable.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		hitTable.setFont(LINE_FONT);
+		hitTable.setRowSelectionAllowed(false);
+		hitTable.setColumnSelectionAllowed(false);
+		hitTable.setFocusable(false);
+		hitTable.setShowGrid(false);
+		hitTable.setRowHeight(16);
+		hitTable.getTableHeader().setFont(LINE_FONT);
+		hitTable.getTableHeader().setReorderingAllowed(false);
+		hitTable.setIntercellSpacing(new Dimension(2, 0));
+
+		DefaultTableCellRenderer renderer = new DefaultTableCellRenderer()
+		{
+			@Override
+			public Component getTableCellRendererComponent(JTable table, Object value,
+				boolean isSelected, boolean hasFocus, int row, int column)
+			{
+				Component c = super.getTableCellRendererComponent(table, value, false, false, row, column);
+				HitDirection d = row >= 0 && row < rowDirections.size() ? rowDirections.get(row) : HitDirection.OTHER;
+				c.setForeground(d == HitDirection.OUTGOING ? COLOR_OUTGOING
+					: d == HitDirection.INCOMING ? COLOR_INCOMING : Color.WHITE);
+				c.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+				return c;
+			}
+		};
+		hitTable.setDefaultRenderer(Object.class, renderer);
+		// Narrow the Tick + Hit columns; let names take the rest.
+		hitTable.getColumnModel().getColumn(0).setMaxWidth(34);
+		hitTable.getColumnModel().getColumn(3).setMaxWidth(34);
+
+		JScrollPane sp = new JScrollPane(hitTable);
+		sp.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+		sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		sp.setPreferredSize(new Dimension(200, 170));
+		sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, 170));
+		sp.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return sp;
 	}
 
 	// ─── Inline control factories ───────────────────────────────────────────
@@ -353,7 +409,25 @@ public class PvpEnhancerPanel extends PluginPanel
 		return spinner;
 	}
 
-	/** Re-reads the config into the controls (e.g. if changed elsewhere). Guarded. */
+	private JComponent makeCopyButton()
+	{
+		JButton button = new JButton("Copy log");
+		button.setFont(LINE_FONT);
+		button.setFocusable(false);
+		button.setAlignmentX(Component.LEFT_ALIGNMENT);
+		button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+		button.addActionListener(e ->
+		{
+			String log = TickLogFormatter.format(lastEntries);
+			Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(log), null);
+			button.setText("Copied!");
+			Timer revert = new Timer(1200, ev -> button.setText("Copy log"));
+			revert.setRepeats(false);
+			revert.start();
+		});
+		return button;
+	}
+
 	private void syncControls()
 	{
 		suppressEvents = true;
@@ -375,11 +449,16 @@ public class PvpEnhancerPanel extends PluginPanel
 		return Math.max(min, Math.min(max, v));
 	}
 
-	private static void configList(JPanel list)
+	private static JScrollPane scroll(JComponent content, int height)
 	{
-		list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-		list.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		list.setAlignmentX(Component.LEFT_ALIGNMENT);
+		JScrollPane sp = new JScrollPane(content);
+		sp.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+		sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		sp.setPreferredSize(new Dimension(200, height));
+		sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
+		sp.setAlignmentX(Component.LEFT_ALIGNMENT);
+		sp.getViewport().setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		return sp;
 	}
 
 	private static JComponent spinnerRow(String label, JSpinner spinner)
@@ -393,7 +472,7 @@ public class PvpEnhancerPanel extends PluginPanel
 		l.setForeground(COLOR_MUTED);
 		row.add(l);
 		row.add(spinner);
-		row.add(javax.swing.Box.createHorizontalGlue());
+		row.add(Box.createHorizontalGlue());
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
 		return row;
 	}

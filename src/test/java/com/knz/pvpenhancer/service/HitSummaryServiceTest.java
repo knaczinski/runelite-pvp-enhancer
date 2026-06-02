@@ -1,6 +1,7 @@
 package com.knz.pvpenhancer.service;
 
 import com.knz.pvpenhancer.model.AttackStyle;
+import com.knz.pvpenhancer.model.HitDirection;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator.Correlation;
 import com.knz.pvpenhancer.model.HitSummaryRow;
 import java.util.List;
@@ -21,7 +22,7 @@ public class HitSummaryServiceTest
 		AttackHitsplatCorrelator correlator = new AttackHitsplatCorrelator();
 
 		correlator.recordAttack("me", "opp", AttackStyle.MELEE, 10);
-		service.addAttack(10, "me", AttackStyle.MELEE, "opp", "pro mage", "Piety");
+		service.addAttack(10, "me", AttackStyle.MELEE, "opp", "pro mage", "Piety", HitDirection.OUTGOING);
 
 		Correlation corr = correlator.recordHitsplat("opp", 25, 10);
 		assertNotNull(corr);
@@ -37,7 +38,7 @@ public class HitSummaryServiceTest
 	public void hitIsNullBeforeCorrelation()
 	{
 		HitSummaryService service = new HitSummaryService();
-		service.addAttack(5, "me", AttackStyle.RANGED, "opp", null, null);
+		service.addAttack(5, "me", AttackStyle.RANGED, "opp", null, null, HitDirection.OUTGOING);
 
 		assertNull(service.getRows().get(0).hit);
 	}
@@ -49,7 +50,7 @@ public class HitSummaryServiceTest
 		service.setMaxRows(3);
 		for (int i = 0; i < 5; i++)
 		{
-			service.addAttack(i, "me", AttackStyle.MAGIC, "opp", null, null);
+			service.addAttack(i, "me", AttackStyle.MAGIC, "opp", null, null, HitDirection.OUTGOING);
 		}
 		assertEquals(3, service.getRows().size());
 	}
@@ -58,7 +59,7 @@ public class HitSummaryServiceTest
 	public void clearEmptiesRows()
 	{
 		HitSummaryService service = new HitSummaryService();
-		service.addAttack(1, "me", AttackStyle.MELEE, "opp", null, null);
+		service.addAttack(1, "me", AttackStyle.MELEE, "opp", null, null, HitDirection.OUTGOING);
 		service.clear();
 		assertEquals(0, service.getRows().size());
 	}
