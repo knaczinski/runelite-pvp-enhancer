@@ -16,6 +16,7 @@ import com.knz.pvpenhancer.model.AttackEvent;
 import com.knz.pvpenhancer.model.AttackStyle;
 import com.knz.pvpenhancer.model.ComboEvent;
 import com.knz.pvpenhancer.model.ComboResult;
+import com.knz.pvpenhancer.model.Debuff;
 import com.knz.pvpenhancer.model.EatEvent;
 import com.knz.pvpenhancer.model.GearSwapEvent;
 import com.knz.pvpenhancer.model.HealMath;
@@ -75,8 +76,11 @@ import net.runelite.api.Skill;
 import net.runelite.api.SkullIcon;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GraphicChanged;
+import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.PlayerDespawned;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
@@ -215,6 +219,12 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Players whose native skull we hid (setSkullIcon(-1)) → their original skull id, for restore. */
 	private final Map<Player, Integer> hiddenSkulls = new HashMap<>();
 
+	/** Players whose native Vengeance overhead text we keep clearing → epoch-ms to stop clearing. */
+	private final Map<Player, Long> vengClearUntil = new HashMap<>();
+
+	/** How long (ms) to keep clearing a player's native veng text after first seen (covers its lifetime). */
+	private static final long VENG_CLEAR_MS = 3000L;
+
 	// ─── Lifecycle ───────────────────────────────────────────────────────
 
 	@Provides
@@ -300,6 +310,7 @@ public class PvpEnhancerPlugin extends Plugin
 		hitPredictOverlay.clear();
 		debuffTracker.clear();
 		vengeanceTextOverlay.clear();
+		vengClearUntil.clear();
 		restoreAllSkulls();
 		skullResizeOverlay.clear();
 		combatFocus.clear();
@@ -945,9 +956,74 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return;
 		}
-		log.debug("Debuff {} (spot-anim {}) by {} -> {}", entry.debuff, spotanim,
-			actor.getName(), sufferer.getName());
-		debuffTracker.apply(sufferer, entry.debuff, entry.durationTicks);
+
+		// Teleblock is halved (~2.5 min) when the target had Protect from Magic up as it landed.
+		int duration = entry.durationTicks;
+		if (entry.debuff == Debuff.TELEBLOCK && sufferer instanceof Player
+			&& ((Player) sufferer).getOverheadIcon() == HeadIcon.MAGIC)
+		{
+			duration = entry.durationTicks / 2;
+		}
+
+		log.debug("Debuff {} (spot-anim {}, {}t) by {} -> {}", entry.debuff, spotanim,
+			duration, actor.getName(), sufferer.getName());
+		debuffTracker.apply(sufferer, entry.debuff, duration);
+	}
+
+	/**
+	 * Re-suppresses the native overheads we replace (skull, Vengeance text) on every client frame.
+	 * The client re-applies them on each appearance update — far more often than the game tick —
+	 * so suppressing only once per game tick lets them blink back (the flicker seen in combat).
+	 */
+	@Subscribe
+	public void onClientTick(ClientTick event)
+	{
+		if (config.skullScope() != OverheadScope.OFF && !hiddenSkulls.isEmpty())
+		{
+			for (Player p : hiddenSkulls.keySet())
+			{
+				if (p != null && p.getSkullIcon() != SkullIcon.NONE)
+				{
+					p.setSkullIcon(SkullIcon.NONE);
+				}
+			}
+		}
+
+		if (!vengClearUntil.isEmpty())
+		{
+			long now = System.currentTimeMillis();
+			for (Iterator<Map.Entry<Player, Long>> it = vengClearUntil.entrySet().iterator(); it.hasNext(); )
+			{
+				Map.Entry<Player, Long> e = it.next();
+				if (e.getKey() == null || e.getValue() < now)
+				{
+					it.remove();
+					continue;
+				}
+				String text = e.getKey().getOverheadText();
+				if (text != null && text.toLowerCase().contains("vengeance"))
+				{
+					e.getKey().setOverheadText("");
+				}
+			}
+		}
+	}
+
+	/** Drops debuff timers + skull state for a player who leaves the scene (e.g. teleports away). */
+	@Subscribe
+	public void onPlayerDespawned(PlayerDespawned event)
+	{
+		Player p = event.getPlayer();
+		debuffTracker.remove(p);
+		hiddenSkulls.remove(p);
+		vengClearUntil.remove(p);
+	}
+
+	/** Drops debuff timers for an NPC that leaves the scene. */
+	@Subscribe
+	public void onNpcDespawned(NpcDespawned event)
+	{
+		debuffTracker.remove(event.getNpc());
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────────
@@ -1023,7 +1099,13 @@ public class PvpEnhancerPlugin extends Plugin
 			{
 				continue;
 			}
+			if (vengClearUntil.containsKey(p))
+			{
+				p.setOverheadText(""); // already handling this cast; just keep it cleared
+				continue;
+			}
 			vengeanceTextOverlay.add(p, text);
+			vengClearUntil.put(p, System.currentTimeMillis() + VENG_CLEAR_MS);
 			p.setOverheadText(""); // hide the native text; we draw a scaled copy
 		}
 	}

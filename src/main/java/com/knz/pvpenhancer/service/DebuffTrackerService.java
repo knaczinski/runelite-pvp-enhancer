@@ -62,6 +62,12 @@ public class DebuffTrackerService
 		return active;
 	}
 
+	/** Drops all debuffs on an actor (e.g. when they leave the scene / teleport away). */
+	public void remove(Actor actor)
+	{
+		active.remove(actor);
+	}
+
 	public void clear()
 	{
 		active.clear();
