@@ -6,19 +6,25 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S011
-phase: Phases 1-3 shipped + Phase 2 cleared (except B008 live-gated). Live validation pending.
+latest_session: S012
+phase: Phases 1-4 code-complete. Only B008 open (Phase 2, live-data-gated). Live validation pending.
 status: active
 
 ## Current Focus
 
-S011 cleared the Phase 2 backlog autonomously: B012 copy-log button, B009 richer hitsplat
-typing, B011 opponent-eating (anim 829), B010 closed (satisfied by Hit Summary). B008 left
-OPEN — live-data-gated (animation ids must come from real fights, not guesses). Build green,
-58 tests.
-NEXT: live validation of all features (HT-001..HT-004 + heartbeat/hit-summary/combos/healing/
-copy-log/opponent-eat). For B008, harvest "Unmapped animation" debug ids in a fight.
-Then B008 (grow AnimationStyleMap from live fight data).
+S012 shipped all of Phase 4 + a 9-item PvP/UX batch. Phase 4: B018 combat focus (hide
+non-involved via Hooks RenderableDrawListener, persistence-timeout model, symmetric trigger),
+B019 XP-drop hit prediction (orange number before projectile), B020 freeze/snare/TB timers
+(SpotanimDebuffs seed + DebuffTimerOverlay, scope OFF/OPPONENTS/ALL), B021 prayer highlighter
+(WeaponStyleMap seed → box the counter-prayer, name-scanned over Prayerbook.PRAYER1..30).
+UX batch: combat focus no longer hides the target; heal popup raised above the skull;
+TrackScope (self+opponents vs everyone); hit summary as a scrollable colour-coded JTable
+(green=you attack, red=attacked) via HitDirection; tick history scroll pane; header ⚙ button
+opens config via OverlayMenuClicked + anchor overlay; walk-here over Take in combat. Build
+green, 69 tests.
+NEXT: live validation — HT-010..HT-014 (Phase 4 + UX) plus the still-pending HT-001..HT-004.
+Harvest debug ids in live fights: unknown spot-anims → B020 map, unknown weapons → B021 map,
+unmapped attack anims → B008. Then B008 (grow AnimationStyleMap).
 
 ## (Phase 1) Focus history
 
@@ -81,7 +87,17 @@ test + auto-install jar to sideloaded-plugins.
 API gotchas (do not relearn):
 - Client has NO getItemComposition(int). Use injected ItemManager.getItemComposition(int).
 - OverlayPriority enum removed on current API — set position only, never setPriority.
-- equipment id decode: raw >= 512 → item id = raw - 512.
+- equipment id decode: raw >= 512 → item id = raw - 512 (raw getEquipmentIds()). BUT
+  PlayerComposition.getEquipmentId(KitType) already returns the item id directly (≤0 = empty).
+- Open this plugin's config from a panel button: post OverlayMenuClicked(new OverlayMenuEntry(
+  RUNELITE_OVERLAY_CONFIG, "Configure", name), anchorOverlay). ConfigPlugin reads
+  anchorOverlay.getPlugin(), so the anchor must be `new Overlay(this){}` (never added to OM).
+- ComponentID has NO per-protection-prayer constants. Prayer buttons =
+  gameval.InterfaceID.Prayerbook.PRAYER1..PRAYER30 (contiguous ids). Match by Widget.getName()
+  ("Protect from Melee/Missiles/Magic") — robust to child reordering.
+- No per-entity transparency in the API — combat focus can only HIDE (Hooks
+  RenderableDrawListener.draw returns false), not dim.
+- Actor#getGraphic() (deprecated) = current spot-anim id; adequate for debuff detection.
 
 Design doc: docs/tick-history-design.md. Build/test: docs/building-and-testing.md.
 API reference: .ai/game/ops/runelite-plugin-dev.md, .ai/game/pvp/pvp-combat-events.md.

@@ -5,6 +5,59 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S012 — Phase 4 PvP overlays + sidebar redesign (autonomous)
+
+### B018 — Combat focus (hide non-involved entities)
+**Effort:** M — **Done S012.**
+`CombatFocusService` + a Hooks `RenderableDrawListener` hide Players/NPCs not involved in the
+fight; scenery untouched. Config `CombatFocusMode` OFF | SELF | ANY_FIGHT. Involvement is
+persistence-based: each engaged actor is stamped `tick + combatFocusTimeout` and stays visible
+(through eats/pauses) until it expires — fixes the "others vanish after eating" and "focus only
+on taking a hit" reports. Trigger is symmetric (you hitting OR being hit, via HP-xp gain in
+onStatChanged). Local player always stays visible; the engaged target is never hidden.
+`@Range` config `combatFocusTimeout` (default 16 ticks ≈ 10s). LIVE-VALIDATE: HT-010.
+
+### B019 — XP-drop hit prediction
+**Effort:** S–M — **Done S012.**
+`XpDamage.fromHitpointsXp(deltaXp) = round(deltaXp / 1.333)` (pure, tested). onStatChanged
+HITPOINTS delta → predicted outgoing damage → `HitPredictOverlay` floats an orange number near
+the current target, before ranged/magic projectiles land. Config `hitPrediction`. HT-011.
+
+### B020 — Freeze / snare / teleblock timers
+**Effort:** M–L — **Done S012 (seed data — LIVE-VALIDATE).**
+`DebuffTrackerService` (per-actor timers, count down each GameTick, re-apply only extends) +
+`DebuffTimerOverlay` (countdown over the actor's head, coloured per debuff). `SpotanimDebuffs`
+seeds spot-anim id → (Debuff, duration ticks) from memory (ice spells 361/363/367/369,
+bind/snare/entangle 177/178/179, teleblock 345). onGraphicChanged matches; unknown spot-anims
+on tracked players debug-log for harvest. Config `DebuffScope` OFF | OPPONENTS | ALL. HT-012
+validates ids/durations.
+
+### B021 — Prayer defensive highlighter
+**Effort:** M — **Done S012 (seed data).**
+`PrayerHighlightOverlay` boxes the protection prayer countering the current target's
+equipped-weapon style. `WeaponStyleMap` seeds common PvP weapon item ids → style; unknown
+weapons debug-log. Target weapon read via `PlayerComposition.getEquipmentId(KitType.WEAPON)`
+(returns the item id directly). The prayer button is found by NAME scan over
+`InterfaceID.Prayerbook.PRAYER1..30` (robust to child-index reordering — ComponentID has no
+per-protect-prayer constants). Config `prayerHighlight`. HT-013.
+
+### Sidebar panel redesign + UX batch (user request, S012)
+**Effort:** M — **Done S012.**
+Nine-item UX batch on top of Phase 4:
+- Combat focus no longer hides the engaged target; only truly non-involved entities.
+- Heal popup raised to `logicalHeight + 50` so the PvP skull no longer covers it.
+- `TrackScope` (SELF_AND_OPPONENTS vs EVERYONE) replaces the trackOpponents boolean; tick
+  history + hit summary honour it via `isTracked`/`currentOpponents`.
+- Hit summary is a scrollable `JTable` sized for the thin panel; rows green when you attack
+  (`HitDirection.OUTGOING`), red when attacked (INCOMING) — new HitDirection threaded through
+  `HitSummaryService.addAttack`.
+- Tick history moved into a fixed-height scroll pane.
+- Header gear button opens this plugin's RuneLite config by posting
+  `OverlayMenuClicked(RUNELITE_OVERLAY_CONFIG)` against a plugin-owned anchor overlay
+  (`overlay.getPlugin()` is how ConfigPlugin resolves the target).
+- Walk-here over Take in combat: onMenuEntryAdded de-prioritises ground-item "Take" while
+  `isInCombat`, so left-click walks (Take stays on right-click). Config `swapPickupInCombat`.
+
 ## S011 — Phase 2 batch (autonomous)
 
 ### B011 — Opponent eating detection

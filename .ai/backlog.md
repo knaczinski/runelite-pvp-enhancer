@@ -46,50 +46,9 @@ Done (history): B013-B017 (all shipped S005-S006). See backlog-history.md.
 
 ---
 
-## ▶ PHASE 4 — PvP overlays (focus, prediction, timers, prayer)
+## ▶ PHASE 4 — PvP overlays (focus, prediction, timers, prayer) — CODE COMPLETE
 
-Decisions (user, S012): combat focus = HIDE non-involved (transparency not exposed by the
-API); prayer highlighter = predictive from the opponent's equipped weapon.
-
-### B018 — Combat focus (hide non-involved entities)
-**Effort:** M
-**Status:** OPEN.
-**Scope:** during combat, hide Players + NPCs not involved in the relevant fight (scenery
-untouched) via a Hooks RenderableDrawListener, to focus on the participants.
-- Config `CombatFocusMode`: OFF | SELF (only when you fight) | ANY_FIGHT (when anyone nearby fights).
-- "Involved" set recomputed each tick: SELF = you + your target + anyone targeting you;
-  ANY_FIGHT = every player currently interacting + their targets.
-- Listener returns false (hide) for non-involved Player/NPC; true for everything else.
-**Acceptance:** non-involved players/NPCs vanish during combat per the mode; scenery intact;
-disabling restores everything. (Live HT — hiding non-involved players is intentional.)
-
-### B019 — XP-drop hit prediction
-**Effort:** S–M
-**Status:** OPEN.
-**Scope:** predict the local player's outgoing damage from the Hitpoints XP drop (HP xp =
-1.333 × damage, so damage = round(hpXp / 1.333)). XP is granted at attack time, before the
-ranged/magic projectile lands — so the number precedes the hitsplat (lets you react / stack spec).
-- StatChanged HITPOINTS → delta → predicted damage; floating number near the current target.
-- Pure XpDamage helper + test. Config toggle.
-**Acceptance:** predicted damage appears on the target a tick or two before the hitsplat for ranged.
-
-### B020 — Freeze / snare / teleblock timers
-**Effort:** M–L
-**Status:** OPEN — seed data, LIVE-VALIDATE.
-**Scope:** detect freeze/snare/teleblock via GraphicChanged spotanims; show a countdown timer
-(+ debuff icon) on the affected actor. Config scope: opponent-only | all players.
-- Seed table graphic-id → (debuff, duration ticks). Memory-cited → log unknown spotanims for
-  live collection + an HT to verify ids/durations (like the animation map).
-- Decrement timers each GameTick; remove at 0.
-**Acceptance:** a freeze/TB on a tracked player shows a correct countdown. (HT validates ids/durations.)
-
-### B021 — Prayer defensive highlighter
-**Effort:** M
-**Status:** OPEN — seed data.
-**Scope:** highlight the protection prayer (Melee/Ranged/Magic) matching the current opponent's
-EQUIPPED WEAPON (predictive).
-- `WeaponStyleMap` seed (item id → style); read opponent weapon via PlayerComposition
-  (appearance id − 512). Log unknown weapon ids for collection.
-- Highlight the matching prayer widget in the prayer tab (overlay box).
-- Config toggle.
-**Acceptance:** facing a known melee/range/mage weapon, the right protection prayer is highlighted.
+All Phase 4 dev items shipped (S012): **B018** combat focus, **B019** hit prediction,
+**B020** freeze/TB timers, **B021** prayer highlighter. Full records in `backlog-history.md`.
+Remaining work is **live validation** (HT-010..HT-014) + harvesting seed data (unknown
+spot-anim ids → B020 map, unknown weapon ids → B021 map, unmapped attack anims → B008).

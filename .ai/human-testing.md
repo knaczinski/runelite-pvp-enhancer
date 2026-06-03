@@ -72,6 +72,62 @@ Some behaviour (overlay rendering, visual accuracy, in-game feel, performance) c
 
 ---
 
+## ▶ PRIORITY 4 — Phase 4 PvP overlays (S012)
+
+### HT-010 — Combat focus hides only non-involved entities (B018)
+**Linked:** B018.
+**SCENARIO SETUP:** PvP area with a partner + a third uninvolved player/NPC nearby. Config →
+Combat (PvP) → set **Combat focus** to SELF; note **Combat focus timeout** (default 16).
+**STEPS / OBSERVE:**
+1. Before fighting: confirm everyone is visible.
+2. Start attacking your partner. Confirm uninvolved players/NPCs vanish; YOU and your TARGET stay visible.
+3. Let your partner eat / pause attacking for a few ticks (< timeout). Confirm they STAY visible (no flicker out).
+4. Stop attacking entirely. Confirm focus releases (~timeout ticks later) and everyone returns.
+5. Switch mode to ANY_FIGHT: confirm focus also triggers when other players fight near you.
+**PASS CRITERIA:** only non-involved hidden; target never hidden; participants persist through eats up to the timeout; disabling restores all.
+
+### HT-011 — XP-drop hit prediction precedes the hitsplat (B019)
+**Linked:** B019.
+**SCENARIO SETUP:** plugin enabled, `hitPrediction` on, ranged or magic weapon.
+**STEPS / OBSERVE:**
+1. Attack a target with ranged/magic from a distance.
+2. Confirm an orange predicted-damage number appears near the target a tick or two BEFORE the hitsplat lands.
+3. Compare the predicted number to the actual hitsplat — confirm they match.
+**PASS CRITERIA:** number appears before the projectile lands and equals the real damage.
+
+### HT-012 — Freeze / snare / teleblock timers + id harvest (B020)
+**Linked:** B020.
+**SCENARIO SETUP:** plugin enabled, Config → **Freeze / TB timers** = Self + opponents.
+Bring (or have a partner bring) ice spells / bind / teleblock.
+**STEPS / OBSERVE:**
+1. Get frozen (e.g. Ice Barrage). Confirm a "Freeze N" countdown appears over you and counts down to 0.
+2. Compare the starting number to the real freeze duration (Barrage ≈ 33 ticks / 20s). Note any mismatch.
+3. Repeat for snare/bind and teleblock if available; note durations.
+4. **Harvest:** with client logs at debug, note any "Unknown spot-anim N on X" lines for freezes that showed NO timer — report the ids.
+**PASS CRITERIA:** known freezes/TB show a countdown with roughly correct duration. Report wrong durations + unknown spot-anim ids (feeds the seed map).
+
+### HT-013 — Prayer highlighter matches target weapon + id harvest (B021)
+**Linked:** B021.
+**SCENARIO SETUP:** plugin enabled, `prayerHighlight` on, prayer tab open. Partner with melee/ranged/mage weapons.
+**STEPS / OBSERVE:**
+1. Target a partner holding a melee weapon (e.g. whip). Confirm **Protect from Melee** is boxed/highlighted.
+2. Have them switch to ranged → confirm highlight moves to **Protect from Missiles**.
+3. Switch to mage → confirm **Protect from Magic**.
+4. **Harvest:** note "Unknown weapon id N on X" debug lines for weapons that highlighted nothing — report the ids.
+**PASS CRITERIA:** highlight tracks the target's weapon style and lands on the correct prayer. Report unknown weapon ids.
+
+### HT-014 — Sidebar redesign + config button + walk-here (S012 UX batch)
+**Linked:** panel redesign, swapPickupInCombat.
+**SCENARIO SETUP:** plugin enabled, sidebar panel open.
+**STEPS / OBSERVE:**
+1. Trade hits. Confirm the **Hit Summary** is a table that scrolls and that rows you attack are GREEN, rows where you're attacked are RED.
+2. Confirm the **Tick History** scrolls within its box.
+3. Click the header **⚙** button → confirm the RuneLite config for **PvP Enhancer** opens.
+4. Enable **Walk-here over Take**, enter combat, left-click a ground item → confirm you WALK (don't pick up); right-click still shows **Take**.
+**PASS CRITERIA:** table colours + both scrollbars work; gear button opens config; in combat left-click no longer grabs loot while right-click Take remains.
+
+---
+
 ## RESULT TEMPLATE
 
 ```
