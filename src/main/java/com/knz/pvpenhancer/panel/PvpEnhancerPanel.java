@@ -65,6 +65,7 @@ public class PvpEnhancerPanel extends PluginPanel
 	private final ConfigManager configManager;
 
 	private final JLabel statusLabel = new JLabel();
+	private final JButton devButton = new JButton("🛠");
 	private final JButton configButton = new JButton("⚙");
 	private final JPanel tickList = new JPanel();
 
@@ -99,6 +100,8 @@ public class PvpEnhancerPanel extends PluginPanel
 	private boolean suppressEvents;
 	/** Set by the plugin; opens the RuneLite config for this plugin. */
 	private Runnable onOpenConfig;
+	/** Set by the plugin; opens the developer panel. */
+	private Runnable onOpenDevPanel;
 
 	@Inject
 	PvpEnhancerPanel(PvpEnhancerConfig config, ConfigManager configManager)
@@ -168,6 +171,18 @@ public class PvpEnhancerPanel extends PluginPanel
 	public void setOnOpenConfig(Runnable onOpenConfig)
 	{
 		this.onOpenConfig = onOpenConfig;
+	}
+
+	/** Called by the plugin to wire the dev-panel-open action. */
+	public void setOnOpenDevPanel(Runnable onOpenDevPanel)
+	{
+		this.onOpenDevPanel = onOpenDevPanel;
+	}
+
+	/** Shows or hides the developer (🛠) button in the header. */
+	public void setDevButtonVisible(boolean visible)
+	{
+		devButton.setVisible(visible);
 	}
 
 	/**
@@ -313,6 +328,20 @@ public class PvpEnhancerPanel extends PluginPanel
 		statusLabel.setFont(LINE_FONT.deriveFont(Font.BOLD, 12f));
 		header.add(statusLabel);
 		header.add(Box.createHorizontalGlue());
+
+		devButton.setFont(devButton.getFont().deriveFont(13f));
+		devButton.setToolTipText("Open developer panel (overlay mocks)");
+		devButton.setFocusable(false);
+		devButton.setMargin(new java.awt.Insets(0, 6, 0, 6));
+		devButton.setVisible(false);
+		devButton.addActionListener(e ->
+		{
+			if (onOpenDevPanel != null)
+			{
+				onOpenDevPanel.run();
+			}
+		});
+		header.add(devButton);
 
 		configButton.setFont(configButton.getFont().deriveFont(14f));
 		configButton.setToolTipText("Open PvP Enhancer config");

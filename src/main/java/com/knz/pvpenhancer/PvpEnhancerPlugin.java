@@ -36,6 +36,7 @@ import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
 import com.knz.pvpenhancer.overlay.HitPredictOverlay;
 import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
 import com.knz.pvpenhancer.overlay.PrayerHighlightOverlay;
+import com.knz.pvpenhancer.panel.DevPanel;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator.Correlation;
@@ -81,6 +82,7 @@ import net.runelite.client.callback.Hooks;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
@@ -147,8 +149,11 @@ public class PvpEnhancerPlugin extends Plugin
 
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private PvpEnhancerPanel panel;
+	@Inject private DevPanel devPanel;
 	@Inject private EventBus eventBus;
 	private NavigationButton navButton;
+	private NavigationButton devNavButton;
+	private boolean devNavAdded;
 
 	/**
 	 * Non-rendered overlay used purely to carry this plugin's reference so the panel's config
@@ -222,6 +227,13 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(prayerHighlightOverlay);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
+		panel.setOnOpenDevPanel(() ->
+		{
+			if (devNavButton != null)
+			{
+				clientToolbar.openPanel(devNavButton);
+			}
+		});
 
 		navButton = NavigationButton.builder()
 			.tooltip("PvP Enhancer")
@@ -230,6 +242,15 @@ public class PvpEnhancerPlugin extends Plugin
 			.panel(panel)
 			.build();
 		clientToolbar.addNavigation(navButton);
+
+		devNavButton = NavigationButton.builder()
+			.tooltip("PvP Enhancer — Developer")
+			.icon(buildDevIcon())
+			.priority(8)
+			.panel(devPanel)
+			.build();
+
+		applyDevMode(config.developerMode());
 		registerFocusListener();
 	}
 
@@ -245,6 +266,11 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(prayerHighlightOverlay);
 		unregisterFocusListener();
 		clientToolbar.removeNavigation(navButton);
+		if (devNavAdded)
+		{
+			clientToolbar.removeNavigation(devNavButton);
+			devNavAdded = false;
+		}
 		resetState();
 	}
 
@@ -368,6 +394,31 @@ public class PvpEnhancerPlugin extends Plugin
 		combatFocus.update(active, involved);
 	}
 
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if ("pvpenhancer".equals(event.getGroup()) && "developerMode".equals(event.getKey()))
+		{
+			applyDevMode(config.developerMode());
+		}
+	}
+
+	/** Adds/removes the developer sidebar panel + the panel's dev button to match the config toggle. */
+	private void applyDevMode(boolean enabled)
+	{
+		if (enabled && !devNavAdded)
+		{
+			clientToolbar.addNavigation(devNavButton);
+			devNavAdded = true;
+		}
+		else if (!enabled && devNavAdded)
+		{
+			clientToolbar.removeNavigation(devNavButton);
+			devNavAdded = false;
+		}
+		panel.setDevButtonVisible(enabled);
+	}
+
 	/** Snapshots service data on the client thread and rebuilds the sidebar panel on the EDT. */
 	private void refreshPanel()
 	{
@@ -391,6 +442,22 @@ public class PvpEnhancerPlugin extends Plugin
 		g.drawLine(5, 5, 19, 19);
 		g.setColor(new Color(0xDD, 0xDD, 0xDD));
 		g.drawLine(19, 5, 5, 19);
+		g.dispose();
+		return img;
+	}
+
+	/** Builds the developer-panel navigation icon (a purple wrench-ish glyph) in code. */
+	private static BufferedImage buildDevIcon()
+	{
+		int size = 24;
+		BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setColor(new Color(0xC7, 0x7D, 0xFF));
+		g.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		g.drawLine(6, 18, 16, 8);          // handle
+		g.fillOval(13, 4, 7, 7);           // head
+		g.fillOval(4, 15, 6, 6);           // grip
 		g.dispose();
 		return img;
 	}

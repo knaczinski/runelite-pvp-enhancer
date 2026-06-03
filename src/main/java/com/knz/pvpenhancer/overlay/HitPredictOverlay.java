@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.Point;
@@ -24,6 +25,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
  * awarded — for ranged/magic, before the projectile lands — so the player can react (e.g.
  * swap to a spec weapon to stack a second hit). Orange to distinguish from green heal numbers.
  */
+@Singleton
 public class HitPredictOverlay extends Overlay
 {
 	private static final long DURATION_MS = 1200L;

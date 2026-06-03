@@ -10,6 +10,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -22,6 +23,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
  * <p>Shows the most recent combo; a new result replaces any currently fading one.
  * Call {@link #showCombo(ComboResult)} from the plugin when a combo fires.
  */
+@Singleton
 public class ComboFeedbackOverlay extends Overlay
 {
 	private static final long FADE_MS = 1500L;

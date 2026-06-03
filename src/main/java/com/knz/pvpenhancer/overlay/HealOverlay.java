@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import net.runelite.api.Actor;
 import net.runelite.api.Point;
 import net.runelite.client.ui.overlay.Overlay;
@@ -25,6 +26,7 @@ import net.runelite.client.ui.overlay.OverlayPosition;
  * <p>The plugin detects heals on each game tick and calls {@link #addHeal}. Both detection
  * and rendering run on the client thread, so the popup list needs no synchronization.
  */
+@Singleton
 public class HealOverlay extends Overlay
 {
 	private static final long DURATION_MS = 1500L;

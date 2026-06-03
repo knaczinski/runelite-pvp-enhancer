@@ -39,6 +39,9 @@ public interface PvpEnhancerConfig extends Config
 	@ConfigSection(name = "Combat (PvP)", description = "PvP overlays: focus, hit prediction, debuff timers, prayer.", position = 4)
 	String pvpSection = "pvp";
 
+	@ConfigSection(name = "Developer", description = "Tools for testing overlays without a live fight.", position = 5, closedByDefault = true)
+	String developerSection = "developer";
+
 	// ─── Tracking ───────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "trackScope", name = "Track scope",
@@ -116,6 +119,14 @@ public interface PvpEnhancerConfig extends Config
 			+ "weapon style (predictive). Switches as they switch weapons.",
 		section = pvpSection, position = 5)
 	default boolean prayerHighlight() { return false; }
+
+	// ─── Developer ────────────────────────────────────────────────────────────
+
+	@ConfigItem(keyName = "developerMode", name = "Developer mode",
+		description = "Show a Developer panel in the sidebar for triggering mock overlays "
+			+ "(heal, hit predict, debuff, combo) on yourself without a live fight.",
+		section = developerSection, position = 0)
+	default boolean developerMode() { return false; }
 
 	// ─── Controlled inline in the sidebar panel (hidden from the config panel) ──
 	// These are edited next to their block in PvpEnhancerPanel.
