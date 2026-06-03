@@ -27,7 +27,7 @@ public class VengeanceTextOverlay extends Overlay
 {
 	private static final long DURATION_MS = 1500L;
 	private static final int BASE_FONT = 16;
-	private static final Color TEXT_COLOR = new Color(0x33, 0xDD, 0xDD);
+	private static final Color TEXT_COLOR = new Color(0xFF, 0xFF, 0x00); // native veng text is yellow
 
 	private final PvpEnhancerConfig config;
 	private final List<Popup> popups = new ArrayList<>();

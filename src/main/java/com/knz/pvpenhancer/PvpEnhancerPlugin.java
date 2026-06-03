@@ -921,7 +921,7 @@ public class PvpEnhancerPlugin extends Plugin
 			return;
 		}
 		Actor actor = event.getActor();
-		if (!(actor instanceof Player) || !isInDebuffScope(actor))
+		if (!(actor instanceof Player))
 		{
 			return;
 		}
@@ -931,18 +931,23 @@ public class PvpEnhancerPlugin extends Plugin
 			return;
 		}
 		SpotanimDebuffs.Entry entry = SpotanimDebuffs.lookup(spotanim);
-		if (entry != null)
-		{
-			// The debuff is attached to whoever shows the impact graphic (the sufferer). If this
-			// logs the CASTER, the seeded id is a cast/projectile graphic, not the impact one —
-			// harvest the correct impact id from the "Unknown spot-anim" lines below.
-			log.debug("Debuff {} (spot-anim {}) applied to {}", entry.debuff, spotanim, actor.getName());
-			debuffTracker.apply(actor, entry.debuff, entry.durationTicks);
-		}
-		else
+		if (entry == null)
 		{
 			log.debug("Unknown spot-anim {} on {}", spotanim, actor.getName());
+			return;
 		}
+
+		// The seeded ids are CAST graphics, which play on the caster — so the debuff lands on
+		// whoever the caster is targeting (the sufferer), not on the caster. Fall back to the
+		// bearer when there is no interaction target.
+		Actor sufferer = actor.getInteracting() != null ? actor.getInteracting() : actor;
+		if (!isInDebuffScope(sufferer))
+		{
+			return;
+		}
+		log.debug("Debuff {} (spot-anim {}) by {} -> {}", entry.debuff, spotanim,
+			actor.getName(), sufferer.getName());
+		debuffTracker.apply(sufferer, entry.debuff, entry.durationTicks);
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────────
