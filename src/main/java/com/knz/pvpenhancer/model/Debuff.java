@@ -7,17 +7,19 @@ import java.awt.Color;
  */
 public enum Debuff
 {
-	FREEZE("Freeze", new Color(0x66, 0xCC, 0xFF)),
-	SNARE("Bind", new Color(0x99, 0xDD, 0x44)),
-	TELEBLOCK("TB", new Color(0xFF, 0x99, 0x33));
+	FREEZE("Freeze", new Color(0x66, 0xCC, 0xFF), "Ice_Barrage.png"),
+	SNARE("Bind", new Color(0x99, 0xDD, 0x44), "Entangle.png"),
+	TELEBLOCK("TB", new Color(0xFF, 0x99, 0x33), "Tele_Block.png");
 
 	private final String label;
 	private final Color color;
+	private final String iconFile;
 
-	Debuff(String label, Color color)
+	Debuff(String label, Color color, String iconFile)
 	{
 		this.label = label;
 		this.color = color;
+		this.iconFile = iconFile;
 	}
 
 	public String getLabel()
@@ -28,5 +30,11 @@ public enum Debuff
 	public Color getColor()
 	{
 		return color;
+	}
+
+	/** OSRS-wiki spell-icon file under {@code /com/knz/pvpenhancer/icons/}. */
+	public String getIconFile()
+	{
+		return iconFile;
 	}
 }

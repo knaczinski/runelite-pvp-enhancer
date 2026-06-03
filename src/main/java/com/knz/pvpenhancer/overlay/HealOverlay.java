@@ -29,6 +29,7 @@ public class HealOverlay extends Overlay
 {
 	private static final long DURATION_MS = 1500L;
 	private static final int RISE_PX = 28;
+	private static final int HBAR_RIGHT_OFFSET = 20; // px right of the health bar
 	private static final Color HEAL_COLOR = new Color(0x33, 0xDD, 0x33);
 	private static final Font HEAL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 14);
 
@@ -91,8 +92,8 @@ public class HealOverlay extends Overlay
 				continue;
 			}
 
-			// Raise above the head + skull/overhead-prayer icons so they don't cover the number.
-			Point base = popup.actor.getCanvasTextLocation(graphics, popup.text, popup.actor.getLogicalHeight() + 50);
+			// Anchor to the right of the health bar (clear of the skull / overhead icons).
+			Point base = popup.actor.getCanvasTextLocation(graphics, "", popup.actor.getLogicalHeight());
 			if (base == null)
 			{
 				continue;
@@ -100,12 +101,13 @@ public class HealOverlay extends Overlay
 
 			float progress = (float) elapsed / DURATION_MS;
 			int alpha = (int) ((1f - progress) * 255);
+			int x = base.getX() + HBAR_RIGHT_OFFSET;
 			int y = base.getY() - (int) (progress * RISE_PX);
 
 			graphics.setColor(new Color(0, 0, 0, Math.min(alpha, 200)));
-			graphics.drawString(popup.text, base.getX() + 1, y + 1);
+			graphics.drawString(popup.text, x + 1, y + 1);
 			graphics.setColor(new Color(HEAL_COLOR.getRed(), HEAL_COLOR.getGreen(), HEAL_COLOR.getBlue(), alpha));
-			graphics.drawString(popup.text, base.getX(), y);
+			graphics.drawString(popup.text, x, y);
 		}
 
 		return null;
