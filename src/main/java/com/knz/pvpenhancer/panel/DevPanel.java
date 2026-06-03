@@ -49,6 +49,15 @@ public class DevPanel extends PluginPanel
 		hint.setBorder(new EmptyBorder(0, 0, 8, 0));
 		container.add(hint);
 
+		JButton clearButton = new JButton("Clear debuffs & overlays");
+		clearButton.setFont(LINE_FONT);
+		clearButton.setFocusable(false);
+		clearButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+		clearButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+		clearButton.addActionListener(e -> demoService.clearAll());
+		container.add(clearButton);
+		container.add(javax.swing.Box.createVerticalStrut(8));
+
 		String currentGroup = null;
 		for (DemoScenario scenario : demoService.getScenarios())
 		{

@@ -7,6 +7,7 @@ import com.knz.pvpenhancer.model.Debuff;
 import com.knz.pvpenhancer.overlay.ComboFeedbackOverlay;
 import com.knz.pvpenhancer.overlay.HealOverlay;
 import com.knz.pvpenhancer.overlay.HitPredictOverlay;
+import com.knz.pvpenhancer.overlay.VengeanceTextOverlay;
 import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
@@ -60,13 +61,14 @@ public class OverlayDemoService
 	private final HitPredictOverlay hitPredictOverlay;
 	private final DebuffTrackerService debuffTracker;
 	private final ComboFeedbackOverlay comboFeedbackOverlay;
+	private final VengeanceTextOverlay vengeanceTextOverlay;
 
 	private final List<DemoScenario> scenarios = new ArrayList<>();
 
 	@Inject
 	OverlayDemoService(Client client, ClientThread clientThread, HealOverlay healOverlay,
 		HitPredictOverlay hitPredictOverlay, DebuffTrackerService debuffTracker,
-		ComboFeedbackOverlay comboFeedbackOverlay)
+		ComboFeedbackOverlay comboFeedbackOverlay, VengeanceTextOverlay vengeanceTextOverlay)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
@@ -74,6 +76,7 @@ public class OverlayDemoService
 		this.hitPredictOverlay = hitPredictOverlay;
 		this.debuffTracker = debuffTracker;
 		this.comboFeedbackOverlay = comboFeedbackOverlay;
+		this.vengeanceTextOverlay = vengeanceTextOverlay;
 		build();
 	}
 
@@ -105,6 +108,23 @@ public class OverlayDemoService
 	public List<DemoScenario> getScenarios()
 	{
 		return scenarios;
+	}
+
+	/**
+	 * Clears all transient debuff timers and floating overlays (heal, hit predict, combo, veng).
+	 * Skull resize is managed per game tick, so it is intentionally not cleared here. Runs on the
+	 * client thread.
+	 */
+	public void clearAll()
+	{
+		clientThread.invoke(() ->
+		{
+			debuffTracker.clear();
+			healOverlay.clear();
+			hitPredictOverlay.clear();
+			comboFeedbackOverlay.clear();
+			vengeanceTextOverlay.clear();
+		});
 	}
 
 	/** Fires a scenario on the client thread (no-op if not logged in). */

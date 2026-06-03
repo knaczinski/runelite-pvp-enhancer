@@ -55,6 +55,12 @@ public class ComboFeedbackOverlay extends Overlay
 		this.shownAtMs = System.currentTimeMillis();
 	}
 
+	/** Removes the current combo popup immediately. */
+	public void clear()
+	{
+		this.current = null;
+	}
+
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
