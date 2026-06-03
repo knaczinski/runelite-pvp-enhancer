@@ -322,6 +322,9 @@ public class PvpEnhancerPlugin extends Plugin
 		}
 		else // ANY_FIGHT
 		{
+			// PvP-only: a player counts as fighting only when interacting with ANOTHER PLAYER.
+			// Counting any interaction (PvE, following) made bystanders who teleport in stay
+			// visible — they were "involved" just by interacting with an NPC/each other.
 			for (Player p : client.getTopLevelWorldView().players())
 			{
 				if (p == null)
@@ -329,7 +332,7 @@ public class PvpEnhancerPlugin extends Plugin
 					continue;
 				}
 				Actor target = p.getInteracting();
-				if (target != null)
+				if (target instanceof Player)
 				{
 					focusInvolvedUntil.put(p, until);
 					focusInvolvedUntil.put(target, until);

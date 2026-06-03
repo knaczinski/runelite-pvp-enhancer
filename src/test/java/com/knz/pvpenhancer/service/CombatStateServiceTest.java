@@ -28,13 +28,13 @@ public class CombatStateServiceTest
 	}
 
 	@Test
-	public void interactionKeepsInCombatWithoutAnyHit()
+	public void interactionAloneDoesNotEnterCombat()
 	{
+		// Clicking/interacting without any actual hit, attack, or XP must NOT count as combat —
+		// e.g. clicking Attack on an un-attackable player in a safe zone (false heartbeat fix).
 		CombatStateService service = new CombatStateService();
 		service.setEngaged(true, 100);
-		assertTrue(service.isInCombat(999999));
-
-		service.setEngaged(false, 101);
+		assertFalse(service.isInCombat(100));
 		assertFalse(service.isInCombat(999999));
 	}
 

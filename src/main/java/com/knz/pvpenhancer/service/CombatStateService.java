@@ -71,15 +71,16 @@ public class CombatStateService
 
 	/**
 	 * @param currentTick the current server tick ({@code client.getTickCount()})
-	 * @return true if in combat: interacting with a player, or recent combat activity within
-	 * the window.
+	 * @return true if in combat, i.e. real combat activity (an attack thrown, or a hit/XP
+	 * dealt or taken) occurred within the window.
+	 *
+	 * <p>Merely interacting with a player is intentionally NOT enough: clicking "Attack" on an
+	 * un-attackable player in a safe zone sets {@code getInteracting()} even though the attack
+	 * is rejected, which used to false-trigger the heartbeat. Combat now starts only when
+	 * something actually happens.
 	 */
 	public boolean isInCombat(int currentTick)
 	{
-		if (interactingWithPlayer)
-		{
-			return true;
-		}
 		if (lastActivityTick == Integer.MIN_VALUE)
 		{
 			return false;
