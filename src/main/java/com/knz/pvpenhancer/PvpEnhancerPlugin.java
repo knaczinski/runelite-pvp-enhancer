@@ -933,6 +933,10 @@ public class PvpEnhancerPlugin extends Plugin
 		SpotanimDebuffs.Entry entry = SpotanimDebuffs.lookup(spotanim);
 		if (entry != null)
 		{
+			// The debuff is attached to whoever shows the impact graphic (the sufferer). If this
+			// logs the CASTER, the seeded id is a cast/projectile graphic, not the impact one —
+			// harvest the correct impact id from the "Unknown spot-anim" lines below.
+			log.debug("Debuff {} (spot-anim {}) applied to {}", entry.debuff, spotanim, actor.getName());
 			debuffTracker.apply(actor, entry.debuff, entry.durationTicks);
 		}
 		else

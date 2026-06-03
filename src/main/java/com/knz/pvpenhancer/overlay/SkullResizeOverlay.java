@@ -25,7 +25,8 @@ import net.runelite.client.util.ImageUtil;
 @Singleton
 public class SkullResizeOverlay extends Overlay
 {
-	private static final int BASE_SIZE = 16;
+	/** Native on-screen size of the regular skull (the wiki sprite is 25×25), so 100% ≈ native. */
+	private static final int BASE_SIZE = 25;
 
 	private final PvpEnhancerConfig config;
 	private final BufferedImage skull;
@@ -67,12 +68,14 @@ public class SkullResizeOverlay extends Overlay
 			{
 				continue;
 			}
-			Point anchor = p.getCanvasTextLocation(graphics, "", p.getLogicalHeight() + 24);
+			// Sit where the native skull sits: just left of the overhead-prayer icon, above the
+			// head and below the health bar, so the health bar / prayer icon don't overlap it.
+			Point anchor = p.getCanvasTextLocation(graphics, "", p.getLogicalHeight() + 10);
 			if (anchor == null)
 			{
 				continue;
 			}
-			graphics.drawImage(skull, anchor.getX() - size / 2, anchor.getY() - size / 2, size, size, null);
+			graphics.drawImage(skull, anchor.getX() - size - 2, anchor.getY() - size / 2, size, size, null);
 		}
 		return null;
 	}
