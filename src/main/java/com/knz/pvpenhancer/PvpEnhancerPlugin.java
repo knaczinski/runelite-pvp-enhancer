@@ -36,6 +36,7 @@ import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
 import com.knz.pvpenhancer.overlay.HitPredictOverlay;
 import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
 import com.knz.pvpenhancer.overlay.PrayerHighlightOverlay;
+import com.knz.pvpenhancer.overlay.SkullResizeOverlay;
 import com.knz.pvpenhancer.overlay.VengeanceTextOverlay;
 import com.knz.pvpenhancer.panel.DevPanel;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
@@ -47,9 +48,11 @@ import com.knz.pvpenhancer.service.ComboDetectorService;
 import com.knz.pvpenhancer.service.DebuffTrackerService;
 import com.knz.pvpenhancer.service.HitSummaryService;
 import com.knz.pvpenhancer.service.TickHistoryService;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -69,6 +72,7 @@ import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
+import net.runelite.api.SkullIcon;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
@@ -142,6 +146,7 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private DebuffTimerOverlay debuffTimerOverlay;
 	@Inject private PrayerHighlightOverlay prayerHighlightOverlay;
 	@Inject private VengeanceTextOverlay vengeanceTextOverlay;
+	@Inject private SkullResizeOverlay skullResizeOverlay;
 
 	@Inject private DebuffTrackerService debuffTracker;
 	@Inject private CombatFocusService combatFocus;
@@ -207,6 +212,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Local player's special-attack energy last tick (-1 = not baselined), for spec-combo detection. */
 	private int previousSpecialEnergy = -1;
 
+	/** Players whose native skull we hid (setSkullIcon(-1)) → their original skull id, for restore. */
+	private final Map<Player, Integer> hiddenSkulls = new HashMap<>();
+
 	// ─── Lifecycle ───────────────────────────────────────────────────────
 
 	@Provides
@@ -228,6 +236,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(debuffTimerOverlay);
 		overlayManager.add(prayerHighlightOverlay);
 		overlayManager.add(vengeanceTextOverlay);
+		overlayManager.add(skullResizeOverlay);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 		panel.setOnOpenDevPanel(() ->
@@ -268,6 +277,8 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(debuffTimerOverlay);
 		overlayManager.remove(prayerHighlightOverlay);
 		overlayManager.remove(vengeanceTextOverlay);
+		overlayManager.remove(skullResizeOverlay);
+		restoreAllSkulls();
 		unregisterFocusListener();
 		clientToolbar.removeNavigation(navButton);
 		if (devNavAdded)
@@ -289,6 +300,8 @@ public class PvpEnhancerPlugin extends Plugin
 		hitPredictOverlay.clear();
 		debuffTracker.clear();
 		vengeanceTextOverlay.clear();
+		restoreAllSkulls();
+		skullResizeOverlay.clear();
 		combatFocus.clear();
 		focusInvolvedUntil.clear();
 		currentOpponents.clear();
@@ -498,6 +511,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 		// 4b2. Vengeance overhead text resize (replaces the native text with a scaled copy)
 		detectVengeance(local);
+
+		// 4b3. PK skull resize (hides the native skull, redraws scaled)
+		detectSkullResize(local);
 
 		// 4c. Combat focus — hide non-involved entities
 		detectCombatFocus(tick);
@@ -1001,6 +1017,70 @@ public class PvpEnhancerPlugin extends Plugin
 			vengeanceTextOverlay.add(p, text);
 			p.setOverheadText(""); // hide the native text; we draw a scaled copy
 		}
+	}
+
+	/**
+	 * Resizes the regular PK skull: hides the native skull on in-scope players and feeds them to
+	 * {@link SkullResizeOverlay} to be re-drawn scaled. Players that drop out of scope (or when the
+	 * feature is off) have their original skull restored. Only {@link SkullIcon#SKULL} is handled.
+	 *
+	 * <p>Hacky by nature (we mutate other players' client-side skull state); if a skull naturally
+	 * expired while hidden we cannot tell, so a stale skull could briefly show — acceptable in
+	 * active PvP where skulls persist far longer than a fight.
+	 */
+	private void detectSkullResize(Player local)
+	{
+		OverheadScope scope = config.skullScope();
+		List<Player> draw = new ArrayList<>();
+		if (scope != OverheadScope.OFF)
+		{
+			for (Player p : client.getTopLevelWorldView().players())
+			{
+				if (p == null || !isInOverheadScope(p, local, scope))
+				{
+					continue;
+				}
+				int icon = p.getSkullIcon();
+				if (icon == SkullIcon.SKULL)
+				{
+					hiddenSkulls.putIfAbsent(p, icon);
+					p.setSkullIcon(SkullIcon.NONE);
+					draw.add(p);
+				}
+				else if (icon == SkullIcon.NONE && hiddenSkulls.containsKey(p))
+				{
+					draw.add(p); // we already hid it; keep drawing while in scope
+				}
+			}
+		}
+
+		// Restore any previously-hidden player we are no longer drawing.
+		for (Iterator<Map.Entry<Player, Integer>> it = hiddenSkulls.entrySet().iterator(); it.hasNext(); )
+		{
+			Map.Entry<Player, Integer> e = it.next();
+			if (!draw.contains(e.getKey()))
+			{
+				if (e.getKey() != null)
+				{
+					e.getKey().setSkullIcon(e.getValue());
+				}
+				it.remove();
+			}
+		}
+		skullResizeOverlay.setTargets(draw);
+	}
+
+	/** Restores every skull we hid back to its original id. */
+	private void restoreAllSkulls()
+	{
+		for (Map.Entry<Player, Integer> e : hiddenSkulls.entrySet())
+		{
+			if (e.getKey() != null)
+			{
+				e.getKey().setSkullIcon(e.getValue());
+			}
+		}
+		hiddenSkulls.clear();
 	}
 
 	/** Scope test for overhead-element features: self is in every non-OFF scope. */

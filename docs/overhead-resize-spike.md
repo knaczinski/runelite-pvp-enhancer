@@ -11,7 +11,7 @@ element, and only allows hiding/replacing some of them. Verified against `runeli
 | Element | Relevant API | Can hide native? | Can resize? | Verdict |
 |---|---|---|---|---|
 | Vengeance text | `Actor.getOverheadText()` / `setOverheadText(String)` (+ `getOverheadCycle`) | Yes — clear the text | Only by drawing our own | ✅ **Feasible** (clear native + draw scaled copy) |
-| PK skull | `Player.getSkullIcon()` / `setSkullIcon(int)` | Yes — `setSkullIcon(-1)` | Only by drawing our own | ⚠️ **Feasible but hacky** — needs a bundled skull sprite + mutating *other players'* client-side state and restoring it; side-effect risk |
+| PK skull | `Player.getSkullIcon()` / `setSkullIcon(int)` | Yes — `setSkullIcon(-1)` | Only by drawing our own | ✅ **Implemented (S013)** — hacky but works: hide native + redraw scaled, restore on scope-exit |
 | Overhead prayer icon | `Player.getOverheadIcon()` → `HeadIcon` (**read-only**) | No setter | No | ❌ **Not feasible** |
 | Overhead health bar | `Actor.getHealthRatio()` / `getHealthScale()` (**read-only**) | No render hook (`RenderableDrawListener` is for models, not bars) | No | ❌ **Not feasible** |
 
@@ -24,9 +24,12 @@ Renderable = model, used by Entity Hider). It cannot target a single overhead wi
   overhead text, clears it, and re-draws a scaled copy with its own fade. Config:
   `vengTextScope` (Off / Self / Self+opponents / Everyone) + `vengTextSize` (20–400 %, 100 % ≈
   native). Scope uses the shared `OverheadScope` enum.
-- **Deferred (feasible but hacky):** skull resize. Would require a skull sprite asset and
-  `setSkullIcon(-1)` on other players with careful restore. Revisit only if the user wants it
-  despite the side-effect risk.
+- **Implemented (S013, after the spike):** PK skull resize (`SkullResizeOverlay`). Hides the
+  native regular skull via `setSkullIcon(-1)` on in-scope players, redraws a bundled skull sprite
+  scaled, and restores the original id when a player leaves scope / the feature is off / on
+  shutdown. Only `SkullIcon.SKULL` is handled (other variants left native). Config `skullScope` +
+  `skullSize`. Known limitation: a skull that expires while hidden cannot be detected, so a stale
+  skull could briefly show (skulls outlast fights, so this is rare).
 - **Dropped (API-blocked):** overhead prayer-icon and health-bar resize. No API to hide or
   scale them; would require client-internal access we should not take.
 

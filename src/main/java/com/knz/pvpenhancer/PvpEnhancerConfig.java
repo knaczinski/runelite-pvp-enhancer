@@ -132,6 +132,18 @@ public interface PvpEnhancerConfig extends Config
 		section = pvpSection, position = 7)
 	default int vengTextSize() { return 100; }
 
+	@ConfigItem(keyName = "skullScope", name = "Resize PK skull",
+		description = "Re-render the PK skull at a custom size (the native size is not resizable, "
+			+ "so the native skull is hidden and replaced). Only the regular skull is handled.",
+		section = pvpSection, position = 8)
+	default OverheadScope skullScope() { return OverheadScope.OFF; }
+
+	@Range(min = 20, max = 400)
+	@ConfigItem(keyName = "skullSize", name = "PK skull size (%)",
+		description = "Size of the re-rendered PK skull. 100% ≈ the native size.",
+		section = pvpSection, position = 9)
+	default int skullSize() { return 100; }
+
 	// ─── Developer ────────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "developerMode", name = "Developer mode",

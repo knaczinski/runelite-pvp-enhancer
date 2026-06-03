@@ -19,6 +19,8 @@ by the matching config. Mocks fire on the **local player** so the look can be ch
 | `HitPredictOverlay` | Orange predicted outgoing damage near the target, before the projectile lands | `addPrediction(actor, dmg)` from the Hitpoints-XP drop | `hitPrediction` | **Predict 24**, **Predict 40** |
 | `DebuffTimerOverlay` | Freeze/snare/teleblock icon + seconds, stacked right of the health bar under the heal row | `DebuffTrackerService.apply` on spot-anim match; counts down each tick | `debuffTimers` (Off / Self+opponents / All) | **Freeze (Barrage 33t)**, **Bind (16t)**, **Teleblock (500t)** |
 | `PrayerHighlightOverlay` | Boxes the protection prayer countering the target's weapon style | plugin pushes the target's `AttackStyle` via `setTargetStyle` | `prayerHighlight` | — (needs the prayer tab open + a target) |
+| `VengeanceTextOverlay` | Re-renders the "Vengeance!" overhead at a configurable size (native cleared) | plugin captures + clears native overhead text, feeds `add` | `vengTextScope` / `vengTextSize` | — (needs a veng cast) |
+| `SkullResizeOverlay` | Re-renders the PK skull at a configurable size (native hidden via `setSkullIcon(-1)`) | plugin feeds in-scope skulled players via `setTargets` | `skullScope` / `skullSize` | — (needs a skulled player) |
 
 ## Sidebar panels
 
