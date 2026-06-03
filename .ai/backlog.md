@@ -52,3 +52,18 @@ All Phase 4 dev items shipped (S012): **B018** combat focus, **B019** hit predic
 **B020** freeze/TB timers, **B021** prayer highlighter. Full records in `backlog-history.md`.
 Remaining work is **live validation** (HT-010..HT-014) + harvesting seed data (unknown
 spot-anim ids → B020 map, unknown weapon ids → B021 map, unmapped attack anims → B008).
+
+---
+
+## ▶ PHASE 5 — Overhead resize + UX (S013)
+
+Done (history, S013): combat-trigger/focus bugfixes, not-attacking opponent flash, combo
+rework, heal/debuff side-of-HP-bar + icons, dev panel + mocks, Vengeance + PK skull resize,
+overhead flicker fix, scope-enum standardization, config reorg. See `backlog-history.md`.
+
+### B029 — PID indicator
+**Effort:** ? — **OPEN, decision-gated.** Spike done (`docs/pid-indicator-spike.md`): a reliable
+PID indicator is NOT feasible via the API (player index ≠ PID; events dispatch in index order,
+not PID order). Only a low-confidence estimate from contested same-tick outcomes is possible,
+resetting on the server's ~100–150-tick reshuffle. **Decision needed:** drop, or build an
+explicitly-fuzzy experimental "PID guess". No naive index-compare (confidently wrong).

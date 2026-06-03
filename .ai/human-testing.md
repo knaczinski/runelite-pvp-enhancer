@@ -156,6 +156,15 @@ Bring (or have a partner bring) ice spells / bind / teleblock.
 3. Now actually trade hits in a PvP area → confirm the heartbeat DOES appear.
 **PASS CRITERIA:** combat (heartbeat) triggers only on real activity, not on a rejected attack click.
 
+### HT-022 — Scope modes + config reorg + skull repositioning (S013)
+**SCENARIO SETUP:** plugin enabled; second player + a third (uninvolved) player if possible.
+**STEPS / OBSERVE:**
+1. Open config → confirm 4 sections: **Tracking, Combat assist, Overhead displays, Developer**, names readable.
+2. **Freeze/TB timers** + **Healing**: cycle Only me / Only opponents / Self+opponents / Everyone → confirm the timer/heal shows only for the right players.
+3. **Vengeance / PK skull resize**: confirm the extra **Everyone but self + opponents** option shows them only on third parties (not you, not your opponent).
+4. **Skull position**: in combat (HP bar showing) the resized skull sits ABOVE the HP/prayer, centred; out of combat it sits over the head. No left misalignment, no overlap by the HP bar.
+**PASS CRITERIA:** each scope filters correctly; skull centred + correctly layered above HP/prayer when active.
+
 ---
 
 ## RESULT TEMPLATE

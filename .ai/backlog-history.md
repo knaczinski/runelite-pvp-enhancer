@@ -5,6 +5,19 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S013 (cont.) — scope standardization + config reorg + skull/overhead polish
+
+**Done S013.** Scope enums reworked with `matches(isSelf,isOpponent)`: DebuffScope +
+HealDisplayMode = Off/Everyone/Only me/Only opponents/Self+opponents; OverheadScope adds
+"Everyone but self + opponents". Heal/debuff/overhead scope checks unified through `matches`;
+remote-heal detection is per-player opponent-aware (kept 4 separate enums per user). PK skull
+re-centred and raised above the HP bar / overhead-prayer icon when active (over the head
+otherwise). Config panel reorganised into 4 themed sections (Tracking, Combat assist, Overhead
+displays, Developer) with clearer names. Overhead flicker fixed earlier this session by
+re-suppressing native skull/veng every ClientTick. PID indicator spiked
+(`docs/pid-indicator-spike.md`) → not feasible via API, deferred (B029). Dev panel gained a
+"Clear debuffs & overlays" button.
+
 ## S013 — bug fixes, combo redesign, overlay moves, dev panel, resize spike
 
 Design resolved via /grill-me (8 decisions). User batch on top of live-validation feedback.
