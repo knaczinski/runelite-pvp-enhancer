@@ -5,6 +5,18 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S013 (cont.) — Ghostify (replaces combat focus)
+
+**Done S013.** Combat focus reworked into a dedicated **Ghostify** config section with per-category
+control. For Self / Opponents / Group (CC+FC) / Friends: WHEN = Never/Always/In combat/Not in
+combat; Others adds "Can't attack here" (combat level outside your range at the current Wilderness
+level). Each category also has an outline COLOUR (alpha). Priority on overlap: opponents > group >
+friends > others. `GhostifyService` publishes a player→colour snapshot per tick; the
+RenderableDrawListener skips those models and `GhostifyOutlineOverlay` draws each coloured contour.
+Players only (NPCs dropped). Removed `CombatFocusMode`/`CombatFocusService`/`FocusOutlineOverlay` +
+`combatFocusMode`/`combatFocusTimeout` + the involvement persistence map. Self-ghost needs Entity
+Hider's "Hide Local Player" to hide the own model. +GhostifyWhenTest, +GhostifyServiceTest. HT-024.
+
 ## S013 (cont.) — combat focus = hide + outline
 
 **Done S013.** Combat focus no longer fully hides non-involved entities: the

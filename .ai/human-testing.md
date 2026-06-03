@@ -173,6 +173,16 @@ Bring (or have a partner bring) ice spells / bind / teleblock.
 3. **PID live (1v1):** in a sustained 1v1 trading hits, confirm the indicator activates only in 1v1 (vanishes in multi/no fight) and the guess shifts as contests accumulate. **Report whether the guess seems meaningful or constant** (constant ⇒ contested-hitsplat order is an index artifact, not PID — feeds the B029 follow-up).
 **PASS CRITERIA:** skull layered above HP/prayer; PID indicator + swap show via mocks; live indicator activates only for 1v1. (Live signal quality is research, not pass/fail.)
 
+### HT-024 — Ghostify (per-category when + colour) (S013)
+**SCENARIO SETUP:** Config → Ghostify. Bring/observe: an opponent, a CC or FC member, a friend, a random player; ideally test in the Wilderness too.
+**STEPS / OBSERVE:**
+1. Set **Others — when = Always** → confirm random players become a grey outline only; set your distinct colours per category and confirm each category's outline matches.
+2. Set **Opponents — when = Not in combat** → confirm an opponent is solid while fighting you and becomes an outline when the fight lapses.
+3. **Group/Friends:** with a CC/FC member and a friend nearby, set their when to Always → confirm they outline in their colours; confirm priority (an opponent who's also a friend uses the opponent colour/rule).
+4. **Others = Can't attack here:** in the Wilderness, confirm players outside your attackable combat-level range become outlines and attackable ones stay solid.
+5. **Self:** set Self = Always + enable Entity Hider "Hide Local Player" → confirm your own model is an outline.
+**PASS CRITERIA:** each category ghostifies per its when-rule in its colour; priority correct; Wilderness range rule plausible; self works with Entity Hider.
+
 ---
 
 ## RESULT TEMPLATE
