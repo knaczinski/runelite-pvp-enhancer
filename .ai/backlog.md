@@ -61,9 +61,11 @@ Done (history, S013): combat-trigger/focus bugfixes, not-attacking opponent flas
 rework, heal/debuff side-of-HP-bar + icons, dev panel + mocks, Vengeance + PK skull resize,
 overhead flicker fix, scope-enum standardization, config reorg. See `backlog-history.md`.
 
-### B029 — PID indicator
-**Effort:** ? — **OPEN, decision-gated.** Spike done (`docs/pid-indicator-spike.md`): a reliable
-PID indicator is NOT feasible via the API (player index ≠ PID; events dispatch in index order,
-not PID order). Only a low-confidence estimate from contested same-tick outcomes is possible,
-resetting on the server's ~100–150-tick reshuffle. **Decision needed:** drop, or build an
-explicitly-fuzzy experimental "PID guess". No naive index-compare (confidently wrong).
+### B029 — PID indicator (experimental) — DONE S013
+Built as an **experimental** "PID guess" + swap warning per user decision. `PidGuessService`
+accumulates a noisy vote from contested same-tick hitsplats; `PidIndicatorOverlay` shows
+you/them/? (labelled exp) for a clean 1v1 the local player is in; swap warning on lead flip.
+Dev-panel mocks included. Honest about being best-effort (PID not API-exposed). Full research +
+verdict in `docs/pid-indicator-spike.md`. Live validation: HT-023. **OPEN follow-up:** confirm
+whether contested-hitsplat order actually tracks PID (vs index artifact) in live 1v1s — if it's a
+pure index artifact, downgrade/remove the live signal and keep only the mock.

@@ -165,6 +165,14 @@ Bring (or have a partner bring) ice spells / bind / teleblock.
 4. **Skull position**: in combat (HP bar showing) the resized skull sits ABOVE the HP/prayer, centred; out of combat it sits over the head. No left misalignment, no overlap by the HP bar.
 **PASS CRITERIA:** each scope filters correctly; skull centred + correctly layered above HP/prayer when active.
 
+### HT-023 — Experimental PID guess + skull z-order (S013)
+**SCENARIO SETUP:** `PID guess (experimental)` ON; a 1v1 with one opponent. Also have a skulled player.
+**STEPS / OBSERVE:**
+1. **Skull z-order:** with the resized PK skull on, confirm in combat (HP bar + overhead prayer showing) the skull now paints OVER them (not hidden behind), centred above the head.
+2. **PID dev mocks:** dev panel → fire "PID: you", "PID: them", "Swap warning"; confirm the top-centre `PID: YOU/THEM (exp)` indicator and the `PID SWAP?` flash appear.
+3. **PID live (1v1):** in a sustained 1v1 trading hits, confirm the indicator activates only in 1v1 (vanishes in multi/no fight) and the guess shifts as contests accumulate. **Report whether the guess seems meaningful or constant** (constant ⇒ contested-hitsplat order is an index artifact, not PID — feeds the B029 follow-up).
+**PASS CRITERIA:** skull layered above HP/prayer; PID indicator + swap show via mocks; live indicator activates only for 1v1. (Live signal quality is research, not pass/fail.)
+
 ---
 
 ## RESULT TEMPLATE

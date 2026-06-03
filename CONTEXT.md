@@ -24,7 +24,12 @@ S013 (design via /grill-me, then autonomous) shipped a bug+UX+feature batch:
 - B027 overhead-resize spike → only Vengeance text + skull feasible (VengeanceTextOverlay +
   OverheadScope); prayer-icon + health-bar API-blocked (read-only).
 - B028 PK skull resize (SkullResizeOverlay): hide native via setSkullIcon(-1), redraw scaled,
-  restore on scope-exit; regular skull only. skullScope + skullSize config.
+  restore on scope-exit; regular skull only. skullScope + skullSize config. Layer ABOVE_WIDGETS
+  so it paints over native HP bar / overhead-prayer; centred; raised when HP/prayer active.
+- B029 PID guess (EXPERIMENTAL): PidGuessService (contested-hitsplat vote) + PidIndicatorOverlay
+  (you/them/?, swap warning), 1v1-only, config pidIndicator, dev mocks. PID not API-exposed —
+  honest best-effort; HT-023 to check the live signal isn't an index artifact. Spike doc updated.
+  Scope enums standardized with matches(isSelf,isOpponent); config reorganized into 4 sections.
 HT results folded: HT-002/003/004/011 PASSED; HT-010 partial→B022 fix re-queued; HT-015..020 added.
 Build green, 69 tests.
 NEXT: live validation (HT-010 re-test, HT-012/013/014, HT-015..020). Harvest seeds in fights

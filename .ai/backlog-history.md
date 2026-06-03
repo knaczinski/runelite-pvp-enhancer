@@ -5,6 +5,15 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S013 (cont.) — experimental PID guess + skull z-order
+
+**Done S013.** B029 built as experimental: `PidGuessService` (noisy contested-hitsplat vote) +
+`PidIndicatorOverlay` (you/them/?, swap warning) for a 1v1 the local player is in; config
+`pidIndicator`; dev-panel mocks; +PidGuessServiceTest. Research catalogue of PID-revealing
+moments in `docs/pid-indicator-spike.md`. Skull z-order fixed by moving `SkullResizeOverlay` to
+`ABOVE_WIDGETS` (was painted under the native HP bar / overhead-prayer icons). Open follow-up:
+verify the live contested-hitsplat signal isn't a pure index artifact (HT-023).
+
 ## S013 (cont.) — scope standardization + config reorg + skull/overhead polish
 
 **Done S013.** Scope enums reworked with `matches(isSelf,isOpponent)`: DebuffScope +
