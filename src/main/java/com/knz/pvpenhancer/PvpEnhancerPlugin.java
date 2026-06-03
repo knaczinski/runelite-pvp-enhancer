@@ -32,6 +32,7 @@ import com.knz.pvpenhancer.model.WeaponStyleMap;
 import com.knz.pvpenhancer.model.XpDamage;
 import com.knz.pvpenhancer.overlay.ComboFeedbackOverlay;
 import com.knz.pvpenhancer.overlay.DebuffTimerOverlay;
+import com.knz.pvpenhancer.overlay.FocusOutlineOverlay;
 import com.knz.pvpenhancer.overlay.HealOverlay;
 import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
 import com.knz.pvpenhancer.overlay.HitPredictOverlay;
@@ -155,6 +156,7 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private SkullResizeOverlay skullResizeOverlay;
 	@Inject private PidIndicatorOverlay pidIndicatorOverlay;
 	@Inject private PidGuessService pidGuess;
+	@Inject private FocusOutlineOverlay focusOutlineOverlay;
 
 	@Inject private DebuffTrackerService debuffTracker;
 	@Inject private CombatFocusService combatFocus;
@@ -257,6 +259,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(vengeanceTextOverlay);
 		overlayManager.add(skullResizeOverlay);
 		overlayManager.add(pidIndicatorOverlay);
+		overlayManager.add(focusOutlineOverlay);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 		panel.setOnOpenDevPanel(() ->
@@ -299,6 +302,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(vengeanceTextOverlay);
 		overlayManager.remove(skullResizeOverlay);
 		overlayManager.remove(pidIndicatorOverlay);
+		overlayManager.remove(focusOutlineOverlay);
 		restoreAllSkulls();
 		unregisterFocusListener();
 		clientToolbar.removeNavigation(navButton);

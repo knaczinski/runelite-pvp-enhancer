@@ -77,11 +77,11 @@ public interface PvpEnhancerConfig extends Config
 		section = combatSection, position = 3)
 	default boolean prayerHighlight() { return false; }
 
-	@ConfigItem(keyName = "combatFocusMode", name = "Combat focus (hide others)",
-		description = "Hide players + NPCs NOT involved in the fight, to focus on the "
-			+ "participants. RuneLite can't dim entities, only hide them. Only you fight = while you "
-			+ "fight; Anyone fights = while anyone nearby fights. You stay visible. (Hides "
-			+ "non-involved players too — a third party can be invisible until they engage.)",
+	@ConfigItem(keyName = "combatFocusMode", name = "Combat focus (outline others)",
+		description = "Reduce non-involved players + NPCs to just a faint outline (hidden model + "
+			+ "ModelOutlineRenderer contour), to focus on the participants. Only you fight = while you "
+			+ "fight; Anyone fights = while anyone nearby fights. You stay fully visible. (A third "
+			+ "party shows only as an outline until they engage.)",
 		section = combatSection, position = 4)
 	default CombatFocusMode combatFocusMode() { return CombatFocusMode.OFF; }
 

@@ -50,6 +50,19 @@ public class CombatFocusService
 		return true;
 	}
 
+	/** @return true while focus is hiding non-involved entities (the outline overlay gates on this). */
+	public boolean isActive()
+	{
+		return active;
+	}
+
+	/** @return true if this entity is currently hidden by focus (a non-involved Player/NPC). */
+	public boolean isHidden(Renderable renderable)
+	{
+		return active && (renderable instanceof Player || renderable instanceof NPC)
+			&& !involved.contains(renderable);
+	}
+
 	public void clear()
 	{
 		active = false;
