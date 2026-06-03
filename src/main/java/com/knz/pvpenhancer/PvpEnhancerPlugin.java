@@ -900,7 +900,8 @@ public class PvpEnhancerPlugin extends Plugin
 				}
 				String name = Text.removeTags(player.getName());
 				Integer prev = previousHealthRatio.get(name);
-				if (prev != null && ratio > prev)
+				// Only show this remote player's heal if they are in scope (opponent vs everyone).
+				if (prev != null && ratio > prev && mode.matches(false, currentOpponents.contains(name)))
 				{
 					int estimate = HealMath.estimateRemoteHeal(prev, ratio, scale, ASSUMED_MAX_HP);
 					if (estimate >= 1)
@@ -1174,22 +1175,13 @@ public class PvpEnhancerPlugin extends Plugin
 		hiddenSkulls.clear();
 	}
 
-	/** Scope test for overhead-element features: self is in every non-OFF scope. */
+	/** Scope test for overhead-element features (Vengeance text, PK skull). */
 	private boolean isInOverheadScope(Player p, Player local, OverheadScope scope)
 	{
-		if (p == local)
-		{
-			return true;
-		}
-		switch (scope)
-		{
-			case EVERYONE:
-				return true;
-			case OPPONENTS:
-				return p.getName() != null && currentOpponents.contains(Text.removeTags(p.getName()));
-			default: // SELF
-				return false;
-		}
+		boolean isSelf = p == local;
+		boolean isOpponent = !isSelf && p.getName() != null
+			&& currentOpponents.contains(Text.removeTags(p.getName()));
+		return scope.matches(isSelf, isOpponent);
 	}
 
 	/** Recomputes the set of players currently fighting the local player (target + attackers). */
@@ -1249,16 +1241,10 @@ public class PvpEnhancerPlugin extends Plugin
 	/** True if debuff timers should be tracked for this actor under the configured scope. */
 	private boolean isInDebuffScope(Actor actor)
 	{
-		if (config.debuffTimers() == DebuffScope.ALL)
-		{
-			return true;
-		}
-		if (actor == client.getLocalPlayer())
-		{
-			return true;
-		}
-		String name = actor.getName();
-		return name != null && currentOpponents.contains(Text.removeTags(name));
+		boolean isSelf = actor == client.getLocalPlayer();
+		boolean isOpponent = !isSelf && actor.getName() != null
+			&& currentOpponents.contains(Text.removeTags(actor.getName()));
+		return config.debuffTimers().matches(isSelf, isOpponent);
 	}
 
 	private boolean isTracked(Combatant combatant)

@@ -68,14 +68,16 @@ public class SkullResizeOverlay extends Overlay
 			{
 				continue;
 			}
-			// Sit ABOVE the health bar (the overhead icon row), to the left of centre — where the
-			// native skull is — so the health bar does not cover it.
-			Point anchor = p.getCanvasTextLocation(graphics, "", p.getLogicalHeight() + 45);
+			// Centre horizontally over the head. When the HP bar or an overhead-prayer icon is
+			// showing, sit ABOVE them so they don't cover the skull; otherwise sit just over the head.
+			boolean hasBarOrPrayer = p.getHealthRatio() >= 0 || p.getOverheadIcon() != null;
+			int zOffset = p.getLogicalHeight() + (hasBarOrPrayer ? 70 : 25);
+			Point anchor = p.getCanvasTextLocation(graphics, "", zOffset);
 			if (anchor == null)
 			{
 				continue;
 			}
-			graphics.drawImage(skull, anchor.getX() - size - 2, anchor.getY() - size, size, size, null);
+			graphics.drawImage(skull, anchor.getX() - size / 2, anchor.getY() - size, size, size, null);
 		}
 		return null;
 	}
