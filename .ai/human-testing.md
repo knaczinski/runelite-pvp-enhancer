@@ -139,6 +139,15 @@ Bring (or have a partner bring) ice spells / bind / teleblock.
 3. Set scope to Everyone and have a partner veng → confirm theirs scales too.
 **PASS CRITERIA:** the veng text renders at the configured size for the configured scope; no double/native text behind it.
 
+### HT-021 — PK skull resize (B028)
+**SCENARIO SETUP:** Config → Combat (PvP) → **Resize PK skull** = Self+opponents; **size** e.g. 250%.
+**STEPS / OBSERVE:**
+1. Get skulled (attack a player in the wild) → confirm YOUR skull renders enlarged, with no native small skull behind it.
+2. Have a skulled opponent nearby → confirm theirs scales too.
+3. Lower size to ~50% → confirm it shrinks. Turn the feature OFF → confirm the native skull returns to normal.
+4. Confirm a non-skulled / high-risk-skull player is unaffected (only the regular skull is handled).
+**PASS CRITERIA:** regular skull renders at the configured size for the configured scope; native restored when off; no doubled skull.
+
 ### HT-020 — Heartbeat no longer false-fires on invalid attack (B022)
 **SCENARIO SETUP:** plugin enabled, in a NON-PvP / safe area, another player present.
 **STEPS / OBSERVE:**

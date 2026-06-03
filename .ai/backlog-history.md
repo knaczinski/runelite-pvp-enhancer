@@ -49,6 +49,13 @@ feasible-but-hacky (`setSkullIcon(-1)` + sprite, mutates other players — defer
 health-bar are API-blocked (read-only). Implemented `VengeanceTextOverlay` (clear native + redraw
 scaled) with `OverheadScope` + `vengTextScope`/`vengTextSize` config. HT-019.
 
+### B028 — PK skull resize (after the spike)
+**Done S013.** `SkullResizeOverlay` re-renders the regular PK skull at `skullSize`%: the plugin
+hides the native skull (`setSkullIcon(-1)`) on in-scope players, redraws a bundled wiki skull
+sprite scaled, and restores the original id on scope-exit / feature-off / shutdown. Only
+`SkullIcon.SKULL` handled. Config `skullScope` + `skullSize`. Known limit: a skull expiring while
+hidden can't be detected (rare — skulls outlast fights). HT-021.
+
 ## S012 — Phase 4 PvP overlays + sidebar redesign (autonomous)
 
 ### B018 — Combat focus (hide non-involved entities)

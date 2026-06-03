@@ -21,8 +21,10 @@ S013 (design via /grill-me, then autonomous) shipped a bug+UX+feature batch:
 - B025 heal + debuff overlays beside the HP bar; debuff = wiki icons + seconds; multi-debuff/actor.
 - B026 developer panel + OverlayDemoService (mock any floating overlay on yourself) +
   developerMode toggle + docs/overlays.md.
-- B027 overhead-resize spike → only Vengeance text feasible (VengeanceTextOverlay + OverheadScope);
-  skull deferred (hacky), prayer-icon + health-bar API-blocked.
+- B027 overhead-resize spike → only Vengeance text + skull feasible (VengeanceTextOverlay +
+  OverheadScope); prayer-icon + health-bar API-blocked (read-only).
+- B028 PK skull resize (SkullResizeOverlay): hide native via setSkullIcon(-1), redraw scaled,
+  restore on scope-exit; regular skull only. skullScope + skullSize config.
 HT results folded: HT-002/003/004/011 PASSED; HT-010 partial→B022 fix re-queued; HT-015..020 added.
 Build green, 69 tests.
 NEXT: live validation (HT-010 re-test, HT-012/013/014, HT-015..020). Harvest seeds in fights

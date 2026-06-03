@@ -25,9 +25,10 @@ Debuff icons: per-type, seconds. Not-attacking: flash opponent hull. Resize: spi
   multiple debuffs per actor (EnumMap).
 - **B026** developer panel + `OverlayDemoService` + `developerMode` toggle + `docs/overlays.md`;
   heal/hitpredict/combo overlays made `@Singleton`.
-- **B027** overhead-resize spike → only Vengeance text feasible; `VengeanceTextOverlay` +
-  `OverheadScope` + size/scope config. Skull deferred (hacky); prayer-icon + health-bar dropped
-  (API-blocked, read-only).
+- **B027** overhead-resize spike → only Vengeance text + skull feasible; `VengeanceTextOverlay` +
+  `OverheadScope` + size/scope config. Prayer-icon + health-bar dropped (API-blocked, read-only).
+- **B028** PK skull resize (`SkullResizeOverlay`): hide native (`setSkullIcon(-1)`) + redraw
+  scaled + restore on scope-exit; regular skull only. `skullScope`/`skullSize` config.
 
 ## User HT results folded in
 HT-002/003/004/011 PASSED → history. HT-010 PARTIAL → B022 fix, re-test queued. New HT-015..020
@@ -47,5 +48,5 @@ Build green, 69 tests. 6 commits (B022–B027) + bookkeeping. README features re
 ## Open / NEXT
 - Live validation: HT-010 (re-test), HT-012/013/014 (Phase 4 seeds), HT-015..020 (S013).
 - Seed harvest in live fights: spot-anim ids (B020), weapon ids (B021), attack anims (B008).
-- Deferred: skull resize (feasible-but-hacky); per-group independent overhead sizes.
+- Deferred: per-group independent overhead sizes (veng/skull use one size + scope selector).
 - Still open dev item: **B008** (live-data-gated).

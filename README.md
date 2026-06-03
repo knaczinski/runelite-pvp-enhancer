@@ -62,6 +62,9 @@ All overlays are catalogued in **`docs/overlays.md`** (purpose, trigger, scope, 
   health bar (scope: self+opponents / all).
 - **Prayer highlighter** — boxes the protection prayer countering the target's weapon style.
 - **Vengeance text resize** — re-renders the "Vengeance!" overhead at a configurable size.
+- **PK skull resize** — hides the native skull and redraws it at a configurable size (regular
+  skull only; per `docs/overhead-resize-spike.md`, prayer-icon and health-bar resize aren't
+  possible via the API).
 
 ### Combos
 
