@@ -22,7 +22,7 @@ by the matching config. Mocks fire on the **local player** so the look can be ch
 | `VengeanceTextOverlay` | Re-renders the "Vengeance!" overhead at a configurable size (native cleared) | plugin captures + clears native overhead text, feeds `add` | `vengTextScope` / `vengTextSize` | — (needs a veng cast) |
 | `SkullResizeOverlay` | Re-renders the PK skull at a configurable size (native hidden via `setSkullIcon(-1)`) | plugin feeds in-scope skulled players via `setTargets` | `skullScope` / `skullSize` | — (needs a skulled player) |
 | `PidIndicatorOverlay` | Experimental PID guess (YOU/THEM/?) + swap warning for a 1v1 you're in | `PidGuessService` (contested same-tick hits) | `pidIndicator` | PID guess → you / them / swap warning |
-| `FocusOutlineOverlay` | Draws a faint outline around focus-hidden entities (ghost contour) via `ModelOutlineRenderer` | `CombatFocusService.isHidden` per scene actor | `combatFocusMode` (shares it) | — (needs others hidden by focus) |
+| `GhostifyOutlineOverlay` | Draws the coloured outline around each ghostified player via `ModelOutlineRenderer` | `GhostifyService.getGhosted` (player→colour) | `ghostify*` (per-category when + colour) | — (needs a ghostified player) |
 
 ## Sidebar panels
 

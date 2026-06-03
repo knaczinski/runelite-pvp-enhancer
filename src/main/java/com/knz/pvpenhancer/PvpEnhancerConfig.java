@@ -1,5 +1,7 @@
 package com.knz.pvpenhancer;
 
+import java.awt.Color;
+import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -36,7 +38,14 @@ public interface PvpEnhancerConfig extends Config
 		position = 2)
 	String overheadSection = "overhead";
 
-	@ConfigSection(name = "Developer", description = "Tools for testing overlays without a live fight.", position = 3, closedByDefault = true)
+	@ConfigSection(name = "Ghostify",
+		description = "Reduce characters to just a coloured outline (hidden model + contour). "
+			+ "Set, per category, WHEN to ghostify and the outline COLOUR. You stay attackable; "
+			+ "to ghost your own model you also need Entity Hider's 'Hide Local Player'.",
+		position = 3, closedByDefault = true)
+	String ghostifySection = "ghostify";
+
+	@ConfigSection(name = "Developer", description = "Tools for testing overlays without a live fight.", position = 4, closedByDefault = true)
 	String developerSection = "developer";
 
 	// ─── Tracking ───────────────────────────────────────────────────────────
@@ -76,22 +85,6 @@ public interface PvpEnhancerConfig extends Config
 			+ "weapon style (predictive). Switches as they switch weapons.",
 		section = combatSection, position = 3)
 	default boolean prayerHighlight() { return false; }
-
-	@ConfigItem(keyName = "combatFocusMode", name = "Combat focus (outline others)",
-		description = "Reduce non-involved players + NPCs to just a faint outline (hidden model + "
-			+ "ModelOutlineRenderer contour), to focus on the participants. Only you fight = while you "
-			+ "fight; Anyone fights = while anyone nearby fights. You stay fully visible. (A third "
-			+ "party shows only as an outline until they engage.)",
-		section = combatSection, position = 4)
-	default CombatFocusMode combatFocusMode() { return CombatFocusMode.OFF; }
-
-	@Range(min = 1, max = 100)
-	@ConfigItem(keyName = "combatFocusTimeout", name = "Combat focus timeout (ticks)",
-		description = "How long a participant stays 'in the fight' (and visible) after their "
-			+ "last attack/interaction. Higher keeps them visible through eats and pauses. "
-			+ "Also how long focus stays on after you stop hitting. ~16 ticks ≈ 10s.",
-		section = combatSection, position = 5)
-	default int combatFocusTimeout() { return 16; }
 
 	@ConfigItem(keyName = "swapPickupInCombat", name = "Walk-here over Take (in combat)",
 		description = "While in combat, de-prioritise ground-item \"Take\" so a left-click "
@@ -146,6 +139,67 @@ public interface PvpEnhancerConfig extends Config
 		description = "Size of the re-rendered PK skull. 100% ≈ the native size.",
 		section = overheadSection, position = 5)
 	default int skullSize() { return 100; }
+
+	// ─── Ghostify ──────────────────────────────────────────────────────────────
+	// When (per category) + outline colour (per category). Priority when a player fits several:
+	// opponents > group (CC/FC) > friends > others. "In combat" = that character is fighting.
+
+	@ConfigItem(keyName = "ghostifySelf", name = "Self — when",
+		description = "When to ghostify your own character. Needs Entity Hider's 'Hide Local "
+			+ "Player' to also hide your model; this controls the outline.",
+		section = ghostifySection, position = 0)
+	default GhostifyWhen ghostifySelf() { return GhostifyWhen.NEVER; }
+
+	@Alpha
+	@ConfigItem(keyName = "ghostColorSelf", name = "Self — colour",
+		description = "Outline colour for your own ghostified character.",
+		section = ghostifySection, position = 1)
+	default Color ghostColorSelf() { return new Color(0x33, 0xDD, 0x33); }
+
+	@ConfigItem(keyName = "ghostifyOpponents", name = "Opponents — when",
+		description = "When to ghostify players currently fighting you.",
+		section = ghostifySection, position = 2)
+	default GhostifyWhen ghostifyOpponents() { return GhostifyWhen.NEVER; }
+
+	@Alpha
+	@ConfigItem(keyName = "ghostColorOpponents", name = "Opponents — colour",
+		description = "Outline colour for ghostified opponents.",
+		section = ghostifySection, position = 3)
+	default Color ghostColorOpponents() { return new Color(0xFF, 0x40, 0x40); }
+
+	@ConfigItem(keyName = "ghostifyGroup", name = "Group — when",
+		description = "When to ghostify your group (clan + friends-chat members).",
+		section = ghostifySection, position = 4)
+	default GhostifyWhen ghostifyGroup() { return GhostifyWhen.NEVER; }
+
+	@Alpha
+	@ConfigItem(keyName = "ghostColorGroup", name = "Group — colour",
+		description = "Outline colour for ghostified clan / friends-chat members.",
+		section = ghostifySection, position = 5)
+	default Color ghostColorGroup() { return new Color(0x4D, 0x96, 0xFF); }
+
+	@ConfigItem(keyName = "ghostifyFriends", name = "Friends — when",
+		description = "When to ghostify players on your friends list.",
+		section = ghostifySection, position = 6)
+	default GhostifyWhen ghostifyFriends() { return GhostifyWhen.NEVER; }
+
+	@Alpha
+	@ConfigItem(keyName = "ghostColorFriends", name = "Friends — colour",
+		description = "Outline colour for ghostified friends.",
+		section = ghostifySection, position = 7)
+	default Color ghostColorFriends() { return new Color(0x33, 0xDD, 0xDD); }
+
+	@ConfigItem(keyName = "ghostifyOthers", name = "Others — when",
+		description = "When to ghostify everyone else. 'Can't attack here' = their combat level "
+			+ "is outside your attackable range at the current Wilderness level.",
+		section = ghostifySection, position = 8)
+	default GhostifyOthersWhen ghostifyOthers() { return GhostifyOthersWhen.NEVER; }
+
+	@Alpha
+	@ConfigItem(keyName = "ghostColorOthers", name = "Others — colour",
+		description = "Outline colour for ghostified other players.",
+		section = ghostifySection, position = 9)
+	default Color ghostColorOthers() { return new Color(0xC8, 0xC8, 0xC8); }
 
 	// ─── Developer ────────────────────────────────────────────────────────────
 

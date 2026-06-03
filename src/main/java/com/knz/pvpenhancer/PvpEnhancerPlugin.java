@@ -32,7 +32,7 @@ import com.knz.pvpenhancer.model.WeaponStyleMap;
 import com.knz.pvpenhancer.model.XpDamage;
 import com.knz.pvpenhancer.overlay.ComboFeedbackOverlay;
 import com.knz.pvpenhancer.overlay.DebuffTimerOverlay;
-import com.knz.pvpenhancer.overlay.FocusOutlineOverlay;
+import com.knz.pvpenhancer.overlay.GhostifyOutlineOverlay;
 import com.knz.pvpenhancer.overlay.HealOverlay;
 import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
 import com.knz.pvpenhancer.overlay.HitPredictOverlay;
@@ -45,7 +45,7 @@ import com.knz.pvpenhancer.panel.DevPanel;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator.Correlation;
-import com.knz.pvpenhancer.service.CombatFocusService;
+import com.knz.pvpenhancer.service.GhostifyService;
 import com.knz.pvpenhancer.service.CombatStateService;
 import com.knz.pvpenhancer.service.ComboDetectorService;
 import com.knz.pvpenhancer.service.DebuffTrackerService;
@@ -77,6 +77,7 @@ import net.runelite.api.PlayerComposition;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.SkullIcon;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
@@ -156,13 +157,13 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private SkullResizeOverlay skullResizeOverlay;
 	@Inject private PidIndicatorOverlay pidIndicatorOverlay;
 	@Inject private PidGuessService pidGuess;
-	@Inject private FocusOutlineOverlay focusOutlineOverlay;
+	@Inject private GhostifyOutlineOverlay ghostifyOutlineOverlay;
 
 	@Inject private DebuffTrackerService debuffTracker;
-	@Inject private CombatFocusService combatFocus;
+	@Inject private GhostifyService ghostify;
 	@Inject private Hooks hooks;
 	@SuppressWarnings("deprecation") // RenderableDrawListener is the API EntityHider uses; RenderCallback is newer
-	private Hooks.RenderableDrawListener focusListener;
+	private Hooks.RenderableDrawListener ghostifyListener;
 
 	@Inject private ClientToolbar clientToolbar;
 	@Inject private PvpEnhancerPanel panel;
@@ -210,9 +211,6 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Local player's total Hitpoints XP last seen (-1 = not yet baselined), for hit prediction. */
 	private int previousHpXp = -1;
 
-	/** Per-actor tick until which they stay "involved" in a fight (combat-focus persistence). */
-	private final Map<Actor, Integer> focusInvolvedUntil = new HashMap<>();
-
 	/** Names of players currently fighting you (target + attackers), for SELF_AND_OPPONENTS scope. */
 	private final Set<String> currentOpponents = new HashSet<>();
 
@@ -259,7 +257,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(vengeanceTextOverlay);
 		overlayManager.add(skullResizeOverlay);
 		overlayManager.add(pidIndicatorOverlay);
-		overlayManager.add(focusOutlineOverlay);
+		overlayManager.add(ghostifyOutlineOverlay);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 		panel.setOnOpenDevPanel(() ->
@@ -286,7 +284,7 @@ public class PvpEnhancerPlugin extends Plugin
 			.build();
 
 		applyDevMode(config.developerMode());
-		registerFocusListener();
+		registerGhostifyListener();
 	}
 
 	@Override
@@ -302,9 +300,9 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(vengeanceTextOverlay);
 		overlayManager.remove(skullResizeOverlay);
 		overlayManager.remove(pidIndicatorOverlay);
-		overlayManager.remove(focusOutlineOverlay);
+		overlayManager.remove(ghostifyOutlineOverlay);
 		restoreAllSkulls();
-		unregisterFocusListener();
+		unregisterGhostifyListener();
 		clientToolbar.removeNavigation(navButton);
 		if (devNavAdded)
 		{
@@ -332,8 +330,7 @@ public class PvpEnhancerPlugin extends Plugin
 		pidLocalHitThisTick = false;
 		pidOpponentHitThisTick = false;
 		pidFirstSide = 0;
-		combatFocus.clear();
-		focusInvolvedUntil.clear();
+		ghostify.clear();
 		currentOpponents.clear();
 		combatOpponent = null;
 		previousSpecialEnergy = -1;
@@ -346,100 +343,126 @@ public class PvpEnhancerPlugin extends Plugin
 	}
 
 	@SuppressWarnings("deprecation") // EntityHider uses the same hook; the RenderCallback replacement is newer
-	private void registerFocusListener()
+	private void registerGhostifyListener()
 	{
-		focusListener = combatFocus::shouldDraw;
-		hooks.registerRenderableDrawListener(focusListener);
+		ghostifyListener = ghostify::shouldDraw;
+		hooks.registerRenderableDrawListener(ghostifyListener);
 	}
 
 	@SuppressWarnings("deprecation")
-	private void unregisterFocusListener()
+	private void unregisterGhostifyListener()
 	{
-		if (focusListener != null)
+		if (ghostifyListener != null)
 		{
-			hooks.unregisterRenderableDrawListener(focusListener);
-			focusListener = null;
+			hooks.unregisterRenderableDrawListener(ghostifyListener);
+			ghostifyListener = null;
 		}
 	}
 
+	/** Player ghostify categories, in priority order (first match wins). */
+	private enum GhostCat { OPPONENT, GROUP, FRIEND, OTHER }
+
 	/**
-	 * Recomputes which actors are involved in the current fight and updates the focus
-	 * service so the render hook hides everyone else.
-	 *
-	 * <p>Involvement is persistent: an actor stamped as engaged stays involved for
-	 * {@code combatFocusTimeout} ticks after their last attack/interaction. This keeps your
-	 * target (and other participants) visible while they eat, pause, or stop fighting back,
-	 * and turns focus off only once everyone has been quiet for the timeout. The local
-	 * player is always kept visible while focus is active.
+	 * Recomputes which players to ghostify this tick and their per-category outline colour, then
+	 * publishes the snapshot for the render hook (model skip) + outline overlay. Players only.
+	 * Priority on overlap: opponents > group (CC/FC) > friends > others.
 	 */
-	private void detectCombatFocus(int tick)
+	private void updateGhostify(Player local, int tick)
 	{
-		CombatFocusMode mode = config.combatFocusMode();
-		if (mode == CombatFocusMode.OFF)
+		Map<Player, Color> ghosted = new HashMap<>();
+
+		// Self — gated; note hiding the local model also needs Entity Hider's "Hide Local Player".
+		if (local != null && config.ghostifySelf().shouldGhost(combatState.isInCombat(tick)))
 		{
-			focusInvolvedUntil.clear();
-			combatFocus.clear();
-			return;
+			ghosted.put(local, config.ghostColorSelf());
 		}
 
-		int until = tick + Math.max(1, config.combatFocusTimeout());
-		Player local = client.getLocalPlayer();
+		int wildyLevel = wildernessLevel(local);
+		int myCombat = local != null ? local.getCombatLevel() : 0;
 
-		// Stamp actors engaged THIS tick.
-		if (mode == CombatFocusMode.SELF)
+		for (Player p : client.getTopLevelWorldView().players())
 		{
-			if (local != null)
+			if (p == null || p == local)
 			{
-				Actor target = local.getInteracting();
-				if (target != null)
-				{
-					focusInvolvedUntil.put(target, until); // who you are fighting
-				}
-				for (Player p : client.getTopLevelWorldView().players())
-				{
-					if (p != null && p.getInteracting() == local)
-					{
-						focusInvolvedUntil.put(p, until); // who is fighting you
-					}
-				}
+				continue;
 			}
-		}
-		else // ANY_FIGHT
-		{
-			// PvP-only: a player counts as fighting only when interacting with ANOTHER PLAYER.
-			// Counting any interaction (PvE, following) made bystanders who teleport in stay
-			// visible — they were "involved" just by interacting with an NPC/each other.
-			for (Player p : client.getTopLevelWorldView().players())
+			boolean inCombat = p.getInteracting() != null;
+			GhostCat cat = classifyGhost(p);
+			boolean ghost = false;
+			Color color = null;
+			switch (cat)
 			{
-				if (p == null)
-				{
-					continue;
-				}
-				Actor target = p.getInteracting();
-				if (target instanceof Player)
-				{
-					focusInvolvedUntil.put(p, until);
-					focusInvolvedUntil.put(target, until);
-				}
+				case OPPONENT:
+					ghost = config.ghostifyOpponents().shouldGhost(inCombat);
+					color = config.ghostColorOpponents();
+					break;
+				case GROUP:
+					ghost = config.ghostifyGroup().shouldGhost(inCombat);
+					color = config.ghostColorGroup();
+					break;
+				case FRIEND:
+					ghost = config.ghostifyFriends().shouldGhost(inCombat);
+					color = config.ghostColorFriends();
+					break;
+				default: // OTHER
+					boolean cannotAttack = wildyLevel > 0 && Math.abs(myCombat - p.getCombatLevel()) > wildyLevel;
+					ghost = config.ghostifyOthers().shouldGhost(inCombat, cannotAttack);
+					color = config.ghostColorOthers();
+					break;
+			}
+			if (ghost)
+			{
+				ghosted.put(p, color);
 			}
 		}
 
-		// Drop expired, then build the involved set from what remains.
-		focusInvolvedUntil.values().removeIf(expiry -> expiry < tick);
-		Set<Actor> involved = new HashSet<>(focusInvolvedUntil.keySet());
+		ghostify.update(ghosted);
+	}
 
-		// In SELF mode focus is only active while YOU are in a fight (you stay involved via
-		// your target/attacker). If nothing is involved, focus is off.
-		boolean active = !involved.isEmpty();
-		if (active && local != null)
+	/** Classifies a remote player by priority: opponent > group (CC/FC) > friend > other. */
+	private GhostCat classifyGhost(Player p)
+	{
+		String name = p.getName() != null ? Text.removeTags(p.getName()) : null;
+		if (name != null && currentOpponents.contains(name))
 		{
-			involved.add(local); // never hide yourself
+			return GhostCat.OPPONENT;
 		}
-		else
+		if (p.isClanMember() || p.isFriendsChatMember())
 		{
-			involved = java.util.Collections.emptySet();
+			return GhostCat.GROUP;
 		}
-		combatFocus.update(active, involved);
+		if (p.isFriend())
+		{
+			return GhostCat.FRIEND;
+		}
+		return GhostCat.OTHER;
+	}
+
+	/**
+	 * @return current Wilderness level from the local player's position (overworld or underground),
+	 * or 0 if not in the Wilderness. Used by the "can't attack here" ghostify rule.
+	 */
+	private int wildernessLevel(Player local)
+	{
+		if (local == null)
+		{
+			return 0;
+		}
+		WorldPoint wp = local.getWorldLocation();
+		if (wp == null)
+		{
+			return 0;
+		}
+		int y = wp.getY();
+		if (y >= 3520 && y < 4000) // overworld Wilderness
+		{
+			return (y - 3520) / 8 + 1;
+		}
+		if (y >= 9920 && y < 10400) // underground Wilderness
+		{
+			return (y - 9920) / 8 + 1;
+		}
+		return 0;
 	}
 
 	@Subscribe
@@ -452,13 +475,6 @@ public class PvpEnhancerPlugin extends Plugin
 		if ("developerMode".equals(event.getKey()))
 		{
 			applyDevMode(config.developerMode());
-		}
-		else if ("combatFocusMode".equals(event.getKey()))
-		{
-			// Drop stale involvement stamps so the new mode takes effect on the next tick instead
-			// of leaving entities ghosted for the timeout window.
-			focusInvolvedUntil.clear();
-			combatFocus.clear();
 		}
 	}
 
@@ -556,8 +572,8 @@ public class PvpEnhancerPlugin extends Plugin
 		// 4b3. PK skull resize (hides the native skull, redraws scaled)
 		detectSkullResize(local);
 
-		// 4c. Combat focus — hide non-involved entities
-		detectCombatFocus(tick);
+		// 4c. Ghostify — hide + outline players per category/when rules
+		updateGhostify(local, tick);
 
 		// 4d. Count down debuff timers + update the predictive prayer highlight
 		debuffTracker.tick();
