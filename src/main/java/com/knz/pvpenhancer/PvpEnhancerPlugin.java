@@ -36,6 +36,7 @@ import com.knz.pvpenhancer.overlay.HealOverlay;
 import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
 import com.knz.pvpenhancer.overlay.HitPredictOverlay;
 import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
+import com.knz.pvpenhancer.overlay.PidIndicatorOverlay;
 import com.knz.pvpenhancer.overlay.PrayerHighlightOverlay;
 import com.knz.pvpenhancer.overlay.SkullResizeOverlay;
 import com.knz.pvpenhancer.overlay.VengeanceTextOverlay;
@@ -48,6 +49,7 @@ import com.knz.pvpenhancer.service.CombatStateService;
 import com.knz.pvpenhancer.service.ComboDetectorService;
 import com.knz.pvpenhancer.service.DebuffTrackerService;
 import com.knz.pvpenhancer.service.HitSummaryService;
+import com.knz.pvpenhancer.service.PidGuessService;
 import com.knz.pvpenhancer.service.TickHistoryService;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -151,6 +153,8 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private PrayerHighlightOverlay prayerHighlightOverlay;
 	@Inject private VengeanceTextOverlay vengeanceTextOverlay;
 	@Inject private SkullResizeOverlay skullResizeOverlay;
+	@Inject private PidIndicatorOverlay pidIndicatorOverlay;
+	@Inject private PidGuessService pidGuess;
 
 	@Inject private DebuffTrackerService debuffTracker;
 	@Inject private CombatFocusService combatFocus;
@@ -225,6 +229,11 @@ public class PvpEnhancerPlugin extends Plugin
 	/** How long (ms) to keep clearing a player's native veng text after first seen (covers its lifetime). */
 	private static final long VENG_CLEAR_MS = 3000L;
 
+	/** PID-contest tracking for the current tick: which combatant's hitsplat landed first. */
+	private boolean pidLocalHitThisTick;
+	private boolean pidOpponentHitThisTick;
+	private int pidFirstSide; // 0 = none yet, 1 = local first, 2 = opponent first
+
 	// ─── Lifecycle ───────────────────────────────────────────────────────
 
 	@Provides
@@ -247,6 +256,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(prayerHighlightOverlay);
 		overlayManager.add(vengeanceTextOverlay);
 		overlayManager.add(skullResizeOverlay);
+		overlayManager.add(pidIndicatorOverlay);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 		panel.setOnOpenDevPanel(() ->
@@ -288,6 +298,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(prayerHighlightOverlay);
 		overlayManager.remove(vengeanceTextOverlay);
 		overlayManager.remove(skullResizeOverlay);
+		overlayManager.remove(pidIndicatorOverlay);
 		restoreAllSkulls();
 		unregisterFocusListener();
 		clientToolbar.removeNavigation(navButton);
@@ -313,6 +324,10 @@ public class PvpEnhancerPlugin extends Plugin
 		vengClearUntil.clear();
 		restoreAllSkulls();
 		skullResizeOverlay.clear();
+		pidGuess.reset();
+		pidLocalHitThisTick = false;
+		pidOpponentHitThisTick = false;
+		pidFirstSide = 0;
 		combatFocus.clear();
 		focusInvolvedUntil.clear();
 		currentOpponents.clear();
@@ -533,6 +548,9 @@ public class PvpEnhancerPlugin extends Plugin
 		debuffTracker.tick();
 		updatePrayerHighlight(local);
 
+		// 4d2. Experimental PID guess (1v1 the local player is in)
+		updatePidGuess(local, tick);
+
 		// 4e. Flash the opponent if in combat but not attacking it
 		boolean notRetaliating = config.showNotRetaliating() && combatState.isNotRetaliating(tick);
 		notRetaliatingOverlay.setOpponent(notRetaliating ? combatOpponent : null);
@@ -641,6 +659,28 @@ public class PvpEnhancerPlugin extends Plugin
 		if (actor == client.getLocalPlayer())
 		{
 			combatState.recordCombatActivity(tick);
+		}
+
+		// PID guess: note the order the two combatants' hits land this tick (evaluated at tick end).
+		if (config.pidIndicator() && actor != null)
+		{
+			boolean isLocal = actor == client.getLocalPlayer();
+			boolean isOpponent = actor == combatOpponent;
+			if (isLocal || isOpponent)
+			{
+				if (isLocal)
+				{
+					pidLocalHitThisTick = true;
+				}
+				else
+				{
+					pidOpponentHitThisTick = true;
+				}
+				if (pidFirstSide == 0)
+				{
+					pidFirstSide = isLocal ? 1 : 2;
+				}
+			}
 		}
 
 		// Spec-combo: count hitsplats landing on the opponent this tick.
@@ -1058,6 +1098,35 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			combatOpponent = null;
 		}
+	}
+
+	/**
+	 * Experimental PID guess. First scores the previous tick's contest (if both you and the single
+	 * opponent were hit, the side whose hit landed first gets a point), then (re)activates the
+	 * guesser only for a clean 1v1 you're engaged in. See {@code docs/pid-indicator-spike.md}.
+	 */
+	private void updatePidGuess(Player local, int tick)
+	{
+		if (config.pidIndicator() && pidLocalHitThisTick && pidOpponentHitThisTick && pidFirstSide != 0)
+		{
+			pidGuess.recordContest(pidFirstSide == 1);
+		}
+		pidLocalHitThisTick = false;
+		pidOpponentHitThisTick = false;
+		pidFirstSide = 0;
+
+		if (!config.pidIndicator())
+		{
+			pidGuess.setFight(null);
+			return;
+		}
+		String opponent = null;
+		if (local != null && currentOpponents.size() == 1
+			&& combatOpponent instanceof Player && combatState.isInCombat(tick))
+		{
+			opponent = currentOpponents.iterator().next();
+		}
+		pidGuess.setFight(opponent);
 	}
 
 	/**

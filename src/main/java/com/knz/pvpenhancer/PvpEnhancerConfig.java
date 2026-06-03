@@ -99,6 +99,13 @@ public interface PvpEnhancerConfig extends Config
 		section = combatSection, position = 6)
 	default boolean swapPickupInCombat() { return false; }
 
+	@ConfigItem(keyName = "pidIndicator", name = "PID guess (experimental)",
+		description = "EXPERIMENTAL. In a 1v1 you're part of, guess who has PID (processing order) "
+			+ "from contested same-tick hits, and warn on a likely PID swap. PID isn't exposed by the "
+			+ "API — this is a noisy best-effort vote, not certainty. See docs/pid-indicator-spike.md.",
+		section = combatSection, position = 7)
+	default boolean pidIndicator() { return false; }
+
 	// ─── Overhead displays ──────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "healDisplayMode", name = "Healing numbers",

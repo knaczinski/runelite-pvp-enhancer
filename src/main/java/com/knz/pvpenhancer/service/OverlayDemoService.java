@@ -62,13 +62,15 @@ public class OverlayDemoService
 	private final DebuffTrackerService debuffTracker;
 	private final ComboFeedbackOverlay comboFeedbackOverlay;
 	private final VengeanceTextOverlay vengeanceTextOverlay;
+	private final PidGuessService pidGuess;
 
 	private final List<DemoScenario> scenarios = new ArrayList<>();
 
 	@Inject
 	OverlayDemoService(Client client, ClientThread clientThread, HealOverlay healOverlay,
 		HitPredictOverlay hitPredictOverlay, DebuffTrackerService debuffTracker,
-		ComboFeedbackOverlay comboFeedbackOverlay, VengeanceTextOverlay vengeanceTextOverlay)
+		ComboFeedbackOverlay comboFeedbackOverlay, VengeanceTextOverlay vengeanceTextOverlay,
+		PidGuessService pidGuess)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
@@ -77,6 +79,7 @@ public class OverlayDemoService
 		this.debuffTracker = debuffTracker;
 		this.comboFeedbackOverlay = comboFeedbackOverlay;
 		this.vengeanceTextOverlay = vengeanceTextOverlay;
+		this.pidGuess = pidGuess;
 		build();
 	}
 
@@ -98,6 +101,10 @@ public class OverlayDemoService
 			() -> comboFeedbackOverlay.showCombo(new ComboResult(ComboType.TRIPLE_EAT, ComboTier.SUCCESS, "TRIPLE EAT")));
 		add("Combo popup", "Spec combo",
 			() -> comboFeedbackOverlay.showCombo(new ComboResult(ComboType.SPEC_COMBO, ComboTier.GODLIKE, "SPEC COMBO")));
+
+		add("PID guess", "PID: you", () -> pidGuess.forceGuess(PidGuessService.Pid.LOCAL));
+		add("PID guess", "PID: them", () -> pidGuess.forceGuess(PidGuessService.Pid.OPPONENT));
+		add("PID guess", "Swap warning", pidGuess::triggerSwapWarning);
 	}
 
 	private void add(String group, String label, Runnable action)
@@ -124,6 +131,7 @@ public class OverlayDemoService
 			hitPredictOverlay.clear();
 			comboFeedbackOverlay.clear();
 			vengeanceTextOverlay.clear();
+			pidGuess.reset();
 		});
 	}
 
