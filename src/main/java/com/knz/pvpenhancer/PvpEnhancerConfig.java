@@ -120,6 +120,18 @@ public interface PvpEnhancerConfig extends Config
 		section = pvpSection, position = 5)
 	default boolean prayerHighlight() { return false; }
 
+	@ConfigItem(keyName = "vengTextScope", name = "Resize Vengeance text",
+		description = "Re-render the 'Vengeance!' overhead text at a custom size (the native size "
+			+ "is not resizable via the API, so the original is replaced). Choose who it applies to.",
+		section = pvpSection, position = 6)
+	default OverheadScope vengTextScope() { return OverheadScope.OFF; }
+
+	@Range(min = 20, max = 400)
+	@ConfigItem(keyName = "vengTextSize", name = "Vengeance text size (%)",
+		description = "Size of the re-rendered Vengeance text. 100% ≈ the native size.",
+		section = pvpSection, position = 7)
+	default int vengTextSize() { return 100; }
+
 	// ─── Developer ────────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "developerMode", name = "Developer mode",

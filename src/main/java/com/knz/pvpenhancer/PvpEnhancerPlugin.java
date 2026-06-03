@@ -36,6 +36,7 @@ import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
 import com.knz.pvpenhancer.overlay.HitPredictOverlay;
 import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
 import com.knz.pvpenhancer.overlay.PrayerHighlightOverlay;
+import com.knz.pvpenhancer.overlay.VengeanceTextOverlay;
 import com.knz.pvpenhancer.panel.DevPanel;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator;
@@ -140,6 +141,7 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private HitPredictOverlay hitPredictOverlay;
 	@Inject private DebuffTimerOverlay debuffTimerOverlay;
 	@Inject private PrayerHighlightOverlay prayerHighlightOverlay;
+	@Inject private VengeanceTextOverlay vengeanceTextOverlay;
 
 	@Inject private DebuffTrackerService debuffTracker;
 	@Inject private CombatFocusService combatFocus;
@@ -225,6 +227,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(hitPredictOverlay);
 		overlayManager.add(debuffTimerOverlay);
 		overlayManager.add(prayerHighlightOverlay);
+		overlayManager.add(vengeanceTextOverlay);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 		panel.setOnOpenDevPanel(() ->
@@ -264,6 +267,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(hitPredictOverlay);
 		overlayManager.remove(debuffTimerOverlay);
 		overlayManager.remove(prayerHighlightOverlay);
+		overlayManager.remove(vengeanceTextOverlay);
 		unregisterFocusListener();
 		clientToolbar.removeNavigation(navButton);
 		if (devNavAdded)
@@ -284,6 +288,7 @@ public class PvpEnhancerPlugin extends Plugin
 		healOverlay.clear();
 		hitPredictOverlay.clear();
 		debuffTracker.clear();
+		vengeanceTextOverlay.clear();
 		combatFocus.clear();
 		focusInvolvedUntil.clear();
 		currentOpponents.clear();
@@ -490,6 +495,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 		// 4b. Detect healing (overlay only — near the healer's health bar)
 		detectHeals();
+
+		// 4b2. Vengeance overhead text resize (replaces the native text with a scaled copy)
+		detectVengeance(local);
 
 		// 4c. Combat focus — hide non-involved entities
 		detectCombatFocus(tick);
@@ -962,6 +970,55 @@ public class PvpEnhancerPlugin extends Plugin
 			comboDetector.onSpecialUsed(tick);
 		}
 		previousSpecialEnergy = energy;
+	}
+
+	/**
+	 * Detects Vengeance overhead text on in-scope players, queues a scaled copy, and clears the
+	 * native text (the only way to "resize" it — the native size is not exposed by the API).
+	 */
+	private void detectVengeance(Player local)
+	{
+		OverheadScope scope = config.vengTextScope();
+		if (scope == OverheadScope.OFF)
+		{
+			return;
+		}
+		for (Player p : client.getTopLevelWorldView().players())
+		{
+			if (p == null)
+			{
+				continue;
+			}
+			String text = p.getOverheadText();
+			if (text == null || !text.toLowerCase().contains("vengeance"))
+			{
+				continue;
+			}
+			if (!isInOverheadScope(p, local, scope))
+			{
+				continue;
+			}
+			vengeanceTextOverlay.add(p, text);
+			p.setOverheadText(""); // hide the native text; we draw a scaled copy
+		}
+	}
+
+	/** Scope test for overhead-element features: self is in every non-OFF scope. */
+	private boolean isInOverheadScope(Player p, Player local, OverheadScope scope)
+	{
+		if (p == local)
+		{
+			return true;
+		}
+		switch (scope)
+		{
+			case EVERYONE:
+				return true;
+			case OPPONENTS:
+				return p.getName() != null && currentOpponents.contains(Text.removeTags(p.getName()));
+			default: // SELF
+				return false;
+		}
 	}
 
 	/** Recomputes the set of players currently fighting the local player (target + attackers). */
