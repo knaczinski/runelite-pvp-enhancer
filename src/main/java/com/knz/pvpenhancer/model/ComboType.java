@@ -5,14 +5,18 @@ package com.knz.pvpenhancer.model;
  */
 public enum ComboType
 {
-	/** Two food/potion items consumed on the same tick. */
-	DOUBLE_EAT,
-	/** Three food/potion items consumed on the same tick. */
+	/** 5+ worn-equipment slots changed on the same tick. */
+	GODLIKE_SWITCH,
+	/** 3–4 worn-equipment slots changed on the same tick. */
+	EXCELLENT_SWITCH,
+	/** 3–4 worn-equipment slots changed across two consecutive ticks. */
+	HUMBLE_SWITCH,
+	/** Three or more food/potion items consumed on the same tick. */
 	TRIPLE_EAT,
+	/** A ranged/missile hit and a special-attack hit landing on the opponent on the same tick. */
+	SPEC_COMBO,
+	/** A ranged hit and a special hit on the opponent across two consecutive ticks. */
+	HUMBLE_SPEC_COMBO,
 	/** An "Eat"/"Drink" click that produced no consumption (potlocked). */
-	COMBO_FAILED,
-	/** Weapon equipped then attack thrown within the last-tick-swap window. */
-	OFFENSIVE_SWAP,
-	/** Three or more worn-equipment slots changed on the same tick. */
-	CLEAN_SWITCH
+	COMBO_FAILED
 }

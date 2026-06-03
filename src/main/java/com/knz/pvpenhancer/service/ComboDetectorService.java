@@ -12,76 +12,89 @@ import javax.inject.Singleton;
  * Detects combos for the local player by tracking state across ticks. No Client reference
  * — the plugin feeds it raw data so this class is unit-testable without a running client.
  *
+ * <p>Combo taxonomy (S012 redesign):
+ * <ul>
+ *   <li><b>Gear switch:</b> Godlike (5+ worn slots changed same tick), Excellent (3–4 same
+ *       tick), Humble (3–4 spread across two consecutive ticks).</li>
+ *   <li><b>Eat:</b> Triple Eat only (3+ consumes same tick; any food/potion).</li>
+ *   <li><b>Spec combo:</b> a ranged hit and a special-attack hit on the opponent — same tick =
+ *       Spec Combo, across two consecutive ticks = Humble Spec Combo. Heuristic (see
+ *       {@link #flush}); the opponent taking 2+ hits while you recently threw a ranged attack
+ *       and used a special.</li>
+ *   <li><b>Combo failed:</b> an eat/drink click that did not consume (potlock).</li>
+ * </ul>
+ *
  * <p>Call order on each {@code GameTick}:
  * <ol>
- *   <li>{@link #onEatClick(int, int, int)} — for every "Eat"/"Drink" menu click this tick</li>
- *   <li>{@link #onWeaponSwap(int)} — if the weapon slot changed this tick</li>
+ *   <li>{@link #onEatClick(int, int, int)} — per "Eat"/"Drink" click this tick</li>
  *   <li>{@link #onGearSwapCount(int)} — total worn-slot changes this tick</li>
  *   <li>{@link #onAttack(AttackStyle, int)} — if the local player threw an attack this tick</li>
- *   <li>{@link #flush(int[], int[], int)} — tick boundary; returns detected combos and advances state</li>
+ *   <li>{@link #onSpecialUsed(int)} — if special-attack energy dropped this tick</li>
+ *   <li>{@link #onOpponentHit(int)} — per hitsplat that landed on the opponent this tick</li>
+ *   <li>{@link #flush(int[], int[], int)} — tick boundary; returns combos and advances state</li>
  * </ol>
  */
 @Singleton
 public class ComboDetectorService
 {
-	private static final int MAX_OFFENSIVE_SWAP_GAP = 2; // ticks; gap > this = no tier
+	/** Max ticks between a ranged attack / special and the spec-combo hit landing. */
+	private static final int SPEC_WINDOW_TICKS = 4;
 
 	// Per-tick pending state (set by on* calls, consumed by flush)
 	private final List<EatClick> currentEatClicks = new ArrayList<>();
 	private int currentGearSwapCount = 0;
-	private AttackStyle currentAttackStyle = null;
-	private boolean hadWeaponSwapThisTick = false;
+	private int currentOpponentHits = 0;
 
 	// Cross-tick state
 	private List<EatClick> prevEatClicks = new ArrayList<>();
-	private int lastWeaponSwapTick = Integer.MIN_VALUE;
+	private int prevGearSwapCount = 0;
+	private int prevOpponentHits = 0;
+	private int lastRangedAttackTick = Integer.MIN_VALUE;
+	private int lastSpecialTick = Integer.MIN_VALUE;
+	private int lastSpecComboTick = Integer.MIN_VALUE;
 
 	/**
 	 * Records an "Eat"/"Drink" click on the current tick. Pass the inventory slot and item
 	 * data so potlock can be checked against the next tick's inventory.
-	 *
-	 * @param slotIdx  inventory slot index (0–27)
-	 * @param itemId   item id at that slot when clicked
-	 * @param quantity stack count at that slot when clicked
 	 */
 	public void onEatClick(int slotIdx, int itemId, int quantity)
 	{
 		currentEatClicks.add(new EatClick(slotIdx, itemId, quantity));
 	}
 
-	/**
-	 * Records that the local player's weapon slot changed this tick.
-	 *
-	 * @param tick current server tick
-	 */
-	public void onWeaponSwap(int tick)
-	{
-		hadWeaponSwapThisTick = true;
-		lastWeaponSwapTick = tick;
-	}
-
-	/**
-	 * Records the total number of worn-equipment slot changes this tick.
-	 */
+	/** Records the total number of worn-equipment slot changes this tick. */
 	public void onGearSwapCount(int count)
 	{
 		this.currentGearSwapCount = count;
 	}
 
-	/**
-	 * Records that the local player threw an attack this tick.
-	 */
+	/** Records that the local player threw an attack this tick (ranged feeds the spec combo). */
 	public void onAttack(AttackStyle style, int tick)
 	{
-		this.currentAttackStyle = style;
+		if (style == AttackStyle.RANGED)
+		{
+			lastRangedAttackTick = tick;
+		}
+	}
+
+	/** Records that the local player used a special attack this tick (spec energy dropped). */
+	public void onSpecialUsed(int tick)
+	{
+		lastSpecialTick = tick;
+	}
+
+	/** Records one hitsplat landing on the opponent this tick (for the spec combo). */
+	public void onOpponentHit(int tick)
+	{
+		currentOpponentHits++;
 	}
 
 	/**
 	 * Advances to the next tick, checks all combo patterns, and returns the results.
 	 *
-	 * @param inventoryIds       item id at each of the 28 inventory slots (current tick)
+	 * @param inventoryIds        item id at each of the 28 inventory slots (current tick)
 	 * @param inventoryQuantities quantity at each slot
-	 * @param tick               current server tick
+	 * @param tick                current server tick
 	 * @return list of detected {@link ComboResult}s for this tick (may be empty)
 	 */
 	public List<ComboResult> flush(int[] inventoryIds, int[] inventoryQuantities, int tick)
@@ -98,41 +111,54 @@ public class ComboDetectorService
 			}
 		}
 
-		// 2. Eat combos (same-tick multi-consume)
-		int eatCount = currentEatClicks.size();
-		if (eatCount == 2)
-		{
-			results.add(new ComboResult(ComboType.DOUBLE_EAT, ComboTier.SUCCESS, "DOUBLE EAT"));
-		}
-		else if (eatCount >= 3)
+		// 2. Triple eat (3+ same tick; any food/potion)
+		if (currentEatClicks.size() >= 3)
 		{
 			results.add(new ComboResult(ComboType.TRIPLE_EAT, ComboTier.SUCCESS, "TRIPLE EAT"));
 		}
 
-		// 3. Clean switch: >= 3 worn slots changed this tick
-		if (currentGearSwapCount >= 3)
+		// 3. Gear switch tiers
+		if (currentGearSwapCount >= 5)
 		{
-			results.add(new ComboResult(ComboType.CLEAN_SWITCH, ComboTier.SUCCESS, "CLEAN SWITCH"));
+			results.add(new ComboResult(ComboType.GODLIKE_SWITCH, ComboTier.GODLIKE, "GODLIKE SWITCH"));
+		}
+		else if (currentGearSwapCount >= 3)
+		{
+			results.add(new ComboResult(ComboType.EXCELLENT_SWITCH, ComboTier.EXCELLENT, "EXCELLENT SWITCH"));
+		}
+		else if (currentGearSwapCount >= 1 && prevGearSwapCount >= 1 && prevGearSwapCount < 3)
+		{
+			int spread = currentGearSwapCount + prevGearSwapCount;
+			if (spread >= 3 && spread <= 4)
+			{
+				results.add(new ComboResult(ComboType.HUMBLE_SWITCH, ComboTier.HUMBLE, "HUMBLE SWITCH"));
+			}
 		}
 
-		// 4. Offensive swap→attack tier
-		if (currentAttackStyle != null && lastWeaponSwapTick != Integer.MIN_VALUE)
+		// 4. Spec combo (ranged hit + special hit on the opponent)
+		boolean rangedRecent = withinSpecWindow(lastRangedAttackTick, tick);
+		boolean specRecent = withinSpecWindow(lastSpecialTick, tick);
+		if (rangedRecent && specRecent && tick != lastSpecComboTick && (tick - 1) != lastSpecComboTick)
 		{
-			int gap = tick - lastWeaponSwapTick;
-			ComboTier tier = tierForGap(gap);
-			if (tier != null)
+			if (currentOpponentHits >= 2)
 			{
-				String label = tierLabel(tier) + " (" + currentAttackStyle.getLabel() + ")";
-				results.add(new ComboResult(ComboType.OFFENSIVE_SWAP, tier, label));
+				results.add(new ComboResult(ComboType.SPEC_COMBO, ComboTier.GODLIKE, "SPEC COMBO"));
+				markSpecComboFired(tick);
+			}
+			else if (currentOpponentHits >= 1 && prevOpponentHits >= 1)
+			{
+				results.add(new ComboResult(ComboType.HUMBLE_SPEC_COMBO, ComboTier.HUMBLE, "HUMBLE SPEC COMBO"));
+				markSpecComboFired(tick);
 			}
 		}
 
 		// Advance state
 		prevEatClicks = new ArrayList<>(currentEatClicks);
 		currentEatClicks.clear();
+		prevGearSwapCount = currentGearSwapCount;
 		currentGearSwapCount = 0;
-		currentAttackStyle = null;
-		hadWeaponSwapThisTick = false;
+		prevOpponentHits = currentOpponentHits;
+		currentOpponentHits = 0;
 
 		return results;
 	}
@@ -142,15 +168,35 @@ public class ComboDetectorService
 		currentEatClicks.clear();
 		prevEatClicks.clear();
 		currentGearSwapCount = 0;
-		currentAttackStyle = null;
-		hadWeaponSwapThisTick = false;
-		lastWeaponSwapTick = Integer.MIN_VALUE;
+		prevGearSwapCount = 0;
+		currentOpponentHits = 0;
+		prevOpponentHits = 0;
+		lastRangedAttackTick = Integer.MIN_VALUE;
+		lastSpecialTick = Integer.MIN_VALUE;
+		lastSpecComboTick = Integer.MIN_VALUE;
+	}
+
+	private void markSpecComboFired(int tick)
+	{
+		lastSpecComboTick = tick;
+		lastRangedAttackTick = Integer.MIN_VALUE;
+		lastSpecialTick = Integer.MIN_VALUE;
+	}
+
+	private static boolean withinSpecWindow(int markTick, int now)
+	{
+		if (markTick == Integer.MIN_VALUE)
+		{
+			return false;
+		}
+		int gap = now - markTick;
+		return gap >= 0 && gap <= SPEC_WINDOW_TICKS;
 	}
 
 	/**
 	 * @return true if the eat click was consumed (item gone from the slot or quantity
-	 * decreased). If the item was moved to a different slot (drag), the original slot shows
-	 * something different, which is treated as "not same" → not potlocked.
+	 * decreased). If the item moved to a different slot (drag), the original slot shows
+	 * something different, treated as "not same" → not potlocked.
 	 */
 	private static boolean wasConsumed(EatClick click, int[] ids, int[] quantities)
 	{
@@ -158,33 +204,8 @@ public class ComboDetectorService
 		{
 			return true; // out of range → treat as consumed (defensive)
 		}
-		// Same item AND same quantity in the same slot → NOT consumed
 		return ids[click.slotIdx] != click.itemId
 			|| quantities[click.slotIdx] != click.quantity;
-	}
-
-	private static ComboTier tierForGap(int gap)
-	{
-		if (gap < 0 || gap > MAX_OFFENSIVE_SWAP_GAP)
-		{
-			return null;
-		}
-		switch (gap)
-		{
-			case 0: return ComboTier.PERFECT;
-			case 1: return ComboTier.GREAT;
-			default: return ComboTier.GOOD;
-		}
-	}
-
-	private static String tierLabel(ComboTier tier)
-	{
-		switch (tier)
-		{
-			case PERFECT: return "PERFECT!";
-			case GREAT:   return "GREAT";
-			default:      return "GOOD";
-		}
 	}
 
 	private static final class EatClick

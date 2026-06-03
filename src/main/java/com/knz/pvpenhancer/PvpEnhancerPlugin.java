@@ -67,6 +67,7 @@ import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
+import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GraphicChanged;
@@ -196,6 +197,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** The actor the local player is fighting (last targeted while in combat); flashed when not retaliating. */
 	private Actor combatOpponent;
 
+	/** Local player's special-attack energy last tick (-1 = not baselined), for spec-combo detection. */
+	private int previousSpecialEnergy = -1;
+
 	// ─── Lifecycle ───────────────────────────────────────────────────────
 
 	@Provides
@@ -258,6 +262,7 @@ public class PvpEnhancerPlugin extends Plugin
 		focusInvolvedUntil.clear();
 		currentOpponents.clear();
 		combatOpponent = null;
+		previousSpecialEnergy = -1;
 		notRetaliatingOverlay.setOpponent(null);
 		previousEquipment = null;
 		previousOverheads.clear();
@@ -433,6 +438,7 @@ public class PvpEnhancerPlugin extends Plugin
 		// 5. Detect combos (before flush so ComboEvents land in this tick)
 		if (config.showCombos())
 		{
+			detectSpecialUse(tick);
 			List<ComboResult> combos = comboDetector.flush(invIds, invQty, tick);
 			for (ComboResult combo : combos)
 			{
@@ -533,6 +539,12 @@ public class PvpEnhancerPlugin extends Plugin
 		if (actor == client.getLocalPlayer())
 		{
 			combatState.recordCombatActivity(tick);
+		}
+
+		// Spec-combo: count hitsplats landing on the opponent this tick.
+		if (config.showCombos() && actor != null && actor == combatOpponent)
+		{
+			comboDetector.onOpponentHit(tick);
 		}
 
 		Combatant target = Combatants.of(actor, client.getLocalPlayer());
@@ -664,7 +676,6 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			String player = localPlayerName();
 			int swapCount = 0;
-			boolean weaponSwapped = false;
 
 			for (Map.Entry<EquipmentInventorySlot, Integer> entry : current.entrySet())
 			{
@@ -675,20 +686,12 @@ public class PvpEnhancerPlugin extends Plugin
 					swapCount++;
 					String itemName = currentId > 0 ? itemName(currentId) : "(nothing)";
 					history.addEvent(new GearSwapEvent(player, entry.getKey().name(), currentId, itemName));
-					if (entry.getKey() == EquipmentInventorySlot.WEAPON)
-					{
-						weaponSwapped = true;
-					}
 				}
 			}
 
 			if (config.showCombos())
 			{
 				comboDetector.onGearSwapCount(swapCount);
-				if (weaponSwapped)
-				{
-					comboDetector.onWeaponSwap(tick);
-				}
 			}
 		}
 
@@ -878,6 +881,20 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			combatOpponent = null;
 		}
+	}
+
+	/**
+	 * Feeds the combo detector a "special used" event when the local player's special-attack
+	 * energy drops between ticks. A drop = a special was just performed (e.g. AGS, MSB spec).
+	 */
+	private void detectSpecialUse(int tick)
+	{
+		int energy = client.getVarpValue(VarPlayer.SPECIAL_ATTACK_PERCENT);
+		if (previousSpecialEnergy >= 0 && energy < previousSpecialEnergy)
+		{
+			comboDetector.onSpecialUsed(tick);
+		}
+		previousSpecialEnergy = energy;
 	}
 
 	/** Recomputes the set of players currently fighting the local player (target + attackers). */

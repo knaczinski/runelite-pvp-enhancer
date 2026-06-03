@@ -7,20 +7,20 @@ import java.awt.Color;
  */
 public enum ComboTier
 {
-	/** Equip + attack on the same tick (gap = 0) — zero reaction window for opponent. */
-	PERFECT(new Color(0xFFD700)),  // gold
+	/** Top-tier execution (Godlike 5+-way switch, or a same-tick spec combo). */
+	GODLIKE(new Color(0xC7, 0x7D, 0xFF)), // purple
 
-	/** Gap = 1 tick between equip and attack. */
-	GREAT(new Color(0x6BCB77)),    // green
+	/** Strong execution (Excellent 3–4-way same-tick switch). */
+	EXCELLENT(new Color(0xFFD700)),       // gold
 
-	/** Gap = 2 ticks between equip and attack. */
-	GOOD(new Color(0x4D96FF)),     // blue
+	/** Sloppy-but-landed (switch or spec combo spread over two ticks). */
+	HUMBLE(new Color(0x4D96FF)),          // blue
 
-	/** Successful eat combo or clean switch (no timing grade needed). */
-	SUCCESS(new Color(0x6BCB77)),  // green
+	/** Successful combo with no timing grade (triple eat). */
+	SUCCESS(new Color(0x6BCB77)),         // green
 
 	/** Combo failed (potlock / fumble). */
-	FAILED(new Color(0xFF6B6B));   // red
+	FAILED(new Color(0xFF6B6B));          // red
 
 	private final Color color;
 
