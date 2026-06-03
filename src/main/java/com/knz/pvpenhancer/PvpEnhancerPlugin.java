@@ -445,9 +445,20 @@ public class PvpEnhancerPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if ("pvpenhancer".equals(event.getGroup()) && "developerMode".equals(event.getKey()))
+		if (!"pvpenhancer".equals(event.getGroup()))
+		{
+			return;
+		}
+		if ("developerMode".equals(event.getKey()))
 		{
 			applyDevMode(config.developerMode());
+		}
+		else if ("combatFocusMode".equals(event.getKey()))
+		{
+			// Drop stale involvement stamps so the new mode takes effect on the next tick instead
+			// of leaving entities ghosted for the timeout window.
+			focusInvolvedUntil.clear();
+			combatFocus.clear();
 		}
 	}
 

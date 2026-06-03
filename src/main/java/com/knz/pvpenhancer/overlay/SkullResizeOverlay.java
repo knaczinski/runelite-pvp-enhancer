@@ -73,7 +73,7 @@ public class SkullResizeOverlay extends Overlay
 			// Centre horizontally over the head. When the HP bar or an overhead-prayer icon is
 			// showing, sit ABOVE them so they don't cover the skull; otherwise sit just over the head.
 			boolean hasBarOrPrayer = p.getHealthRatio() >= 0 || p.getOverheadIcon() != null;
-			int zOffset = p.getLogicalHeight() + (hasBarOrPrayer ? 70 : 25);
+			int zOffset = p.getLogicalHeight() + (hasBarOrPrayer ? 100 : 25);
 			Point anchor = p.getCanvasTextLocation(graphics, "", zOffset);
 			if (anchor == null)
 			{

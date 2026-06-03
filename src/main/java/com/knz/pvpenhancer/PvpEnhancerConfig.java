@@ -108,21 +108,23 @@ public interface PvpEnhancerConfig extends Config
 
 	// ─── Overhead displays ──────────────────────────────────────────────────
 
-	@ConfigItem(keyName = "healDisplayMode", name = "Healing numbers",
+	@ConfigItem(keyName = "healDisplayMode", name = "Healing",
 		description = "Show recovered HP near the health bar of whoever healed. Opponent "
-			+ "amounts are estimates (~) — the API only exposes their health ratio, not real HP.",
+			+ "amounts are estimates (~) — the API only exposes their health ratio, not real HP. "
+			+ "Scope 'Others' = everyone except you and your opponents.",
 		section = overheadSection, position = 0)
 	default HealDisplayMode healDisplayMode() { return HealDisplayMode.EVERYONE; }
 
-	@ConfigItem(keyName = "debuffTimers", name = "Freeze / TB timers",
-		description = "Show an icon + seconds countdown over players hit by freeze/snare/teleblock. "
-			+ "Teleblock is tracked as half (~2.5 min) when the target prayed Magic as it landed.",
+	@ConfigItem(keyName = "debuffTimers", name = "Freeze/TB",
+		description = "Freeze / snare / teleblock timers: an icon + seconds countdown over affected "
+			+ "players. Teleblock is tracked as half (~2.5 min) when the target prayed Magic as it landed.",
 		section = overheadSection, position = 1)
 	default DebuffScope debuffTimers() { return DebuffScope.OFF; }
 
-	@ConfigItem(keyName = "vengTextScope", name = "Vengeance text resize",
+	@ConfigItem(keyName = "vengTextScope", name = "Veng resize",
 		description = "Re-render the 'Vengeance!' overhead text at a custom size (the native size "
-			+ "is not resizable via the API, so the original is replaced).",
+			+ "is not resizable via the API, so the original is replaced). Scope 'Others' = everyone "
+			+ "except you and your opponents.",
 		section = overheadSection, position = 2)
 	default OverheadScope vengTextScope() { return OverheadScope.OFF; }
 
@@ -132,9 +134,10 @@ public interface PvpEnhancerConfig extends Config
 		section = overheadSection, position = 3)
 	default int vengTextSize() { return 100; }
 
-	@ConfigItem(keyName = "skullScope", name = "PK skull resize",
+	@ConfigItem(keyName = "skullScope", name = "Skull resize",
 		description = "Re-render the PK skull at a custom size (the native size is not resizable, "
-			+ "so the native skull is hidden and replaced). Only the regular skull is handled.",
+			+ "so the native skull is hidden and replaced). Only the regular skull is handled. "
+			+ "Scope 'Others' = everyone except you and your opponents.",
 		section = overheadSection, position = 4)
 	default OverheadScope skullScope() { return OverheadScope.OFF; }
 

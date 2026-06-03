@@ -8,9 +8,9 @@ public enum DebuffScope
 {
 	OFF("Off"),
 	EVERYONE("Everyone"),
-	SELF("Only me"),
-	OPPONENTS("Only opponents"),
-	SELF_AND_OPPONENTS("Self + opponents");
+	SELF("Me"),
+	OPPONENTS("Opponents"),
+	SELF_AND_OPPONENTS("Self + opp");
 
 	private final String label;
 

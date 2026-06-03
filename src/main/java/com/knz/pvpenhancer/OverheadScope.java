@@ -9,10 +9,10 @@ public enum OverheadScope
 {
 	OFF("Off"),
 	EVERYONE("Everyone"),
-	SELF("Only me"),
-	OPPONENTS("Only opponents"),
-	SELF_AND_OPPONENTS("Self + opponents"),
-	OTHERS("Everyone but self + opponents");
+	SELF("Me"),
+	OPPONENTS("Opponents"),
+	SELF_AND_OPPONENTS("Self + opp"),
+	OTHERS("Others");
 
 	private final String label;
 
