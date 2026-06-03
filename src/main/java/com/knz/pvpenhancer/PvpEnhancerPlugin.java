@@ -193,6 +193,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Names of players currently fighting you (target + attackers), for SELF_AND_OPPONENTS scope. */
 	private final Set<String> currentOpponents = new HashSet<>();
 
+	/** The actor the local player is fighting (last targeted while in combat); flashed when not retaliating. */
+	private Actor combatOpponent;
+
 	// ─── Lifecycle ───────────────────────────────────────────────────────
 
 	@Provides
@@ -254,6 +257,8 @@ public class PvpEnhancerPlugin extends Plugin
 		combatFocus.clear();
 		focusInvolvedUntil.clear();
 		currentOpponents.clear();
+		combatOpponent = null;
+		notRetaliatingOverlay.setOpponent(null);
 		previousEquipment = null;
 		previousOverheads.clear();
 		previousLocalHp = -1;
@@ -397,9 +402,8 @@ public class PvpEnhancerPlugin extends Plugin
 		int tick = client.getTickCount();
 		Player local = client.getLocalPlayer();
 
-		// 1. Update combat engagement state + current opponents (for SELF_AND_OPPONENTS scope)
-		boolean engaged = local != null && local.getInteracting() instanceof Player;
-		combatState.setEngaged(engaged, tick);
+		// 1. Update combat engagement + current opponent (any actor, incl. NPCs for testing)
+		updateCombatOpponent(local, tick);
 		updateCurrentOpponents(local);
 
 		// 2. Inventory snapshot for combo-failed detection
@@ -421,6 +425,10 @@ public class PvpEnhancerPlugin extends Plugin
 		// 4d. Count down debuff timers + update the predictive prayer highlight
 		debuffTracker.tick();
 		updatePrayerHighlight(local);
+
+		// 4e. Flash the opponent if in combat but not attacking it
+		boolean notRetaliating = config.showNotRetaliating() && combatState.isNotRetaliating(tick);
+		notRetaliatingOverlay.setOpponent(notRetaliating ? combatOpponent : null);
 
 		// 5. Detect combos (before flush so ComboEvents land in this tick)
 		if (config.showCombos())
@@ -840,6 +848,37 @@ public class PvpEnhancerPlugin extends Plugin
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────────
+
+	/**
+	 * Tracks the local player's combat engagement and current opponent. {@code engaged} is true
+	 * whenever you are targeting any actor (player or NPC); the opponent reference is the last
+	 * actor you targeted and is kept while in combat so the not-retaliating flash knows whom to
+	 * highlight after you stop attacking. Works for NPCs too (e.g. testing on a guard).
+	 */
+	private void updateCombatOpponent(Player local, int tick)
+	{
+		if (local == null)
+		{
+			combatState.setEngaged(false, tick);
+			combatOpponent = null;
+			return;
+		}
+		Actor interacting = local.getInteracting();
+		if (interacting != null)
+		{
+			combatOpponent = interacting;
+			combatState.setEngaged(true, tick);
+		}
+		else
+		{
+			combatState.setEngaged(false, tick);
+		}
+		// Forget the opponent once combat has fully lapsed.
+		if (!combatState.isInCombat(tick))
+		{
+			combatOpponent = null;
+		}
+	}
 
 	/** Recomputes the set of players currently fighting the local player (target + attackers). */
 	private void updateCurrentOpponents(Player local)
