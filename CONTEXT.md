@@ -6,11 +6,29 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S012
-phase: Phases 1-4 code-complete. Only B008 open (Phase 2, live-data-gated). Live validation pending.
+latest_session: S013
+phase: Phases 1-4 + S013 UX/bug batch code-complete. Only B008 open (live-data-gated). Live validation pending.
 status: active
 
-## Current Focus
+## Current Focus (S013)
+
+S013 (design via /grill-me, then autonomous) shipped a bug+UX+feature batch:
+- B022 combat trigger needs real activity (kills false heartbeat on rejected attack); ANY_FIGHT
+  focus = player↔player only (fixes HT-010 teleport-in).
+- B023 not-attacking flashes the opponent's hull (red↔yellow), works for NPCs.
+- B024 combo redesign: Godlike/Excellent/Humble switch, Triple eat, Spec combo (hitsplat
+  heuristic via SPECIAL_ATTACK_PERCENT drop + opponent-hit count), keep COMBO_FAILED.
+- B025 heal + debuff overlays beside the HP bar; debuff = wiki icons + seconds; multi-debuff/actor.
+- B026 developer panel + OverlayDemoService (mock any floating overlay on yourself) +
+  developerMode toggle + docs/overlays.md.
+- B027 overhead-resize spike → only Vengeance text feasible (VengeanceTextOverlay + OverheadScope);
+  skull deferred (hacky), prayer-icon + health-bar API-blocked.
+HT results folded: HT-002/003/004/011 PASSED; HT-010 partial→B022 fix re-queued; HT-015..020 added.
+Build green, 69 tests.
+NEXT: live validation (HT-010 re-test, HT-012/013/014, HT-015..020). Harvest seeds in fights
+(spot-anim/weapon/attack-anim ids). Deferred: skull resize, per-group overhead sizes. B008 open.
+
+## Prior Focus
 
 S012 shipped all of Phase 4 + a 9-item PvP/UX batch. Phase 4: B018 combat focus (hide
 non-involved via Hooks RenderableDrawListener, persistence-timeout model, symmetric trigger),
@@ -98,6 +116,15 @@ API gotchas (do not relearn):
 - No per-entity transparency in the API — combat focus can only HIDE (Hooks
   RenderableDrawListener.draw returns false), not dim.
 - Actor#getGraphic() (deprecated) = current spot-anim id; adequate for debuff detection.
+- Native overhead elements have NO scale API. Resizable: Vengeance text only
+  (Actor.get/setOverheadText — clear native + redraw). setSkullIcon(-1) hides the skull
+  (hacky). Overhead prayer icon (getOverheadIcon) + health bar (getHealthRatio/Scale) are
+  read-only → not resizable. See docs/overhead-resize-spike.md.
+- isInCombat must be activity-based: getInteracting() is set even on a REJECTED attack
+  (clicking Attack on an un-attackable player), so interaction != combat.
+- Special-attack use = SPECIAL_ATTACK_PERCENT varp (client.getVarpValue) dropping between ticks.
+- An overlay fed by a shared service must be @Singleton, else Guice creates a 2nd instance
+  that is never registered in the OverlayManager (demo would feed a dead overlay).
 
 Design doc: docs/tick-history-design.md. Build/test: docs/building-and-testing.md.
 API reference: .ai/game/ops/runelite-plugin-dev.md, .ai/game/pvp/pvp-combat-events.md.

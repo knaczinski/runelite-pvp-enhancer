@@ -8,9 +8,9 @@ rule: read this file first. read CONTEXT.md second. read PROJECT.md before any c
 
 project: runelite-pvp-enhancer
 platform: RuneLite (OSRS client plugin)
-phase: Phases 1-4 code-complete. Only B008 open (Phase 2, live-data-gated). Live validation pending.
+phase: Phases 1-4 + S013 UX/bug batch code-complete. Only B008 open (live-data-gated). Live validation pending.
 status: active
-latest_session: S012
+latest_session: S013
 
 ## State
 

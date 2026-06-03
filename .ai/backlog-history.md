@@ -5,6 +5,50 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S013 — bug fixes, combo redesign, overlay moves, dev panel, resize spike
+
+Design resolved via /grill-me (8 decisions). User batch on top of live-validation feedback.
+
+### B022 — Combat-trigger + ANY_FIGHT focus bugs
+**Done S013.** `isInCombat` no longer treats mere interaction as combat (clicking Attack on an
+un-attackable player in a safe zone set `getInteracting()` and false-triggered the heartbeat) —
+combat now needs real activity (attack/hit/XP) in the window. Combat focus ANY_FIGHT counts only
+player↔player interactions, so teleport-in bystanders (PvE/following) no longer stay visible.
+Fixes HT-010 partial. HT-020 + HT-010 re-test queued.
+
+### B023 — Not-attacking warning flashes the opponent
+**Done S013.** Reworked from a screen panel into an in-scene flash of the opponent's convex hull
+(red↔yellow per tick). Tracks the real opponent actor (player OR NPC via `getInteracting()`), so
+it fires for NPC fights (guard test) too. HT-015.
+
+### B024 — Combo taxonomy redesign
+**Done S013.** Replaced the combo set. Gear: GODLIKE (5+ slots/tick), EXCELLENT (3–4/tick),
+HUMBLE (3–4 over two ticks). Eat: TRIPLE_EAT only. Spec: SPEC_COMBO (opponent takes 2+ hits same
+tick while you recently threw ranged + used special; via SPECIAL_ATTACK_PERCENT varp drop +
+opponent-hit count) and HUMBLE_SPEC_COMBO over two ticks. Kept COMBO_FAILED (potlock); removed
+double-eat, clean-switch, swap→attack tiers. Heuristic — HT-016. Tests rewritten.
+
+### B025 — Heal + debuff overlays beside the HP bar; debuff icons + seconds
+**Done S013.** Heal popup anchors right of the health bar (clear of the skull). Debuff timers
+render right of the HP bar under the heal row as OSRS-wiki spell icons (Ice_Barrage / Entangle /
+Tele_Block, bundled) + a seconds countdown. `DebuffTrackerService` now holds multiple
+simultaneous debuffs per actor (freeze + TB = two stacked icons). HT-017.
+
+### B026 — Developer panel + OverlayDemoService + overlay catalogue
+**Done S013.** `OverlayDemoService` is a central registry of one-click overlay mock scenarios
+(heal, hit predict, debuff, combo), fired on the local player on the client thread. `DevPanel`
+lists them grouped by overlay. Config `developerMode` toggle gates a 🛠 header button + the dev
+nav button (added/removed live via onConfigChanged). Heal/HitPredict/Combo overlays made
+`@Singleton` so the service feeds the rendered instances. `docs/overlays.md` catalogues every
+overlay. HT-018.
+
+### B027 — Overhead-resize spike + Vengeance text resize
+**Done S013.** Spike (`docs/overhead-resize-spike.md`): the API exposes no scale for native
+overhead elements. Only Vengeance text is cleanly resizable (`get/setOverheadText`); skull is
+feasible-but-hacky (`setSkullIcon(-1)` + sprite, mutates other players — deferred); prayer-icon +
+health-bar are API-blocked (read-only). Implemented `VengeanceTextOverlay` (clear native + redraw
+scaled) with `OverheadScope` + `vengTextScope`/`vengTextSize` config. HT-019.
+
 ## S012 — Phase 4 PvP overlays + sidebar redesign (autonomous)
 
 ### B018 — Combat focus (hide non-involved entities)

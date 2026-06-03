@@ -38,19 +38,45 @@ See `.ai/game/ops/runelite-plugin-dev.md` for the full setup reference.
 
 ## 2. Features
 
-### Tick History Overlay
+All overlays are catalogued in **`docs/overlays.md`** (purpose, trigger, scope, demos).
 
-Displays a scrollable panel of the last N game ticks (default 20) showing:
+### Sidebar panel
 
-| Category | Example |
-|---|---|
-| **Combat** | `knz → opponent  ranged  on MAGIC  hit 24` |
-| **Eating** | `knz ate Shark` |
-| **Gear swap** | `knz equipped Twisted bow (weapon)` |
+- **Tick history** — scrollable, colour-coded last-N ticks (combat / eating / gear / prayer /
+  combo), each with a per-category toggle and a "Copy log" button.
+- **Hit summary** — scrollable table, rows **green** when you attack, **red** when you are
+  attacked.
+- **⚙** opens the plugin config; **🛠** (with *Developer mode* on) opens the developer panel.
 
-Each category is independently togglable in the RuneLite config panel.
+### Combat overlays
 
-See `docs/tick-history-design.md` for the full design.
+- **Heartbeat** — red edge vignette pulsing per tick while in combat (combat now triggers only
+  on real activity, not on clicking an un-attackable target).
+- **Not-attacking warning** — flashes the opponent's outline red↔yellow when you stop attacking.
+- **Combat focus** — hides players/NPCs not involved in the fight (Self / Any-fight; Any-fight
+  is player-vs-player only).
+- **Hit prediction** — orange predicted damage from the Hitpoints-XP drop, before the projectile
+  lands.
+- **Healing** — recovered HP to the right of the health bar (scope: self / opponents / everyone).
+- **Debuff timers** — freeze / bind / teleblock as OSRS-wiki icons + seconds, stacked beside the
+  health bar (scope: self+opponents / all).
+- **Prayer highlighter** — boxes the protection prayer countering the target's weapon style.
+- **Vengeance text resize** — re-renders the "Vengeance!" overhead at a configurable size.
+
+### Combos
+
+Godlike / Excellent / Humble **switch** tiers, **Triple eat**, and the **Spec combo** (ranged +
+special on the opponent the same tick; *Humble* across two ticks), plus a potlock **fail**
+indicator. Shown as a centre-screen popup and in the tick history.
+
+### Developer panel
+
+With *Config → Developer → Developer mode* on, the **🛠** panel fires one-click **mocks** of the
+floating overlays (heal, hit predict, debuff, combo) on yourself — no live fight needed. Backed
+by `OverlayDemoService` (see `docs/overlays.md`).
+
+See `docs/tick-history-design.md`, `docs/combat-features-design.md`, `docs/overlays.md`, and
+`docs/overhead-resize-spike.md` for the designs.
 
 ---
 

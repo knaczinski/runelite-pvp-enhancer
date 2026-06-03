@@ -41,34 +41,7 @@ Some behaviour (overlay rendering, visual accuracy, in-game feel, performance) c
 4. Have the opponent turn on Protect from Melee. Attack. Confirm the prayer reads "pro melee".
 **PASS CRITERIA:** attacker, target, style, and overhead prayer are all correct. Note any attack that shows `?` style (unmapped animation id — feeds B008).
 
-### HT-002 — Overlay renders ticks newest-first, grouped, colour-coded (B005)
-**Linked:** B005.
-**SCENARIO SETUP:** plugin enabled, in any combat.
-**STEPS / OBSERVE:**
-1. Trade a few hits with an opponent.
-2. Confirm the panel shows "PvP Tick History" title, then "Tick N" headers, newest at the top.
-3. Confirm combat lines are one colour, eating another, gear swaps another.
-4. Confirm old ticks drop off once more than `maxHistoryTicks` accumulate.
-**PASS CRITERIA:** ordering newest-first, events grouped under the right tick, colours distinct, buffer caps.
-
-### HT-003 — Hitsplats and gear swaps logged on the right tick (B003/B004)
-**Linked:** B003, B004.
-**SCENARIO SETUP:** plugin enabled, in combat, with an inventory weapon/armour to swap.
-**STEPS / OBSERVE:**
-1. Take a few hits. Confirm `<you> took N (hit)` lines appear; a blocked/0 hit reads "(block)".
-2. Equip a different weapon mid-fight. Confirm `you equipped <item> (weapon)` appears within ~1 tick.
-3. Eat a food. Confirm `you ate <food>` appears on the click tick.
-**PASS CRITERIA:** hitsplat amounts correct, gear swap names + slots correct, eat item name correct, each on the expected tick.
-
-### HT-004 — Config toggles take effect live (B006)
-**Linked:** B006.
-**SCENARIO SETUP:** plugin enabled, some history on screen.
-**STEPS / OBSERVE:**
-1. Open PvP Enhancer config. Toggle **Show eating** off → eating lines disappear.
-2. Toggle **Show gear swaps** off → gear lines disappear.
-3. Set **Max history ticks** to 5 → panel shrinks to at most 5 ticks.
-4. Toggle **Track opponents** off → only your own events record going forward.
-**PASS CRITERIA:** every toggle changes the overlay without a client restart.
+> HT-002, HT-003, HT-004 PASSED (S013) — see human-testing-history.md.
 
 ---
 
@@ -84,16 +57,10 @@ Combat (PvP) → set **Combat focus** to SELF; note **Combat focus timeout** (de
 3. Let your partner eat / pause attacking for a few ticks (< timeout). Confirm they STAY visible (no flicker out).
 4. Stop attacking entirely. Confirm focus releases (~timeout ticks later) and everyone returns.
 5. Switch mode to ANY_FIGHT: confirm focus also triggers when other players fight near you.
-**PASS CRITERIA:** only non-involved hidden; target never hidden; participants persist through eats up to the timeout; disabling restores all.
+6. **Re-test of the S012 bug:** in ANY_FIGHT, have a player TELEPORT IN who is NOT fighting (or is fighting an NPC / following) — confirm they are now HIDDEN (B022 fix: only player↔player counts as a fight).
+**PASS CRITERIA:** only non-involved hidden; target never hidden; participants persist through eats up to the timeout; teleport-in bystanders hidden; disabling restores all.
 
-### HT-011 — XP-drop hit prediction precedes the hitsplat (B019)
-**Linked:** B019.
-**SCENARIO SETUP:** plugin enabled, `hitPrediction` on, ranged or magic weapon.
-**STEPS / OBSERVE:**
-1. Attack a target with ranged/magic from a distance.
-2. Confirm an orange predicted-damage number appears near the target a tick or two BEFORE the hitsplat lands.
-3. Compare the predicted number to the actual hitsplat — confirm they match.
-**PASS CRITERIA:** number appears before the projectile lands and equals the real damage.
+> HT-011 PASSED (S013) — see human-testing-history.md.
 
 ### HT-012 — Freeze / snare / teleblock timers + id harvest (B020)
 **Linked:** B020.
@@ -125,6 +92,60 @@ Bring (or have a partner bring) ice spells / bind / teleblock.
 3. Click the header **⚙** button → confirm the RuneLite config for **PvP Enhancer** opens.
 4. Enable **Walk-here over Take**, enter combat, left-click a ground item → confirm you WALK (don't pick up); right-click still shows **Take**.
 **PASS CRITERIA:** table colours + both scrollbars work; gear button opens config; in combat left-click no longer grabs loot while right-click Take remains.
+
+---
+
+## ▶ PRIORITY 5 — S013 batch (bug fixes, combos, overlays, dev panel)
+
+### HT-015 — Not-attacking flashes the opponent (B023)
+**SCENARIO SETUP:** plugin enabled, `showNotRetaliating` on. A guard or a partner.
+**STEPS / OBSERVE:**
+1. Attack the opponent, then stop (walk away / click the ground) for 2+ ticks.
+2. Confirm the OPPONENT's outline flashes red↔yellow (not a screen panel).
+3. Re-click the opponent → confirm the flash stops.
+4. Repeat against an NPC (guard) → confirm it works for NPCs too.
+**PASS CRITERIA:** the right actor flashes when you disengage; clears on re-target; works for player and NPC.
+
+### HT-016 — Combo taxonomy (B024)
+**SCENARIO SETUP:** plugin enabled, `showCombos` on. Spec weapon (AGS) + a bow, brews/pots.
+**STEPS / OBSERVE:**
+1. Switch 3–4 gear slots in one tick → **EXCELLENT SWITCH**; 5+ in one tick → **GODLIKE SWITCH**; split a 3–4 switch over two ticks → **HUMBLE SWITCH**.
+2. Eat/drink 3 things in one tick → **TRIPLE EAT** (double eat shows nothing).
+3. Land MSB spec + AGS spec on the opponent the same tick → **SPEC COMBO** (across two ticks → **HUMBLE SPEC COMBO**).
+4. Potlock an eat → **COMBO FAILED** still shows.
+**PASS CRITERIA:** each combo fires with the right label/colour; removed combos (double-eat, clean-switch, swap→attack) no longer appear.
+
+### HT-017 — Heal + debuff beside the HP bar, debuff icons (B025)
+**SCENARIO SETUP:** `healDisplayMode` = Everyone, `debuffTimers` = Self+opponents.
+**STEPS / OBSERVE:**
+1. Heal → confirm the +N appears to the RIGHT of the health bar (not above the head / behind the skull).
+2. Get frozen → confirm a freeze ICON (not text) + a seconds countdown appears right of the HP bar, under the heal row.
+3. Get frozen AND teleblocked → confirm TWO stacked icons, each counting down.
+**PASS CRITERIA:** heal + debuffs sit beside the HP bar; debuffs show wiki icons + seconds; multiple debuffs stack.
+
+### HT-018 — Developer panel mocks (B026)
+**SCENARIO SETUP:** Config → Developer → **Developer mode** ON. Logged in.
+**STEPS / OBSERVE:**
+1. Confirm a 🛠 button appears in the main panel header and a Developer nav icon in the sidebar.
+2. Open the dev panel; click each button (Heal, Hit predict, Debuff, Combo) → confirm the matching overlay fires ON YOU.
+3. Turn Developer mode OFF → confirm the dev panel + 🛠 button disappear.
+**PASS CRITERIA:** every mock fires its overlay on the local player; the panel is gated by the toggle.
+
+### HT-019 — Vengeance text resize (B027)
+**SCENARIO SETUP:** Config → Combat (PvP) → **Resize Vengeance text** = Self; **size** e.g. 250%.
+**STEPS / OBSERVE:**
+1. Cast Vengeance → confirm the "Vengeance!" overhead appears at the enlarged size (native size replaced, no doubled text).
+2. Lower the size to ~50% → confirm it shrinks.
+3. Set scope to Everyone and have a partner veng → confirm theirs scales too.
+**PASS CRITERIA:** the veng text renders at the configured size for the configured scope; no double/native text behind it.
+
+### HT-020 — Heartbeat no longer false-fires on invalid attack (B022)
+**SCENARIO SETUP:** plugin enabled, in a NON-PvP / safe area, another player present.
+**STEPS / OBSERVE:**
+1. Click **Attack** on a player you cannot attack ("You can't attack this player").
+2. Confirm the heartbeat vignette does NOT appear and the panel does not say "In combat".
+3. Now actually trade hits in a PvP area → confirm the heartbeat DOES appear.
+**PASS CRITERIA:** combat (heartbeat) triggers only on real activity, not on a rejected attack click.
 
 ---
 
