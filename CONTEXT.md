@@ -30,6 +30,9 @@ S013 (design via /grill-me, then autonomous) shipped a bug+UX+feature batch:
   (you/them/?, swap warning), 1v1-only, config pidIndicator, dev mocks. PID not API-exposed —
   honest best-effort; HT-023 to check the live signal isn't an index artifact. Spike doc updated.
   Scope enums standardized with matches(isSelf,isOpponent); config reorganized into 4 sections.
+- Combat focus = hide + OUTLINE: RenderableDrawListener skips the model, FocusOutlineOverlay draws
+  the contour via ModelOutlineRenderer (net.runelite.client.ui.overlay.outline) — reads geometry
+  from memory regardless of the skipped draw. Hidden entities = faint ghost outline. Local never hidden.
 HT results folded: HT-002/003/004/011 PASSED; HT-010 partial→B022 fix re-queued; HT-015..020 added.
 Build green, 69 tests.
 NEXT: live validation (HT-010 re-test, HT-012/013/014, HT-015..020). Harvest seeds in fights

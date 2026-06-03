@@ -5,6 +5,14 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S013 (cont.) — combat focus = hide + outline
+
+**Done S013.** Combat focus no longer fully hides non-involved entities: the
+`RenderableDrawListener` still skips the native model, and a new `FocusOutlineOverlay` draws each
+hidden Player/NPC's contour via `ModelOutlineRenderer` (reads model geometry from memory, ignores
+the skipped draw). Hidden entities now appear as a faint ghost outline. Local player never hidden
+(no GPU/117HD/render-self conflict). `CombatFocusService` gained `isActive()`/`isHidden()`.
+
 ## S013 (cont.) — experimental PID guess + skull z-order
 
 **Done S013.** B029 built as experimental: `PidGuessService` (noisy contested-hitsplat vote) +
