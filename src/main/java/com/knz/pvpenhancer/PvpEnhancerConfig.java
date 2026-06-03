@@ -104,6 +104,19 @@ public interface PvpEnhancerConfig extends Config
 		section = pvpSection, position = 3)
 	default boolean swapPickupInCombat() { return false; }
 
+	@ConfigItem(keyName = "debuffTimers", name = "Freeze / TB timers",
+		description = "Show a countdown over players affected by freeze/snare/teleblock. Durations "
+			+ "are best-effort upper bounds (the API does not expose partial freezes). OPPONENTS = "
+			+ "you + players fighting you; ALL = every visible player.",
+		section = pvpSection, position = 4)
+	default DebuffScope debuffTimers() { return DebuffScope.OFF; }
+
+	@ConfigItem(keyName = "prayerHighlight", name = "Prayer highlighter",
+		description = "Highlight the protection prayer matching your current target's equipped "
+			+ "weapon style (predictive). Switches as they switch weapons.",
+		section = pvpSection, position = 5)
+	default boolean prayerHighlight() { return false; }
+
 	// ─── Controlled inline in the sidebar panel (hidden from the config panel) ──
 	// These are edited next to their block in PvpEnhancerPanel.
 

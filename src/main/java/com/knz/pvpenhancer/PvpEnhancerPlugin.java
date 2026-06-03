@@ -25,19 +25,24 @@ import com.knz.pvpenhancer.model.HitsplatEvent;
 import com.knz.pvpenhancer.model.HitsplatLabels;
 import com.knz.pvpenhancer.model.PrayerEvent;
 import com.knz.pvpenhancer.model.PrayerNames;
+import com.knz.pvpenhancer.model.SpotanimDebuffs;
 import com.knz.pvpenhancer.model.TickEntry;
+import com.knz.pvpenhancer.model.WeaponStyleMap;
 import com.knz.pvpenhancer.model.XpDamage;
 import com.knz.pvpenhancer.overlay.ComboFeedbackOverlay;
+import com.knz.pvpenhancer.overlay.DebuffTimerOverlay;
 import com.knz.pvpenhancer.overlay.HealOverlay;
 import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
 import com.knz.pvpenhancer.overlay.HitPredictOverlay;
 import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
+import com.knz.pvpenhancer.overlay.PrayerHighlightOverlay;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator.Correlation;
 import com.knz.pvpenhancer.service.CombatFocusService;
 import com.knz.pvpenhancer.service.CombatStateService;
 import com.knz.pvpenhancer.service.ComboDetectorService;
+import com.knz.pvpenhancer.service.DebuffTrackerService;
 import com.knz.pvpenhancer.service.HitSummaryService;
 import com.knz.pvpenhancer.service.TickHistoryService;
 import java.util.EnumMap;
@@ -59,10 +64,12 @@ import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
+import net.runelite.api.PlayerComposition;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.GraphicChanged;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
@@ -128,7 +135,10 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private ComboFeedbackOverlay comboFeedbackOverlay;
 	@Inject private HealOverlay healOverlay;
 	@Inject private HitPredictOverlay hitPredictOverlay;
+	@Inject private DebuffTimerOverlay debuffTimerOverlay;
+	@Inject private PrayerHighlightOverlay prayerHighlightOverlay;
 
+	@Inject private DebuffTrackerService debuffTracker;
 	@Inject private CombatFocusService combatFocus;
 	@Inject private Hooks hooks;
 	@SuppressWarnings("deprecation") // RenderableDrawListener is the API EntityHider uses; RenderCallback is newer
@@ -201,6 +211,8 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(comboFeedbackOverlay);
 		overlayManager.add(healOverlay);
 		overlayManager.add(hitPredictOverlay);
+		overlayManager.add(debuffTimerOverlay);
+		overlayManager.add(prayerHighlightOverlay);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 
@@ -222,6 +234,8 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(comboFeedbackOverlay);
 		overlayManager.remove(healOverlay);
 		overlayManager.remove(hitPredictOverlay);
+		overlayManager.remove(debuffTimerOverlay);
+		overlayManager.remove(prayerHighlightOverlay);
 		unregisterFocusListener();
 		clientToolbar.removeNavigation(navButton);
 		resetState();
@@ -236,6 +250,7 @@ public class PvpEnhancerPlugin extends Plugin
 		comboDetector.clear();
 		healOverlay.clear();
 		hitPredictOverlay.clear();
+		debuffTracker.clear();
 		combatFocus.clear();
 		focusInvolvedUntil.clear();
 		currentOpponents.clear();
@@ -399,6 +414,10 @@ public class PvpEnhancerPlugin extends Plugin
 
 		// 4c. Combat focus — hide non-involved entities
 		detectCombatFocus(tick);
+
+		// 4d. Count down debuff timers + update the predictive prayer highlight
+		debuffTracker.tick();
+		updatePrayerHighlight(local);
 
 		// 5. Detect combos (before flush so ComboEvents land in this tick)
 		if (config.showCombos())
@@ -784,6 +803,39 @@ public class PvpEnhancerPlugin extends Plugin
 		}
 	}
 
+	/**
+	 * Detects freeze/snare/teleblock by matching the spot-anim applied to a tracked player against
+	 * the {@link SpotanimDebuffs} seed. Unknown spot-anims are debug-logged for live collection.
+	 */
+	@Subscribe
+	@SuppressWarnings("deprecation") // Actor#getGraphic returns the current spot-anim id (seed-collection path)
+	public void onGraphicChanged(GraphicChanged event)
+	{
+		if (config.debuffTimers() == DebuffScope.OFF)
+		{
+			return;
+		}
+		Actor actor = event.getActor();
+		if (!(actor instanceof Player) || !isInDebuffScope(actor))
+		{
+			return;
+		}
+		int spotanim = actor.getGraphic();
+		if (spotanim == -1)
+		{
+			return;
+		}
+		SpotanimDebuffs.Entry entry = SpotanimDebuffs.lookup(spotanim);
+		if (entry != null)
+		{
+			debuffTracker.apply(actor, entry.debuff, entry.durationTicks);
+		}
+		else
+		{
+			log.debug("Unknown spot-anim {} on {}", spotanim, actor.getName());
+		}
+	}
+
 	// ─── Helpers ─────────────────────────────────────────────────────────
 
 	/** Recomputes the set of players currently fighting the local player (target + attackers). */
@@ -806,6 +858,53 @@ public class PvpEnhancerPlugin extends Plugin
 				currentOpponents.add(Text.removeTags(p.getName()));
 			}
 		}
+	}
+
+	/** Pushes the current target's equipped-weapon style to the predictive prayer highlight. */
+	private void updatePrayerHighlight(Player local)
+	{
+		if (!config.prayerHighlight() || local == null || !(local.getInteracting() instanceof Player))
+		{
+			prayerHighlightOverlay.setTargetStyle(AttackStyle.UNKNOWN);
+			return;
+		}
+		prayerHighlightOverlay.setTargetStyle(weaponStyleOf((Player) local.getInteracting()));
+	}
+
+	/** Resolves a player's equipped-weapon style, logging unknown weapon ids for live collection. */
+	private AttackStyle weaponStyleOf(Player player)
+	{
+		PlayerComposition comp = player.getPlayerComposition();
+		if (comp == null)
+		{
+			return AttackStyle.UNKNOWN;
+		}
+		int weaponItemId = comp.getEquipmentId(KitType.WEAPON);
+		if (weaponItemId <= 0)
+		{
+			return AttackStyle.UNKNOWN; // unarmed / non-item slot
+		}
+		AttackStyle style = WeaponStyleMap.styleOf(weaponItemId);
+		if (style == AttackStyle.UNKNOWN)
+		{
+			log.debug("Unknown weapon id {} on {}", weaponItemId, player.getName());
+		}
+		return style;
+	}
+
+	/** True if debuff timers should be tracked for this actor under the configured scope. */
+	private boolean isInDebuffScope(Actor actor)
+	{
+		if (config.debuffTimers() == DebuffScope.ALL)
+		{
+			return true;
+		}
+		if (actor == client.getLocalPlayer())
+		{
+			return true;
+		}
+		String name = actor.getName();
+		return name != null && currentOpponents.contains(Text.removeTags(name));
 	}
 
 	private boolean isTracked(Combatant combatant)
