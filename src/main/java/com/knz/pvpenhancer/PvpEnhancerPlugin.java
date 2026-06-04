@@ -214,6 +214,12 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Names of players currently fighting you (target + attackers), for SELF_AND_OPPONENTS scope. */
 	private final Set<String> currentOpponents = new HashSet<>();
 
+	/** Per-player tick until which they count as "in combat" for ghostify (smooths over eats/pauses). */
+	private final Map<Player, Integer> ghostCombatUntil = new HashMap<>();
+
+	/** Ticks a player stays "in combat" after their last engagement (eating clears interaction ~3t). */
+	private static final int GHOST_COMBAT_WINDOW = 10;
+
 	/** The actor the local player is fighting (last targeted while in combat); flashed when not retaliating. */
 	private Actor combatOpponent;
 
@@ -331,6 +337,7 @@ public class PvpEnhancerPlugin extends Plugin
 		pidOpponentHitThisTick = false;
 		pidFirstSide = 0;
 		ghostify.clear();
+		ghostCombatUntil.clear();
 		currentOpponents.clear();
 		combatOpponent = null;
 		previousSpecialEnergy = -1;
@@ -371,6 +378,27 @@ public class PvpEnhancerPlugin extends Plugin
 	{
 		Map<Player, Color> ghosted = new HashMap<>();
 
+		// Stamp combat engagement (attacker AND their target) with a window, so a brief gap —
+		// eating clears interaction for ~3 ticks, re-targeting, a pause — doesn't flip "in combat"
+		// and wrongly ghostify a still-fighting player.
+		for (Player p : client.getTopLevelWorldView().players())
+		{
+			if (p == null)
+			{
+				continue;
+			}
+			Actor target = p.getInteracting();
+			if (target != null)
+			{
+				ghostCombatUntil.put(p, tick + GHOST_COMBAT_WINDOW);
+				if (target instanceof Player)
+				{
+					ghostCombatUntil.put((Player) target, tick + GHOST_COMBAT_WINDOW);
+				}
+			}
+		}
+		ghostCombatUntil.values().removeIf(expiry -> expiry < tick);
+
 		// Self — gated; note hiding the local model also needs Entity Hider's "Hide Local Player".
 		if (local != null && config.ghostifySelf().shouldGhost(combatState.isInCombat(tick)))
 		{
@@ -386,7 +414,7 @@ public class PvpEnhancerPlugin extends Plugin
 			{
 				continue;
 			}
-			boolean inCombat = p.getInteracting() != null;
+			boolean inCombat = ghostCombatUntil.containsKey(p);
 			GhostCat cat = classifyGhost(p);
 			boolean ghost = false;
 			Color color = null;
