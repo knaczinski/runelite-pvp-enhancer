@@ -634,15 +634,20 @@ public class PvpEnhancerPlugin extends Plugin
 		boolean notRetaliating = config.showNotRetaliating() && combatState.isNotRetaliating(tick);
 		notRetaliatingOverlay.setOpponent(notRetaliating ? combatOpponent : null);
 
-		// 5. Detect combos (before flush so ComboEvents land in this tick)
+		// 5. Detect combos (before flush so ComboEvents land in this tick). Always advance the
+		// detector's state, but only EMIT combos while in combat — otherwise out-of-combat bulk
+		// equipment changes (e.g. banking / depositing all worn items) register as a gear switch.
 		if (config.showCombos())
 		{
 			detectSpecialUse(tick);
 			List<ComboResult> combos = comboDetector.flush(invIds, invQty, tick);
-			for (ComboResult combo : combos)
+			if (combatState.isInCombat(tick))
 			{
-				history.addEvent(new ComboEvent(combo));
-				comboFeedbackOverlay.showCombo(combo);
+				for (ComboResult combo : combos)
+				{
+					history.addEvent(new ComboEvent(combo));
+					comboFeedbackOverlay.showCombo(combo);
+				}
 			}
 		}
 
