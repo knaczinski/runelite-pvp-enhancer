@@ -77,6 +77,8 @@ import net.runelite.api.PlayerComposition;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.SkullIcon;
+import net.runelite.api.Varbits;
+import net.runelite.api.WorldType;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
@@ -219,6 +221,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 	/** Ticks a player stays "in combat" after their last engagement (eating clears interaction ~3t). */
 	private static final int GHOST_COMBAT_WINDOW = 10;
+
+	/** Combat-level attack range outside the Wilderness on a PvP world (best-effort; HT-validated). */
+	private static final int PVP_WORLD_RANGE = 15;
 
 	/** The actor the local player is fighting (last targeted while in combat); flashed when not retaliating. */
 	private Actor combatOpponent;
@@ -405,7 +410,7 @@ public class PvpEnhancerPlugin extends Plugin
 			ghosted.put(local, config.ghostColorSelf());
 		}
 
-		int wildyLevel = wildernessLevel(local);
+		int attackRange = attackableRange(local); // -1 = no PvP attack-range context here
 		int myCombat = local != null ? local.getCombatLevel() : 0;
 
 		for (Player p : client.getTopLevelWorldView().players())
@@ -433,7 +438,7 @@ public class PvpEnhancerPlugin extends Plugin
 					color = config.ghostColorFriends();
 					break;
 				default: // OTHER
-					boolean cannotAttack = wildyLevel > 0 && Math.abs(myCombat - p.getCombatLevel()) > wildyLevel;
+					boolean cannotAttack = attackRange >= 0 && Math.abs(myCombat - p.getCombatLevel()) > attackRange;
 					ghost = config.ghostifyOthers().shouldGhost(inCombat, cannotAttack);
 					color = config.ghostColorOthers();
 					break;
@@ -467,28 +472,43 @@ public class PvpEnhancerPlugin extends Plugin
 	}
 
 	/**
-	 * @return current Wilderness level from the local player's position (overworld or underground),
-	 * or 0 if not in the Wilderness. Used by the "can't attack here" ghostify rule.
+	 * @return the combat-level range within which you can attack other players right now, or -1 if
+	 * there is no PvP attack-range context (not in the Wilderness and not on a PvP world). In the
+	 * Wilderness the range is the Wilderness level; on a PvP world outside the Wilderness it is a
+	 * fixed bracket ({@link #PVP_WORLD_RANGE}). Drives the "Can't attack here" ghostify rule.
 	 */
-	private int wildernessLevel(Player local)
+	private int attackableRange(Player local)
 	{
 		if (local == null)
 		{
-			return 0;
+			return -1;
 		}
-		WorldPoint wp = local.getWorldLocation();
+		if (client.getVarbitValue(Varbits.IN_WILDERNESS) == 1)
+		{
+			return Math.max(1, wildernessLevel(local.getWorldLocation()));
+		}
+		if (WorldType.isPvpWorld(client.getWorldType()))
+		{
+			return PVP_WORLD_RANGE;
+		}
+		return -1;
+	}
+
+	/** @return Wilderness level from a world point (overworld or underground), or 0 if outside it. */
+	private static int wildernessLevel(WorldPoint wp)
+	{
 		if (wp == null)
 		{
 			return 0;
 		}
 		int y = wp.getY();
-		if (y >= 3520 && y < 4000) // overworld Wilderness
-		{
-			return (y - 3520) / 8 + 1;
-		}
-		if (y >= 9920 && y < 10400) // underground Wilderness
+		if (y >= 9920) // underground Wilderness
 		{
 			return (y - 9920) / 8 + 1;
+		}
+		if (y >= 3520) // overworld Wilderness
+		{
+			return (y - 3520) / 8 + 1;
 		}
 		return 0;
 	}
