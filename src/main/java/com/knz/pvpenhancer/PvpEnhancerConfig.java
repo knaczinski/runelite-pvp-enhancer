@@ -162,7 +162,7 @@ public interface PvpEnhancerConfig extends Config
 	@ConfigItem(keyName = "ghostColorSelf", name = "Self — colour",
 		description = "Outline colour for your own ghostified character.",
 		section = ghostifySection, position = 1)
-	default Color ghostColorSelf() { return new Color(0x33, 0xDD, 0x33); }
+	default Color ghostColorSelf() { return new Color(0xEC, 0xE1, 0x2C); }
 
 	@ConfigItem(keyName = "ghostifyOpponents", name = "Opponents — when",
 		description = "When to ghostify players currently fighting you.",
@@ -195,7 +195,7 @@ public interface PvpEnhancerConfig extends Config
 	@ConfigItem(keyName = "ghostColorFriends", name = "Friends — colour",
 		description = "Outline colour for ghostified friends.",
 		section = ghostifySection, position = 7)
-	default Color ghostColorFriends() { return new Color(0x33, 0xDD, 0xDD); }
+	default Color ghostColorFriends() { return new Color(0x25, 0xE7, 0x25); }
 
 	@ConfigItem(keyName = "ghostifyOthers", name = "Others — when",
 		description = "When to ghostify everyone else. 'Can't attack here' = their combat level "
@@ -207,7 +207,7 @@ public interface PvpEnhancerConfig extends Config
 	@ConfigItem(keyName = "ghostColorOthers", name = "Others — colour",
 		description = "Outline colour for ghostified other players.",
 		section = ghostifySection, position = 9)
-	default Color ghostColorOthers() { return new Color(0xC8, 0xC8, 0xC8); }
+	default Color ghostColorOthers() { return new Color(0xBD, 0xBD, 0xBD); }
 
 	// ─── Developer ────────────────────────────────────────────────────────────
 
