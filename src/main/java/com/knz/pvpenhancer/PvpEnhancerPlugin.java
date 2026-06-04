@@ -72,6 +72,7 @@ import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
+import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.Prayer;
@@ -100,6 +101,11 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.NPCManager;
+import net.runelite.client.hiscore.HiscoreEndpoint;
+import net.runelite.client.hiscore.HiscoreManager;
+import net.runelite.client.hiscore.HiscoreResult;
+import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -141,6 +147,8 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private OverlayManager overlayManager;
 	@Inject private PvpEnhancerConfig config;
 	@Inject private ItemManager itemManager;
+	@Inject private NPCManager npcManager;
+	@Inject private HiscoreManager hiscoreManager;
 
 	@Inject private TickHistoryService history;
 	@Inject private CombatStateService combatState;
@@ -201,8 +209,11 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Each tracked player's overhead prayer from the previous tick, keyed by name. */
 	private final Map<String, HeadIcon> previousOverheads = new HashMap<>();
 
-	/** Assumed max HP for estimating remote players' heal amounts from their health ratio. */
+	/** Fallback max HP when a real value isn't available (unranked player / pending lookup). */
 	private static final int ASSUMED_MAX_HP = 99;
+
+	/** Resolved max HP per player name (from the Hiscores), so remote heals use real, not assumed, HP. */
+	private final Map<String, Integer> playerMaxHp = new HashMap<>();
 
 	/** Local player's exact HP last tick (-1 = not tracked). */
 	private int previousLocalHp = -1;
@@ -343,6 +354,7 @@ public class PvpEnhancerPlugin extends Plugin
 		pidFirstSide = 0;
 		ghostify.clear();
 		ghostCombatUntil.clear();
+		playerMaxHp.clear();
 		currentOpponents.clear();
 		combatOpponent = null;
 		previousSpecialEnergy = -1;
@@ -978,6 +990,48 @@ public class PvpEnhancerPlugin extends Plugin
 	 * healing is exact (Hitpoints skill delta); remote players only expose a health ratio,
 	 * so their amounts are estimated ("~") via {@link HealMath}. Scope is the heal config.
 	 */
+	/**
+	 * Resolves an actor's real max HP for the heal estimate: NPCs from the {@link NPCManager}
+	 * table, players from the OSRS Hiscores (Hitpoints level, cached). Falls back to
+	 * {@link #ASSUMED_MAX_HP} while a lookup is pending or the player is unranked, or when the
+	 * accurate-HP option is off. The heal stays a {@code ~} estimate — bounded by the health-bar
+	 * resolution and possible HP boosts — but is far closer than assuming 99 for everyone.
+	 */
+	private int remoteMaxHp(Actor actor)
+	{
+		if (!config.accurateRemoteHp())
+		{
+			return ASSUMED_MAX_HP;
+		}
+		if (actor instanceof NPC)
+		{
+			Integer h = npcManager.getHealth(((NPC) actor).getId());
+			return h != null && h > 0 ? h : ASSUMED_MAX_HP;
+		}
+		if (actor.getName() == null)
+		{
+			return ASSUMED_MAX_HP;
+		}
+		String name = Text.removeTags(actor.getName());
+		Integer cached = playerMaxHp.get(name);
+		if (cached != null)
+		{
+			return cached;
+		}
+		// lookupAsync returns the cached result if present, else kicks off a fetch and returns null.
+		HiscoreResult result = hiscoreManager.lookupAsync(name, HiscoreEndpoint.fromWorldTypes(client.getWorldType()));
+		if (result != null)
+		{
+			net.runelite.client.hiscore.Skill hp = result.getSkill(HiscoreSkill.HITPOINTS);
+			if (hp != null && hp.getLevel() >= 10)
+			{
+				playerMaxHp.put(name, hp.getLevel());
+				return hp.getLevel();
+			}
+		}
+		return ASSUMED_MAX_HP;
+	}
+
 	private void detectHeals()
 	{
 		HealDisplayMode mode = config.healDisplayMode();
@@ -1027,7 +1081,7 @@ public class PvpEnhancerPlugin extends Plugin
 				// Only show this remote player's heal if they are in scope (opponent vs everyone).
 				if (prev != null && ratio > prev && mode.matches(false, currentOpponents.contains(name)))
 				{
-					int estimate = HealMath.estimateRemoteHeal(prev, ratio, scale, ASSUMED_MAX_HP);
+					int estimate = HealMath.estimateRemoteHeal(prev, ratio, scale, remoteMaxHp(player));
 					if (estimate >= 1)
 					{
 						healOverlay.addHeal(player, estimate, true);

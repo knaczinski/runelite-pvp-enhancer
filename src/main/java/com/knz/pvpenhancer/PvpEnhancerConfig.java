@@ -140,6 +140,14 @@ public interface PvpEnhancerConfig extends Config
 		section = overheadSection, position = 5)
 	default int skullSize() { return 100; }
 
+	@ConfigItem(keyName = "accurateRemoteHp", name = "Accurate heal amounts",
+		description = "Use real max HP for the opponent heal estimate — NPC HP from RuneLite's "
+			+ "table, player Hitpoints level from the OSRS Hiscores (like Opponent Information) — "
+			+ "instead of assuming 99. Still a ~estimate (health-bar resolution / HP boosts). "
+			+ "Off = no Hiscores lookups.",
+		section = overheadSection, position = 6)
+	default boolean accurateRemoteHp() { return true; }
+
 	// ─── Ghostify ──────────────────────────────────────────────────────────────
 	// When (per category) + outline colour (per category). Priority when a player fits several:
 	// opponents > group (CC/FC) > friends > others. "In combat" = that character is fighting.
