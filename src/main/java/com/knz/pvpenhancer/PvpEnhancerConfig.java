@@ -176,6 +176,22 @@ public interface PvpEnhancerConfig extends Config
 		section = overheadSection, position = 6)
 	default boolean accurateRemoteHp() { return true; }
 
+	@ConfigItem(keyName = "attackTimerSelf", name = "Attack timer — self",
+		description = "Show a countdown (seconds, above the head/skull) until YOU can attack again.",
+		section = overheadSection, position = 7)
+	default boolean attackTimerSelf() { return false; }
+
+	@ConfigItem(keyName = "attackTimerOpponents", name = "Attack timer — opponents",
+		description = "Show the attack-again countdown over players fighting you. Speed from a "
+			+ "weapon table (best-effort); resets on eat/drink.",
+		section = overheadSection, position = 8)
+	default boolean attackTimerOpponents() { return false; }
+
+	@ConfigItem(keyName = "attackTimerOthers", name = "Attack timer — others",
+		description = "Show the attack-again countdown over other players.",
+		section = overheadSection, position = 9)
+	default boolean attackTimerOthers() { return false; }
+
 	// ─── Ghostify ──────────────────────────────────────────────────────────────
 	// When (per category) + outline colour (per category). Priority when a player fits several:
 	// opponents > group (CC/FC) > friends > others. "In combat" = that character is fighting.

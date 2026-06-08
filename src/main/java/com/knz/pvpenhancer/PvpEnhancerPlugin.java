@@ -28,8 +28,10 @@ import com.knz.pvpenhancer.model.PrayerEvent;
 import com.knz.pvpenhancer.model.PrayerNames;
 import com.knz.pvpenhancer.model.SpotanimDebuffs;
 import com.knz.pvpenhancer.model.TickEntry;
+import com.knz.pvpenhancer.model.WeaponSpeeds;
 import com.knz.pvpenhancer.model.WeaponStyleMap;
 import com.knz.pvpenhancer.model.XpDamage;
+import com.knz.pvpenhancer.overlay.AttackTimerOverlay;
 import com.knz.pvpenhancer.overlay.ComboFeedbackOverlay;
 import com.knz.pvpenhancer.overlay.DebuffTimerOverlay;
 import com.knz.pvpenhancer.overlay.GhostifyOutlineOverlay;
@@ -44,6 +46,7 @@ import com.knz.pvpenhancer.overlay.VengeanceTextOverlay;
 import com.knz.pvpenhancer.overlay.WeaponSuggestOverlay;
 import com.knz.pvpenhancer.panel.DevPanel;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
+import com.knz.pvpenhancer.service.AttackCooldownService;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator.Correlation;
 import com.knz.pvpenhancer.service.GhostifyService;
@@ -166,6 +169,8 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private DebuffTimerOverlay debuffTimerOverlay;
 	@Inject private PrayerHighlightOverlay prayerHighlightOverlay;
 	@Inject private WeaponSuggestOverlay weaponSuggestOverlay;
+	@Inject private AttackTimerOverlay attackTimerOverlay;
+	@Inject private AttackCooldownService attackCooldown;
 	@Inject private VengeanceTextOverlay vengeanceTextOverlay;
 	@Inject private SkullResizeOverlay skullResizeOverlay;
 	@Inject private PidIndicatorOverlay pidIndicatorOverlay;
@@ -280,6 +285,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(debuffTimerOverlay);
 		overlayManager.add(prayerHighlightOverlay);
 		overlayManager.add(weaponSuggestOverlay);
+		overlayManager.add(attackTimerOverlay);
 		overlayManager.add(vengeanceTextOverlay);
 		overlayManager.add(skullResizeOverlay);
 		overlayManager.add(pidIndicatorOverlay);
@@ -324,6 +330,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(debuffTimerOverlay);
 		overlayManager.remove(prayerHighlightOverlay);
 		overlayManager.remove(weaponSuggestOverlay);
+		overlayManager.remove(attackTimerOverlay);
 		overlayManager.remove(vengeanceTextOverlay);
 		overlayManager.remove(skullResizeOverlay);
 		overlayManager.remove(pidIndicatorOverlay);
@@ -360,6 +367,7 @@ public class PvpEnhancerPlugin extends Plugin
 		ghostify.clear();
 		ghostCombatUntil.clear();
 		playerMaxHp.clear();
+		attackCooldown.clear();
 		currentOpponents.clear();
 		combatOpponent = null;
 		previousSpecialEnergy = -1;
@@ -663,6 +671,9 @@ public class PvpEnhancerPlugin extends Plugin
 		// 4d2. Experimental PID guess (1v1 the local player is in)
 		updatePidGuess(local, tick);
 
+		// 4d3. Attack-again countdown timers (per scope)
+		updateAttackTimers(local);
+
 		// 4e. Flash the opponent if in combat but not attacking it
 		boolean notRetaliating = config.showNotRetaliating() && combatState.isNotRetaliating(tick);
 		notRetaliatingOverlay.setOpponent(notRetaliating ? combatOpponent : null);
@@ -712,6 +723,12 @@ public class PvpEnhancerPlugin extends Plugin
 		}
 		if (animation == EAT_ANIMATION)
 		{
+			// A consume (food/potion, anim 829) delays the next attack — feed the cooldown timer
+			// for everyone (self + others), then handle the history event.
+			if (anyAttackTimer())
+			{
+				attackCooldown.recordConsume(event.getActor());
+			}
 			// Opponent eating: the local player's eating is captured more precisely via the
 			// menu click (with the item name), so only emit here for OTHER players to avoid
 			// double-counting. The item is unknown for remote players, hence a generic label.
@@ -726,6 +743,14 @@ public class PvpEnhancerPlugin extends Plugin
 		if (attack != null)
 		{
 			history.addEvent(attack);
+
+			// Attack-cooldown timer: an attack starts the weapon-speed countdown (players only).
+			if (anyAttackTimer() && event.getActor() instanceof Player)
+			{
+				PlayerComposition comp = ((Player) event.getActor()).getPlayerComposition();
+				int weaponId = comp != null ? comp.getEquipmentId(KitType.WEAPON) : -1;
+				attackCooldown.recordAttack(event.getActor(), WeaponSpeeds.ticks(weaponId));
+			}
 
 			// Feed correlator + hit summary
 			int tick = client.getTickCount();
@@ -1278,6 +1303,7 @@ public class PvpEnhancerPlugin extends Plugin
 		debuffTracker.remove(p);
 		hiddenSkulls.remove(p);
 		vengClearUntil.remove(p);
+		attackCooldown.remove(p);
 	}
 
 	/** Drops debuff timers for an NPC that leaves the scene. */
@@ -1573,6 +1599,52 @@ public class PvpEnhancerPlugin extends Plugin
 			return AttackStyle.MAGIC;
 		}
 		return AttackStyle.UNKNOWN;
+	}
+
+	private boolean anyAttackTimer()
+	{
+		return config.attackTimerSelf() || config.attackTimerOpponents() || config.attackTimerOthers();
+	}
+
+	/** Builds the in-scope set of attack-again countdowns and feeds the overlay. */
+	private void updateAttackTimers(Player local)
+	{
+		if (!anyAttackTimer())
+		{
+			attackTimerOverlay.setTimers(java.util.Collections.emptyMap());
+			return;
+		}
+		attackCooldown.prune();
+		Map<Actor, Long> show = new HashMap<>();
+		if (config.attackTimerSelf() && local != null)
+		{
+			Long r = attackCooldown.readyAt(local);
+			if (r != null)
+			{
+				show.put(local, r);
+			}
+		}
+		if (config.attackTimerOpponents() || config.attackTimerOthers())
+		{
+			for (Player p : client.getTopLevelWorldView().players())
+			{
+				if (p == null || p == local || p.getName() == null)
+				{
+					continue;
+				}
+				Long r = attackCooldown.readyAt(p);
+				if (r == null)
+				{
+					continue;
+				}
+				boolean opponent = currentOpponents.contains(Text.removeTags(p.getName()));
+				if (opponent ? config.attackTimerOpponents() : config.attackTimerOthers())
+				{
+					show.put(p, r);
+				}
+			}
+		}
+		attackTimerOverlay.setTimers(show);
 	}
 
 	/** Resolves a player's equipped-weapon style, logging unknown weapon ids for live collection. */
