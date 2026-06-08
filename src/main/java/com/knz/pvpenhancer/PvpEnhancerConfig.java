@@ -86,6 +86,14 @@ public interface PvpEnhancerConfig extends Config
 		section = combatSection, position = 3)
 	default int hitPredictionSize() { return 15; }
 
+	@Range(max = 100)
+	@ConfigItem(keyName = "hitPredictThreshold", name = "Spec-combo HP cue (%)",
+		description = "When the opponent's estimated HP AFTER this predicted hit drops to this % of "
+			+ "their max HP or below, the predicted number shows bigger and redder — your cue to start "
+			+ "the switch + special before the hitsplat lands. 0 = off. HP is an estimate (health bar).",
+		section = combatSection, position = 3)
+	default int hitPredictThreshold() { return 0; }
+
 	@ConfigItem(keyName = "prayerHighlight", name = "Prayer highlighter",
 		description = "Highlight the protection prayer matching your current target's equipped "
 			+ "weapon style (predictive). Switches as they switch weapons.",

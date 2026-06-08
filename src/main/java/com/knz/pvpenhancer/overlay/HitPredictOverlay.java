@@ -31,6 +31,8 @@ public class HitPredictOverlay extends Overlay
 	private static final long DURATION_MS = 1200L;
 	private static final int RISE_PX = 24;
 	private static final Color PREDICT_COLOR = new Color(0xFF, 0xB0, 0x20);
+	private static final Color CRITICAL_COLOR = new Color(0xFF, 0x33, 0x22);
+	private static final float CRITICAL_SCALE = 1.7f;
 	private static final Font PREDICT_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 15);
 
 	private final Client client;
@@ -50,14 +52,16 @@ public class HitPredictOverlay extends Overlay
 
 	/**
 	 * Queues a predicted-damage popup over the target.
+	 *
+	 * @param critical render bigger + red (the opponent will be at/under the spec-combo HP cue)
 	 */
-	public void addPrediction(Actor target, int damage)
+	public void addPrediction(Actor target, int damage, boolean critical)
 	{
 		if (target == null || damage <= 0)
 		{
 			return;
 		}
-		predictions.add(new Prediction(target, Integer.toString(damage), System.currentTimeMillis()));
+		predictions.add(new Prediction(target, Integer.toString(damage), System.currentTimeMillis(), critical));
 	}
 
 	public void clear()
@@ -75,9 +79,9 @@ public class HitPredictOverlay extends Overlay
 		}
 
 		graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-		graphics.setFont(PREDICT_FONT.deriveFont((float) config.hitPredictionSize()));
 
 		long now = System.currentTimeMillis();
+		float baseSize = config.hitPredictionSize();
 		for (Iterator<Prediction> it = predictions.iterator(); it.hasNext(); )
 		{
 			Prediction p = it.next();
@@ -87,6 +91,9 @@ public class HitPredictOverlay extends Overlay
 				it.remove();
 				continue;
 			}
+
+			graphics.setFont(PREDICT_FONT.deriveFont(p.critical ? baseSize * CRITICAL_SCALE : baseSize));
+			Color colour = p.critical ? CRITICAL_COLOR : PREDICT_COLOR;
 
 			Point base = p.target.getCanvasTextLocation(graphics, p.text, p.target.getLogicalHeight() + 20);
 			if (base == null)
@@ -100,7 +107,7 @@ public class HitPredictOverlay extends Overlay
 
 			graphics.setColor(new Color(0, 0, 0, Math.min(alpha, 200)));
 			graphics.drawString(p.text, base.getX() + 1, y + 1);
-			graphics.setColor(new Color(PREDICT_COLOR.getRed(), PREDICT_COLOR.getGreen(), PREDICT_COLOR.getBlue(), alpha));
+			graphics.setColor(new Color(colour.getRed(), colour.getGreen(), colour.getBlue(), alpha));
 			graphics.drawString(p.text, base.getX(), y);
 		}
 
@@ -112,12 +119,14 @@ public class HitPredictOverlay extends Overlay
 		private final Actor target;
 		private final String text;
 		private final long startMs;
+		private final boolean critical;
 
-		Prediction(Actor target, String text, long startMs)
+		Prediction(Actor target, String text, long startMs, boolean critical)
 		{
 			this.target = target;
 			this.text = text;
 			this.startMs = startMs;
+			this.critical = critical;
 		}
 	}
 }

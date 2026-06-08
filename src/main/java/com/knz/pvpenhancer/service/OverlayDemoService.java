@@ -88,8 +88,8 @@ public class OverlayDemoService
 		add("Healing", "Heal +12", () -> healOverlay.addHeal(local(), 12, false));
 		add("Healing", "Heal ~30 (est)", () -> healOverlay.addHeal(local(), 30, true));
 
-		add("Hit predict", "Predict 24", () -> hitPredictOverlay.addPrediction(local(), 24));
-		add("Hit predict", "Predict 40", () -> hitPredictOverlay.addPrediction(local(), 40));
+		add("Hit predict", "Predict 24", () -> hitPredictOverlay.addPrediction(local(), 24, false));
+		add("Hit predict", "Predict 40 (cue)", () -> hitPredictOverlay.addPrediction(local(), 40, true));
 
 		add("Debuff timer", "Freeze (Barrage 33t)", () -> debuffTracker.apply(local(), Debuff.FREEZE, 33));
 		add("Debuff timer", "Bind (16t)", () -> debuffTracker.apply(local(), Debuff.SNARE, 16));

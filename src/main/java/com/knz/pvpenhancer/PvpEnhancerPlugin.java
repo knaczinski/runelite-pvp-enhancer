@@ -872,7 +872,7 @@ public class PvpEnhancerPlugin extends Plugin
 				Actor target = local != null ? local.getInteracting() : null;
 				if (damage > 0 && target != null)
 				{
-					hitPredictOverlay.addPrediction(target, damage);
+					hitPredictOverlay.addPrediction(target, damage, isSpecComboCue(target, damage));
 				}
 			}
 		}
@@ -1085,6 +1085,29 @@ public class PvpEnhancerPlugin extends Plugin
 			}
 		}
 		return ASSUMED_MAX_HP;
+	}
+
+	/**
+	 * @return true if, after this predicted hit, the target's estimated HP would drop to the
+	 * configured spec-combo cue % (of their max HP) or below — the cue to start the switch + spec
+	 * before the hitsplat. HP is estimated from the health bar ratio, so this is approximate.
+	 */
+	private boolean isSpecComboCue(Actor target, int predicted)
+	{
+		int threshold = config.hitPredictThreshold();
+		if (threshold <= 0)
+		{
+			return false;
+		}
+		int ratio = target.getHealthRatio();
+		int scale = target.getHealthScale();
+		if (ratio < 0 || scale <= 0)
+		{
+			return false;
+		}
+		int maxHp = remoteMaxHp(target);
+		int currentHp = Math.round((float) ratio / scale * maxHp);
+		return (currentHp - predicted) <= Math.round(threshold / 100f * maxHp);
 	}
 
 	private void detectHeals()
