@@ -85,6 +85,8 @@ import net.runelite.api.SkullIcon;
 import net.runelite.api.Varbits;
 import net.runelite.api.WorldType;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
@@ -253,6 +255,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Players whose native skull we hid (setSkullIcon(-1)) → their original skull id, for restore. */
 	private final Map<Player, Integer> hiddenSkulls = new HashMap<>();
 
+	/** Combat-tab widget id → original {y, height}, captured before resizing (for restore). */
+	private final Map<Integer, int[]> combatTabBase = new HashMap<>();
+
 	/** Players whose native Vengeance overhead text we keep clearing → epoch-ms to stop clearing. */
 	private final Map<Player, Long> vengClearUntil = new HashMap<>();
 
@@ -336,6 +341,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(pidIndicatorOverlay);
 		overlayManager.remove(ghostifyOutlineOverlay);
 		restoreAllSkulls();
+		restoreCombatTab();
 		unregisterGhostifyListener();
 		clientToolbar.removeNavigation(navButton);
 		if (devNavAdded)
@@ -673,6 +679,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 		// 4d3. Attack-again countdown timers (per scope)
 		updateAttackTimers(local);
+
+		// 4d4. Combat-tab spec-bar resize
+		applyCombatTabLayout();
 
 		// 4e. Flash the opponent if in combat but not attacking it
 		boolean notRetaliating = config.showNotRetaliating() && combatState.isNotRetaliating(tick);
@@ -1599,6 +1608,78 @@ public class PvpEnhancerPlugin extends Plugin
 			return AttackStyle.MAGIC;
 		}
 		return AttackStyle.UNKNOWN;
+	}
+
+	/**
+	 * Grows the special-attack bar in the Combat Options tab taller (upward) and shrinks the four
+	 * attack-style boxes to make room, by {@code specBarExtraHeight} px. Uses absolute targets off a
+	 * captured base so re-applying each tick is idempotent; restores the native layout when off.
+	 */
+	private void applyCombatTabLayout()
+	{
+		int extra = config.specBarExtraHeight();
+		if (extra <= 0)
+		{
+			restoreCombatTab();
+			return;
+		}
+		Widget bar = client.getWidget(InterfaceID.CombatInterface.SP_ATTACKBAR);
+		if (bar == null || bar.isHidden())
+		{
+			return;
+		}
+		growUp(InterfaceID.CombatInterface.SP_ATTACKBAR, extra);
+		growUp(InterfaceID.CombatInterface.SPECIAL_ATTACK, extra);
+		int shrink = Math.min(extra / 2, 16);
+		for (int id : new int[]{InterfaceID.CombatInterface._0, InterfaceID.CombatInterface._1,
+			InterfaceID.CombatInterface._2, InterfaceID.CombatInterface._3})
+		{
+			shrinkHeight(id, shrink);
+		}
+	}
+
+	private void growUp(int widgetId, int extra)
+	{
+		Widget w = client.getWidget(widgetId);
+		if (w == null)
+		{
+			return;
+		}
+		int[] base = combatTabBase.computeIfAbsent(widgetId, k -> new int[]{w.getOriginalY(), w.getOriginalHeight()});
+		w.setOriginalY(base[0] - extra);
+		w.setOriginalHeight(base[1] + extra);
+		w.revalidate();
+	}
+
+	private void shrinkHeight(int widgetId, int amount)
+	{
+		Widget w = client.getWidget(widgetId);
+		if (w == null)
+		{
+			return;
+		}
+		int[] base = combatTabBase.computeIfAbsent(widgetId, k -> new int[]{w.getOriginalY(), w.getOriginalHeight()});
+		w.setOriginalHeight(Math.max(8, base[1] - amount));
+		w.revalidate();
+	}
+
+	private void restoreCombatTab()
+	{
+		if (combatTabBase.isEmpty())
+		{
+			return;
+		}
+		for (Map.Entry<Integer, int[]> e : combatTabBase.entrySet())
+		{
+			Widget w = client.getWidget(e.getKey());
+			if (w != null)
+			{
+				w.setOriginalY(e.getValue()[0]);
+				w.setOriginalHeight(e.getValue()[1]);
+				w.revalidate();
+			}
+		}
+		combatTabBase.clear();
 	}
 
 	private boolean anyAttackTimer()

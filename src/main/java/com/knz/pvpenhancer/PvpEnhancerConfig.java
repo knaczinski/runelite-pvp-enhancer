@@ -101,6 +101,14 @@ public interface PvpEnhancerConfig extends Config
 		section = combatSection, position = 4)
 	default boolean prayerHighlight() { return false; }
 
+	@Range(max = 80)
+	@ConfigItem(keyName = "specBarExtraHeight", name = "Taller spec bar (px)",
+		description = "Grow the special-attack bar in the Combat Options tab taller by this many "
+			+ "pixels (upward) and shrink the attack-style boxes to make room. 0 = off. Native layout "
+			+ "is restored when set back to 0 / on tab rebuild.",
+		section = combatSection, position = 6)
+	default int specBarExtraHeight() { return 0; }
+
 	@ConfigItem(keyName = "offensivePrayerMode", name = "Offensive prayer highlighter",
 		description = "Highlight your offensive prayer vs weapon. 'Prayer from weapon' = your equipped "
 			+ "weapon highlights Piety/Rigour/Augury in the prayer tab. 'Weapon from prayer' = your "
