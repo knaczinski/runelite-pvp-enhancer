@@ -41,6 +41,7 @@ import com.knz.pvpenhancer.overlay.PidIndicatorOverlay;
 import com.knz.pvpenhancer.overlay.PrayerHighlightOverlay;
 import com.knz.pvpenhancer.overlay.SkullResizeOverlay;
 import com.knz.pvpenhancer.overlay.VengeanceTextOverlay;
+import com.knz.pvpenhancer.overlay.WeaponSuggestOverlay;
 import com.knz.pvpenhancer.panel.DevPanel;
 import com.knz.pvpenhancer.panel.PvpEnhancerPanel;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator;
@@ -164,6 +165,7 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private HitPredictOverlay hitPredictOverlay;
 	@Inject private DebuffTimerOverlay debuffTimerOverlay;
 	@Inject private PrayerHighlightOverlay prayerHighlightOverlay;
+	@Inject private WeaponSuggestOverlay weaponSuggestOverlay;
 	@Inject private VengeanceTextOverlay vengeanceTextOverlay;
 	@Inject private SkullResizeOverlay skullResizeOverlay;
 	@Inject private PidIndicatorOverlay pidIndicatorOverlay;
@@ -277,6 +279,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(hitPredictOverlay);
 		overlayManager.add(debuffTimerOverlay);
 		overlayManager.add(prayerHighlightOverlay);
+		overlayManager.add(weaponSuggestOverlay);
 		overlayManager.add(vengeanceTextOverlay);
 		overlayManager.add(skullResizeOverlay);
 		overlayManager.add(pidIndicatorOverlay);
@@ -320,6 +323,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(hitPredictOverlay);
 		overlayManager.remove(debuffTimerOverlay);
 		overlayManager.remove(prayerHighlightOverlay);
+		overlayManager.remove(weaponSuggestOverlay);
 		overlayManager.remove(vengeanceTextOverlay);
 		overlayManager.remove(skullResizeOverlay);
 		overlayManager.remove(pidIndicatorOverlay);
@@ -1491,15 +1495,84 @@ public class PvpEnhancerPlugin extends Plugin
 		}
 	}
 
-	/** Pushes the current target's equipped-weapon style to the predictive prayer highlight. */
+	/**
+	 * Drives the prayer highlighters each tick. Defensive = protect prayer countering the target's
+	 * weapon. Offensive = either the Piety/Rigour/Augury matching your weapon (prayer-tab highlight)
+	 * or, in weapon-from-prayer mode, a matching weapon highlighted in your inventory.
+	 */
 	private void updatePrayerHighlight(Player local)
 	{
-		if (!config.prayerHighlight() || local == null || !(local.getInteracting() instanceof Player))
+		Set<String> prayers = new HashSet<>();
+
+		if (config.prayerHighlight() && local != null && local.getInteracting() instanceof Player)
 		{
-			prayerHighlightOverlay.setTargetStyle(AttackStyle.UNKNOWN);
-			return;
+			String def = protectionPrayerName(weaponStyleOf((Player) local.getInteracting()));
+			if (def != null)
+			{
+				prayers.add(def);
+			}
 		}
-		prayerHighlightOverlay.setTargetStyle(weaponStyleOf((Player) local.getInteracting()));
+
+		AttackStyle suggestWeapon = AttackStyle.UNKNOWN;
+		OffensivePrayerMode mode = config.offensivePrayerMode();
+		if (mode == OffensivePrayerMode.PRAYER_FROM_WEAPON && local != null)
+		{
+			String off = offensivePrayerName(weaponStyleOf(local));
+			if (off != null)
+			{
+				prayers.add(off);
+			}
+		}
+		else if (mode == OffensivePrayerMode.WEAPON_FROM_PRAYER)
+		{
+			suggestWeapon = activeOffensivePrayerStyle();
+		}
+
+		prayerHighlightOverlay.setPrayers(prayers);
+		weaponSuggestOverlay.setStyle(suggestWeapon);
+	}
+
+	/** @return protection-prayer name countering {@code style}, or null. */
+	private static String protectionPrayerName(AttackStyle style)
+	{
+		switch (style)
+		{
+			case MELEE:  return "Protect from Melee";
+			case RANGED: return "Protect from Missiles";
+			case MAGIC:  return "Protect from Magic";
+			default:     return null;
+		}
+	}
+
+	/** @return offensive prayer (Piety/Rigour/Augury) for {@code style}, or null. */
+	private static String offensivePrayerName(AttackStyle style)
+	{
+		switch (style)
+		{
+			case MELEE:  return "Piety";
+			case RANGED: return "Rigour";
+			case MAGIC:  return "Augury";
+			default:     return null;
+		}
+	}
+
+	/** @return the style of the local player's active offensive prayer, or UNKNOWN. */
+	@SuppressWarnings("deprecation") // isPrayerActive — adequate for the common offensive prayers
+	private AttackStyle activeOffensivePrayerStyle()
+	{
+		if (client.isPrayerActive(Prayer.PIETY) || client.isPrayerActive(Prayer.CHIVALRY))
+		{
+			return AttackStyle.MELEE;
+		}
+		if (client.isPrayerActive(Prayer.RIGOUR) || client.isPrayerActive(Prayer.EAGLE_EYE))
+		{
+			return AttackStyle.RANGED;
+		}
+		if (client.isPrayerActive(Prayer.AUGURY) || client.isPrayerActive(Prayer.MYSTIC_MIGHT))
+		{
+			return AttackStyle.MAGIC;
+		}
+		return AttackStyle.UNKNOWN;
 	}
 
 	/** Resolves a player's equipped-weapon style, logging unknown weapon ids for live collection. */

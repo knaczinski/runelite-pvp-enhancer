@@ -94,16 +94,24 @@ public interface PvpEnhancerConfig extends Config
 		section = combatSection, position = 3)
 	default int hitPredictThreshold() { return 0; }
 
-	@ConfigItem(keyName = "prayerHighlight", name = "Prayer highlighter",
-		description = "Highlight the protection prayer matching your current target's equipped "
-			+ "weapon style (predictive). Switches as they switch weapons.",
+	@ConfigItem(keyName = "prayerHighlight", name = "Defensive prayer highlighter",
+		description = "Highlight the PROTECTION prayer matching your current target's equipped "
+			+ "weapon style (predictive). Also flags the prayer tab button so you notice with the "
+			+ "inventory open.",
 		section = combatSection, position = 4)
 	default boolean prayerHighlight() { return false; }
 
-	@ConfigItem(keyName = "combatPlayerMenuFilter", name = "Only Walk-here + Attack on players (in combat)",
+	@ConfigItem(keyName = "offensivePrayerMode", name = "Offensive prayer highlighter",
+		description = "Highlight your offensive prayer vs weapon. 'Prayer from weapon' = your equipped "
+			+ "weapon highlights Piety/Rigour/Augury in the prayer tab. 'Weapon from prayer' = your "
+			+ "active offensive prayer highlights a matching weapon in your inventory.",
+		section = combatSection, position = 5)
+	default OffensivePrayerMode offensivePrayerMode() { return OffensivePrayerMode.OFF; }
+
+	@ConfigItem(keyName = "combatPlayerMenuFilter", name = "Walk/Att Restrict. Menu in combat",
 		description = "While in combat, right-clicking a player shows only \"Walk here\" and "
 			+ "\"Attack\" — hides Follow/Trade/Report/etc. to avoid mis-clicks.",
-		section = combatSection, position = 5)
+		section = combatSection, position = 8)
 	default boolean combatPlayerMenuFilter() { return false; }
 
 	@ConfigItem(keyName = "swapPickupInCombat", name = "Walk-here over Take (in combat)",
@@ -142,7 +150,7 @@ public interface PvpEnhancerConfig extends Config
 	default OverheadScope vengTextScope() { return OverheadScope.OFF; }
 
 	@Range(min = 20, max = 400)
-	@ConfigItem(keyName = "vengTextSize", name = "Vengeance text size (%)",
+	@ConfigItem(keyName = "vengTextSize", name = "Veng text size (%)",
 		description = "Size of the re-rendered Vengeance text. 100% ≈ the native size.",
 		section = overheadSection, position = 3)
 	default int vengTextSize() { return 100; }
