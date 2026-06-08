@@ -40,7 +40,8 @@ public class DebuffTimerOverlay extends Overlay
 	{
 		this.tracker = tracker;
 		setPosition(OverlayPosition.DYNAMIC);
-		setLayer(OverlayLayer.ABOVE_SCENE);
+		// UNDER_WIDGETS: over native overheads, under the game UI (no painting over an open bank).
+		setLayer(OverlayLayer.UNDER_WIDGETS);
 		setMovable(false);
 		for (Debuff debuff : Debuff.values())
 		{

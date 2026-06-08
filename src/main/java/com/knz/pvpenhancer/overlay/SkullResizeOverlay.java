@@ -38,9 +38,9 @@ public class SkullResizeOverlay extends Overlay
 		this.config = config;
 		this.skull = ImageUtil.loadImageResource(getClass(), "/com/knz/pvpenhancer/icons/Skull.png");
 		setPosition(OverlayPosition.DYNAMIC);
-		// ABOVE_WIDGETS so the redrawn skull paints OVER the native health bar / overhead-prayer
-		// icons (which the client draws after ABOVE_SCENE overlays, hiding the skull otherwise).
-		setLayer(OverlayLayer.ABOVE_WIDGETS);
+		// UNDER_WIDGETS: over the native health bar / overhead-prayer icons but UNDER the game UI,
+		// so the skull doesn't paint over an open bank/interface (ABOVE_WIDGETS did).
+		setLayer(OverlayLayer.UNDER_WIDGETS);
 		setMovable(false);
 	}
 

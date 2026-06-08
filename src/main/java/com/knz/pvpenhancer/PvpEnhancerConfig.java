@@ -80,11 +80,23 @@ public interface PvpEnhancerConfig extends Config
 		section = combatSection, position = 2)
 	default boolean hitPrediction() { return true; }
 
+	@Range(min = 8, max = 48)
+	@ConfigItem(keyName = "hitPredictionSize", name = "Hit prediction text size",
+		description = "Font size of the predicted-damage number. Default 15.",
+		section = combatSection, position = 3)
+	default int hitPredictionSize() { return 15; }
+
 	@ConfigItem(keyName = "prayerHighlight", name = "Prayer highlighter",
 		description = "Highlight the protection prayer matching your current target's equipped "
 			+ "weapon style (predictive). Switches as they switch weapons.",
-		section = combatSection, position = 3)
+		section = combatSection, position = 4)
 	default boolean prayerHighlight() { return false; }
+
+	@ConfigItem(keyName = "combatPlayerMenuFilter", name = "Only Walk-here + Attack on players (in combat)",
+		description = "While in combat, right-clicking a player shows only \"Walk here\" and "
+			+ "\"Attack\" — hides Follow/Trade/Report/etc. to avoid mis-clicks.",
+		section = combatSection, position = 5)
+	default boolean combatPlayerMenuFilter() { return false; }
 
 	@ConfigItem(keyName = "swapPickupInCombat", name = "Walk-here over Take (in combat)",
 		description = "While in combat, de-prioritise ground-item \"Take\" so a left-click "
@@ -208,6 +220,34 @@ public interface PvpEnhancerConfig extends Config
 		description = "Outline colour for ghostified other players.",
 		section = ghostifySection, position = 9)
 	default Color ghostColorOthers() { return new Color(0xBD, 0xBD, 0xBD); }
+
+	// Show the ghostified player's 2D overheads (name + chat message) even though the model is
+	// hidden. Off = fully hidden. Best-effort: the 2D overhead is shown/hidden as a whole.
+
+	@ConfigItem(keyName = "ghostChatSelf", name = "Self — show chat",
+		description = "Show your own name/chat overhead while ghostified.",
+		section = ghostifySection, position = 10)
+	default boolean ghostChatSelf() { return false; }
+
+	@ConfigItem(keyName = "ghostChatOpponents", name = "Opponents — show chat",
+		description = "Show ghostified opponents' name/chat overhead.",
+		section = ghostifySection, position = 11)
+	default boolean ghostChatOpponents() { return false; }
+
+	@ConfigItem(keyName = "ghostChatGroup", name = "Group — show chat",
+		description = "Show ghostified clan / friends-chat members' name/chat overhead.",
+		section = ghostifySection, position = 12)
+	default boolean ghostChatGroup() { return false; }
+
+	@ConfigItem(keyName = "ghostChatFriends", name = "Friends — show chat",
+		description = "Show ghostified friends' name/chat overhead.",
+		section = ghostifySection, position = 13)
+	default boolean ghostChatFriends() { return false; }
+
+	@ConfigItem(keyName = "ghostChatOthers", name = "Others — show chat",
+		description = "Show ghostified other players' name/chat overhead.",
+		section = ghostifySection, position = 14)
+	default boolean ghostChatOthers() { return false; }
 
 	// ─── Developer ────────────────────────────────────────────────────────────
 

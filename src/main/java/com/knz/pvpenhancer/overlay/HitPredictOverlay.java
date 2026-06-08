@@ -43,7 +43,8 @@ public class HitPredictOverlay extends Overlay
 		this.client = client;
 		this.config = config;
 		setPosition(OverlayPosition.DYNAMIC);
-		setLayer(OverlayLayer.ABOVE_SCENE);
+		// UNDER_WIDGETS: over the native overhead bars/icons but UNDER the game UI (bank, etc.).
+		setLayer(OverlayLayer.UNDER_WIDGETS);
 		setMovable(false);
 	}
 
@@ -74,7 +75,7 @@ public class HitPredictOverlay extends Overlay
 		}
 
 		graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-		graphics.setFont(PREDICT_FONT);
+		graphics.setFont(PREDICT_FONT.deriveFont((float) config.hitPredictionSize()));
 
 		long now = System.currentTimeMillis();
 		for (Iterator<Prediction> it = predictions.iterator(); it.hasNext(); )

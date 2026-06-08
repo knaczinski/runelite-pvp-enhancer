@@ -32,7 +32,8 @@ public class GhostifyOutlineOverlay extends Overlay
 		this.ghostify = ghostify;
 		this.outlineRenderer = outlineRenderer;
 		setPosition(OverlayPosition.DYNAMIC);
-		setLayer(OverlayLayer.ABOVE_SCENE);
+		// UNDER_WIDGETS: outlines over native overheads, under the game UI.
+		setLayer(OverlayLayer.UNDER_WIDGETS);
 		setMovable(false);
 	}
 

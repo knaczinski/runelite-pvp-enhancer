@@ -24,9 +24,15 @@ public class GhostifyService
 	private volatile Map<Player, Color> ghosted = Collections.emptyMap();
 	/** Ghosted players' names — the hider matches by name, not object identity. */
 	private volatile Set<String> ghostedNames = Collections.emptySet();
+	/** Subset of ghosted names whose 2D overhead (name/chat) should still draw. */
+	private volatile Set<String> showChatNames = Collections.emptySet();
 
-	/** Publishes the player→outline-colour snapshot for this tick (pass an immutable-after-publish map). */
-	public void update(Map<Player, Color> ghosted)
+	/**
+	 * Publishes the per-tick snapshot. {@code ghosted} = player→outline colour (model hidden);
+	 * {@code showChatNames} = the subset whose 2D overhead (name/chat) should still draw. Pass
+	 * immutable-after-publish collections.
+	 */
+	public void update(Map<Player, Color> ghosted, Set<String> showChatNames)
 	{
 		Set<String> names = new HashSet<>(ghosted.size());
 		for (Player p : ghosted.keySet())
@@ -38,12 +44,14 @@ public class GhostifyService
 		}
 		this.ghosted = ghosted;
 		this.ghostedNames = names;
+		this.showChatNames = showChatNames;
 	}
 
 	/**
-	 * @return false to hide (ghost) the renderable. Matches by NAME, not object identity: when a
-	 * player talks the engine re-draws them through a different {@code Player} instance, which an
-	 * identity check would miss (the model would pop back in). The name is stable across instances.
+	 * @return false to hide (ghost) the renderable. Matches by NAME, not object identity (the
+	 * talking re-draw uses a different {@code Player} instance — an identity check would miss it).
+	 * The 3D model pass ({@code drawingUi == false}) is always hidden for a ghosted player; the 2D
+	 * overhead pass ({@code drawingUi == true}) is kept when "show chat" is on for that player.
 	 */
 	public boolean shouldDraw(Renderable renderable, boolean drawingUi)
 	{
@@ -52,7 +60,11 @@ public class GhostifyService
 			return true;
 		}
 		String name = ((Player) renderable).getName();
-		return name == null || !ghostedNames.contains(name);
+		if (name == null || !ghostedNames.contains(name))
+		{
+			return true; // not ghosted
+		}
+		return drawingUi && showChatNames.contains(name); // hide 3D; keep 2D only if show-chat
 	}
 
 	/** @return player→outline-colour for everyone currently ghosted (read on the render thread). */
@@ -70,5 +82,6 @@ public class GhostifyService
 	{
 		ghosted = Collections.emptyMap();
 		ghostedNames = Collections.emptySet();
+		showChatNames = Collections.emptySet();
 	}
 }

@@ -90,6 +90,7 @@ import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.PlayerDespawned;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.MenuEntryAdded;
+import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InventoryID;
@@ -394,6 +395,7 @@ public class PvpEnhancerPlugin extends Plugin
 	private void updateGhostify(Player local, int tick)
 	{
 		Map<Player, Color> ghosted = new HashMap<>();
+		Set<String> showChat = new HashSet<>(); // ghosted players whose name/chat 2D still draws
 
 		// Stamp combat engagement (attacker AND their target) with a window, so a brief gap —
 		// eating clears interaction for ~3 ticks, re-targeting, a pause — doesn't flip "in combat"
@@ -420,6 +422,10 @@ public class PvpEnhancerPlugin extends Plugin
 		if (local != null && config.ghostifySelf().shouldGhost(combatState.isInCombat(tick)))
 		{
 			ghosted.put(local, config.ghostColorSelf());
+			if (config.ghostChatSelf() && local.getName() != null)
+			{
+				showChat.add(local.getName());
+			}
 		}
 
 		int attackRange = attackableRange(local); // -1 = no PvP attack-range context here
@@ -436,34 +442,43 @@ public class PvpEnhancerPlugin extends Plugin
 			boolean inCombat = ghostCombatUntil.containsKey(p);
 			GhostCat cat = classifyGhost(p);
 			boolean ghost = false;
+			boolean chat = false;
 			Color color = null;
 			switch (cat)
 			{
 				case OPPONENT:
 					ghost = config.ghostifyOpponents().shouldGhost(inCombat);
 					color = config.ghostColorOpponents();
+					chat = config.ghostChatOpponents();
 					break;
 				case GROUP:
 					ghost = config.ghostifyGroup().shouldGhost(inCombat);
 					color = config.ghostColorGroup();
+					chat = config.ghostChatGroup();
 					break;
 				case FRIEND:
 					ghost = config.ghostifyFriends().shouldGhost(inCombat);
 					color = config.ghostColorFriends();
+					chat = config.ghostChatFriends();
 					break;
 				default: // OTHER
 					boolean cannotAttack = attackRange >= 0 && Math.abs(myCombat - p.getCombatLevel()) > attackRange;
 					ghost = config.ghostifyOthers().shouldGhost(inCombat, cannotAttack);
 					color = config.ghostColorOthers();
+					chat = config.ghostChatOthers();
 					break;
 			}
 			if (ghost)
 			{
 				ghosted.put(p, color);
+				if (chat && p.getName() != null)
+				{
+					showChat.add(p.getName());
+				}
 			}
 		}
 
-		ghostify.update(ghosted);
+		ghostify.update(ghosted, showChat);
 	}
 
 	/** Classifies a remote player by priority: opponent > group (CC/FC) > friend > other. */
@@ -880,6 +895,44 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			entry.setDeprioritized(true);
 		}
+	}
+
+	/**
+	 * While in combat, strips a player's right-click menu down to "Walk here" + "Attack" (keeping
+	 * Cancel), hiding Follow/Trade/Report/etc. to avoid mis-clicks. Only fires when the menu
+	 * actually contains a player option, so NPC/ground-item menus are left alone.
+	 */
+	@Subscribe
+	public void onMenuOpened(MenuOpened event)
+	{
+		if (!config.combatPlayerMenuFilter() || !combatState.isInCombat(client.getTickCount()))
+		{
+			return;
+		}
+		MenuEntry[] entries = event.getMenuEntries();
+		boolean hasPlayer = false;
+		for (MenuEntry e : entries)
+		{
+			if (e.getPlayer() != null)
+			{
+				hasPlayer = true;
+				break;
+			}
+		}
+		if (!hasPlayer)
+		{
+			return;
+		}
+		List<MenuEntry> kept = new java.util.ArrayList<>(entries.length);
+		for (MenuEntry e : entries)
+		{
+			String opt = Text.removeTags(e.getOption());
+			if ("Walk here".equals(opt) || "Attack".equals(opt) || "Cancel".equals(opt))
+			{
+				kept.add(e);
+			}
+		}
+		event.setMenuEntries(kept.toArray(new MenuEntry[0]));
 	}
 
 	private static boolean isGroundItemAction(MenuAction type)

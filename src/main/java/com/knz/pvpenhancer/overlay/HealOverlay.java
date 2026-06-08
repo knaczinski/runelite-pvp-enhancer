@@ -45,9 +45,9 @@ public class HealOverlay extends Overlay
 		this.client = client;
 		this.config = config;
 		setPosition(OverlayPosition.DYNAMIC);
-		// ABOVE_WIDGETS so the heal number paints over the native health bar / overhead icons
-		// (ABOVE_SCENE draws under them, hiding the number).
-		setLayer(OverlayLayer.ABOVE_WIDGETS);
+		// UNDER_WIDGETS: over the native health bar / overhead icons but UNDER the game UI (so it
+		// doesn't paint over an open bank/interface). ABOVE_SCENE drew under the natives.
+		setLayer(OverlayLayer.UNDER_WIDGETS);
 		setMovable(false);
 	}
 

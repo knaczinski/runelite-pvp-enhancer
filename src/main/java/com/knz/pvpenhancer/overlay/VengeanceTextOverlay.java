@@ -37,7 +37,8 @@ public class VengeanceTextOverlay extends Overlay
 	{
 		this.config = config;
 		setPosition(OverlayPosition.DYNAMIC);
-		setLayer(OverlayLayer.ABOVE_SCENE);
+		// UNDER_WIDGETS: over native overheads, under the game UI.
+		setLayer(OverlayLayer.UNDER_WIDGETS);
 		setMovable(false);
 	}
 

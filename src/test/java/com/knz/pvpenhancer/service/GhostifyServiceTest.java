@@ -30,7 +30,7 @@ public class GhostifyServiceTest
 		when(other.getName()).thenReturn("Other");
 		NPC npc = mock(NPC.class);
 
-		s.update(Collections.singletonMap(ghosted, Color.RED));
+		s.update(Collections.singletonMap(ghosted, Color.RED), Collections.emptySet());
 
 		assertTrue(s.isActive());
 		assertFalse(s.shouldDraw(ghosted, false)); // hidden by name
@@ -44,7 +44,7 @@ public class GhostifyServiceTest
 		GhostifyService s = new GhostifyService();
 		Player ghosted = mock(Player.class);
 		when(ghosted.getName()).thenReturn("Talker");
-		s.update(Collections.singletonMap(ghosted, Color.RED));
+		s.update(Collections.singletonMap(ghosted, Color.RED), Collections.emptySet());
 
 		// A different Player instance with the same name (e.g. the talking re-draw) is still hidden.
 		Player sameNameDifferentInstance = mock(Player.class);
@@ -53,11 +53,23 @@ public class GhostifyServiceTest
 	}
 
 	@Test
+	public void showChatKeeps2dButHides3d()
+	{
+		GhostifyService s = new GhostifyService();
+		Player p = mock(Player.class);
+		when(p.getName()).thenReturn("Chatter");
+		s.update(Collections.singletonMap(p, Color.RED), Collections.singleton("Chatter"));
+
+		assertFalse(s.shouldDraw(p, false)); // 3D model hidden
+		assertTrue(s.shouldDraw(p, true));   // 2D overhead (name/chat) kept
+	}
+
+	@Test
 	public void clearRestoresDrawing()
 	{
 		GhostifyService s = new GhostifyService();
 		Player p = mock(Player.class);
-		s.update(Collections.singletonMap(p, Color.RED));
+		s.update(Collections.singletonMap(p, Color.RED), Collections.emptySet());
 		s.clear();
 		assertTrue(s.shouldDraw(p, false));
 		assertFalse(s.isActive());
