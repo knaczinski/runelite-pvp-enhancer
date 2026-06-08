@@ -13,7 +13,7 @@ overlays:
   - NotRetaliatingOverlay — flashes the OPPONENT's model outline red↔yellow when in combat but not
     attacking ≥2 ticks. Plugin pushes the opponent actor via setOpponent. (Was a screen text; now an outline.)
   - ComboFeedbackOverlay — ABOVE_SCENE. Centre popup naming a combo, tier-coloured, ~1.5s fade. showCombo(result). clear().
-  - HealOverlay — ABOVE_WIDGETS (paints over native HP bar/overheads). Floating "+N"/"~N" beside the
+  - HealOverlay — UNDER_WIDGETS (over native HP bar/overheads, under the game UI). Floating "+N"/"~N" beside the
     health bar. addHeal(actor, amount, estimate). Local exact; remote estimate ("~") via HealMath using
     REAL max HP (NPCManager + Hiscores, resolved in the plugin), not assumed 99. Scope = healDisplayMode.
   - HitPredictOverlay — orange predicted outgoing damage near the target from the Hitpoints-XP drop. addPrediction(actor, dmg).
@@ -22,7 +22,7 @@ overlays:
   - PrayerHighlightOverlay — ABOVE_WIDGETS. Boxes the protect prayer countering the target's weapon
     style; found by NAME scan over InterfaceID.Prayerbook.PRAYER1..30. setTargetStyle. config prayerHighlight.
   - VengeanceTextOverlay — ABOVE_SCENE. Redraws cleared native "Vengeance!" text scaled. add(actor, text). vengTextScope/Size.
-  - SkullResizeOverlay — ABOVE_WIDGETS. Redraws the hidden native skull scaled + centred, raised above
+  - SkullResizeOverlay — UNDER_WIDGETS (over native overheads, under the game UI). Redraws the hidden native skull scaled + centred, raised above
     HP/prayer when active. setTargets(players). skullScope/Size. Regular skull only.
   - PidIndicatorOverlay — TOP_CENTER OverlayPanel. Experimental PID guess (you/them/?) + swap flash. pidIndicator.
   - GhostifyOutlineOverlay — ABOVE_SCENE. Draws each ghosted player's contour in its category colour
@@ -35,5 +35,7 @@ patterns:
 
 constraint:
   - do NOT call setPriority(OverlayPriority...) — enum removed on current API.
-  - to paint OVER native overhead bars/icons use OverlayLayer.ABOVE_WIDGETS (ABOVE_SCENE draws under them).
+  - layer choice for head overlays: ABOVE_SCENE draws UNDER native overheads; ABOVE_WIDGETS draws over
+    everything incl. the bank UI; UNDER_WIDGETS = over native overheads but UNDER the game UI (use this
+    for skull/heal/debuff/veng/ghost-outline). PrayerHighlight stays ABOVE_WIDGETS (it boxes a UI widget).
   - screen effects stay overlays; do not move them into the sidebar panel.
