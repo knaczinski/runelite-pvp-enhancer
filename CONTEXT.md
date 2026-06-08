@@ -6,11 +6,28 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S013
-phase: Phases 1-4 + S013 UX/bug batch code-complete. Only B008 open (live-data-gated). Live validation pending.
+latest_session: S014
+phase: Phases 1-5 code-complete (PvP overlay suite + Ghostify + experimental PID). Docs refreshed S014. Only B008 open (live-data-gated). Live validation pending.
 status: active
 
-## Current Focus (S013)
+## Current Focus (S014)
+
+S014 = documentation audit/refresh + the post-S013 fix batch. Docs brought current: README
+features + code-org, .ai/architecture.md (real component map), package CONTEXT.md (overlay,
+service, model, panel, root), docs/overlays.md scopes, PROJECT.md mission/scope, .ai/INDEX.md.
+
+Post-S013 fixes (already shipped + pushed):
+- Combat focus → **Ghostify** redesign (per-category when + colour; opponents>group>friends>others).
+- Ghostify "in combat" smoothed by a per-player window (eating no longer un-ghosts; stamps target too).
+- Ghostify hider matches by NAME (talking re-draw used a different Player instance → model popped back).
+- Ghostify "Can't attack here" now works on PvP worlds + outside the wild (Varbits.IN_WILDERNESS /
+  WorldType.isPvpWorld; PVP_WORLD_RANGE=15, HT-flagged).
+- Combos emitted only while in combat (banking's bulk equipment change no longer counts).
+- Accurate remote heal: real max HP via NPCManager + Hiscores (toggle accurateRemoteHp), not flat 99.
+- Ghostify default outline colours set (self #ECE12C, opp #FF4040, group #4D96FF, friends #25E725, others #BDBDBD).
+Build green, 78 tests. NEXT: live validation (HT queue) + seed harvest. Only B008 open.
+
+--- S013 detail (prior) ---
 
 S013 (design via /grill-me, then autonomous) shipped a bug+UX+feature batch:
 - B022 combat trigger needs real activity (kills false heartbeat on rejected attack); ANY_FIGHT

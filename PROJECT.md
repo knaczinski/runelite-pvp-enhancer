@@ -8,7 +8,16 @@ format: caveman lite. complete spec, not a summary.
 
 ## Mission
 
-RuneLite plugin for Old School RuneScape PvP. Initial scope: tick-accurate combat history overlay. Shows a chronological log of events during a fight, separated by category (combat, eating, gear swap). Improves post-fight review and in-fight awareness without automating any game action.
+RuneLite plugin for Old School RuneScape PvP. Improves in-fight awareness and post-fight review
+without automating any game action (read-only observation + rendering only).
+
+Phase 1 (below) was the tick-accurate combat-history overlay. The plugin has since grown into a
+PvP overlay suite — see the README "Features" and `docs/overlays.md` for the current surface:
+sidebar tick history + hit-summary table; Combat-assist overlays (heartbeat, not-attacking flash,
+hit prediction, prayer highlighter, walk-here, experimental PID guess); Overhead displays (healing
+with real max HP, debuff timers, Vengeance/skull resize); **Ghostify** (per-category model
+hide + coloured outline); a combo system; and a developer mock panel. The sections below remain the
+canonical spec for the tick-history core; newer features are specified in `docs/` + `.ai/backlog-history.md`.
 
 ## Stack
 
@@ -43,7 +52,9 @@ overhead_prayer: Player.getOverheadIcon() → HeadIcon enum (MELEE/RANGED/MAGIC/
 hitsplat: HitsplatApplied event — hitsplat.getAmount(), hitsplat.getHitsplatType().
 gear: local player's worn item container (gameval InventoryID.WORN) diff between ticks → changed slot → REAL item id → name via ItemManager. (Not PlayerComposition appearance ids — those decode to wrong names.)
 prayer_change: Player.getOverheadIcon() diff per tick per tracked player → PrayerEvent (overhead protection prayer only).
-healing: local = exact Hitpoints-skill delta; remote = estimate from getHealthRatio() delta (assumed 99 HP, shown "~"). Shown near the healer's health bar (HealOverlay). Scope config: OFF/SELF/OPPONENTS/EVERYONE.
+healing: local = exact Hitpoints-skill delta; remote = estimate from getHealthRatio() delta × REAL max
+HP (NPCManager + OSRS Hiscores, like Opponent Information; falls back to 99 / toggle accurateRemoteHp),
+shown "~". Near the healer's health bar (HealOverlay). Scope (HealDisplayMode): Off/Everyone/Me/Opponents/Self+opp.
 eating: MenuOptionClicked with option "Eat"/"Drink"; same-player same-tick consumes merge into a combo eat.
 tick_clock: GameTick event — one event = one 600ms server tick. Each tick gets a 1-based display code ("Tick 0001").
 
@@ -54,7 +65,7 @@ tick_code: each TickEntry carries a 1-based sequence rendered as "Tick %04d"; ra
 order: oldest-first (chronological top-to-bottom).
 max_history: configurable (default 20 ticks).
 filter: toggle per category via PvpEnhancerConfig.
-scope: local player always; all visible players when trackOpponents; NPCs when trackNpcs (testing).
+scope: TrackScope — SELF_AND_OPPONENTS (you + players currently fighting you) or EVERYONE (all visible); NPCs when trackNpcs (testing).
 
 ## Plugin Architecture
 
@@ -65,7 +76,12 @@ service_pattern: TickHistoryService — stateful, injected. Owns the tick event 
 combatant_pattern: detection programs against the Combatant interface, not RuneLite Player/NPC. Combatants.of(Actor) is the sole instanceof site; PlayerCombatant/NpcCombatant adapt the two types; CombatEventFactory is pure (mockable). NPCs report blank for fields they lack (e.g. prayer).
 event_pattern: all game state consumed via @Subscribe. No polling threads.
 
-config_note: RuneLite config panel shows Tracking (trackOpponents, trackNpcs), Heartbeat (showHeartbeat), Indicators (showNotRetaliating). The tick-history filters/depth (maxHistoryTicks, show combat/eating/gearSwap/prayer/combos) and hit-summary (showHitSummary, hitSummaryRows) are hidden=true and edited INLINE in the sidebar panel next to their block (via ConfigManager). show* are display-only filters; they do not gate recording (except trackNpcs/trackOpponents which do). maxHistoryTicks has no minimum.
+config_note: RuneLite config panel sections — Tracking (trackScope, trackNpcs), Combat assist
+(heartbeat, not-attacking, hit prediction, prayer highlighter, walk-here, PID guess), Overhead displays
+(healing, debuff timers, veng/skull resize, accurateRemoteHp), Ghostify (per-category when + colour),
+Developer (developerMode). The tick-history filters/depth and hit-summary caps are hidden=true and edited
+INLINE in the sidebar panel (via ConfigManager). show* are display-only filters; they do not gate
+recording (except trackScope/trackNpcs which do). maxHistoryTicks has no minimum.
 
 ## RuneLite API Constraints
 
@@ -76,10 +92,12 @@ always: use @Subscribe for game events, not polling loops
 always: deregister overlays via overlayManager.remove() in shutDown()
 always: gate rendering behind config toggles
 
-## Out of Scope (v1)
+## Out of Scope (permanent)
 
-automation of any kind
-prayer flick helper / alerts
+automation of any kind (input/clicks/keys)
 gear suggestion / BIS calculator
-opponent stat tracking beyond what is visible on-screen
 multi-instance coordination
+
+Note: the predictive **prayer highlighter** (from the opponent's weapon style) shipped — it is a
+read-only display, not a prayer-flick alert/automation. Opponent HP/heal estimates use only
+on-screen health ratio + public Hiscores (no hidden state), matching the core Opponent Information.

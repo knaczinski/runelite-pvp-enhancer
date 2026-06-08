@@ -48,38 +48,57 @@ All overlays are catalogued in **`docs/overlays.md`** (purpose, trigger, scope, 
   attacked.
 - **⚙** opens the plugin config; **🛠** (with *Developer mode* on) opens the developer panel.
 
-### Combat overlays
+Config is grouped into **Tracking**, **Combat assist**, **Overhead displays**, **Ghostify**, and
+**Developer** sections.
 
-- **Heartbeat** — red edge vignette pulsing per tick while in combat (combat now triggers only
-  on real activity, not on clicking an un-attackable target).
+### Combat assist
+
+- **Heartbeat** — red edge vignette pulsing per tick while in combat (combat triggers only on
+  real activity, not on clicking an un-attackable target).
 - **Not-attacking warning** — flashes the opponent's outline red↔yellow when you stop attacking.
-- **Combat focus** — hides players/NPCs not involved in the fight (Self / Any-fight; Any-fight
-  is player-vs-player only).
 - **Hit prediction** — orange predicted damage from the Hitpoints-XP drop, before the projectile
   lands.
-- **Healing** — recovered HP to the right of the health bar (scope: self / opponents / everyone).
-- **Debuff timers** — freeze / bind / teleblock as OSRS-wiki icons + seconds, stacked beside the
-  health bar (scope: self+opponents / all).
 - **Prayer highlighter** — boxes the protection prayer countering the target's weapon style.
-- **Vengeance text resize** — re-renders the "Vengeance!" overhead at a configurable size.
-- **PK skull resize** — hides the native skull and redraws it at a configurable size (regular
-  skull only; per `docs/overhead-resize-spike.md`, prayer-icon and health-bar resize aren't
-  possible via the API).
+- **Walk-here over Take** — de-prioritises ground-item "Take" in combat so a left-click walks.
+- **PID guess** *(experimental)* — best-effort guess of who has PID in a 1v1 you're in, plus a
+  swap warning. PID isn't exposed by the API, so this is a noisy estimate (see
+  `docs/pid-indicator-spike.md`).
+
+### Overhead displays (per-player scope: Off / Everyone / Me / Opponents / Self+opp)
+
+- **Healing** — recovered HP beside the health bar. Local is exact; remote is an estimate using
+  **real max HP** (NPC table + OSRS Hiscores, like Opponent Information), not a flat 99.
+- **Debuff timers** — freeze / bind / teleblock as OSRS-wiki icons + seconds; teleblock tracked
+  as half (~2.5 min) when the target prayed Magic as it landed.
+- **Vengeance text resize** / **PK skull resize** — re-render those overheads at a configurable
+  size (the native size isn't resizable via the API, so the original is hidden/replaced; regular
+  skull only — prayer-icon and health-bar resize aren't possible, see `docs/overhead-resize-spike.md`).
+
+### Ghostify
+
+Reduce characters to a coloured **outline** only (native model hidden via a `RenderableDrawListener`
++ `ModelOutlineRenderer` contour). Per category — **Self / Opponents / Group (CC+FC) / Friends /
+Others** — set **when** (Never / Always / In combat / Not in combat; Others adds *Can't attack
+here* using the Wilderness / PvP-world combat-level range) and the outline **colour**. Priority on
+overlap: opponents > group > friends > others. Hiding your own model still needs Entity Hider's
+"Hide Local Player".
 
 ### Combos
 
 Godlike / Excellent / Humble **switch** tiers, **Triple eat**, and the **Spec combo** (ranged +
 special on the opponent the same tick; *Humble* across two ticks), plus a potlock **fail**
-indicator. Shown as a centre-screen popup and in the tick history.
+indicator. Only emitted while in combat (so banking doesn't count). Shown as a centre-screen popup
+and in the tick history.
 
 ### Developer panel
 
 With *Config → Developer → Developer mode* on, the **🛠** panel fires one-click **mocks** of the
-floating overlays (heal, hit predict, debuff, combo) on yourself — no live fight needed. Backed
-by `OverlayDemoService` (see `docs/overlays.md`).
+floating overlays (heal, hit predict, debuff, combo, PID guess/swap) on yourself — no live fight
+needed — plus a **Clear debuffs & overlays** button. Backed by `OverlayDemoService` (see
+`docs/overlays.md`).
 
-See `docs/tick-history-design.md`, `docs/combat-features-design.md`, `docs/overlays.md`, and
-`docs/overhead-resize-spike.md` for the designs.
+See `docs/tick-history-design.md`, `docs/combat-features-design.md`, `docs/overlays.md`,
+`docs/overhead-resize-spike.md`, and `docs/pid-indicator-spike.md` for the designs.
 
 ---
 
@@ -113,27 +132,22 @@ See `docs/tick-history-design.md`, `docs/combat-features-design.md`, `docs/overl
 
 ```
 src/main/java/com/knz/pvpenhancer/
-  PvpEnhancerPlugin.java     plugin entry point (startUp / shutDown)
-  PvpEnhancerConfig.java     user-configurable settings (@ConfigGroup)
+  PvpEnhancerPlugin.java      plugin entry point + all @Subscribe handlers (only class on the live Client)
+  PvpEnhancerConfig.java      settings (@ConfigGroup) — Tracking / Combat assist / Overhead / Ghostify / Developer
+  *Scope.java, Ghostify*.java, etc.   config enums (TrackScope, HealDisplayMode, DebuffScope,
+                              OverheadScope, GhostifyWhen, GhostifyOthersWhen)
   panel/
-    PvpEnhancerPanel.java    RuneLite sidebar panel (tick history + hit summary + status)
-  overlay/
-    HeartbeatOverlay.java    tick-synced red combat vignette
-    NotRetaliatingOverlay.java  "NOT ATTACKING" alert
-    ComboFeedbackOverlay.java   transient combo popup
-  service/
-    TickHistoryService.java  stateful tick event buffer
-  combatant/
-    Combatant.java           interface over Player/NPC (mockable)
-    PlayerCombatant.java     adapts a RuneLite Player
-    NpcCombatant.java        adapts a RuneLite NPC (testing aid)
-    Combatants.java          factory: wraps an Actor
-    CombatEventFactory.java  pure Combatant → AttackEvent
-  model/
-    TickEntry.java           one entry per game tick
-    CombatEvent.java         event hierarchy (Attack/Hitsplat/Eat/GearSwap)
-    AnimationStyleMap.java   animation ID → attack style mapping
-  util/                      shared stateless helpers
+    PvpEnhancerPanel.java     sidebar panel (tick history + hit-summary table + inline config + ⚙/🛠)
+    DevPanel.java             developer panel (overlay mocks + clear), shown when developerMode
+  overlay/                    one Overlay per concern (see docs/overlays.md for the full catalogue)
+    Heartbeat / NotRetaliating / ComboFeedback / Heal / HitPredict / DebuffTimer /
+    PrayerHighlight / VengeanceText / SkullResize / PidIndicator / GhostifyOutline
+  service/                    @Singleton stateful/pure services
+    TickHistoryService, CombatStateService, AttackHitsplatCorrelator, HitSummaryService,
+    ComboDetectorService, DebuffTrackerService, GhostifyService, PidGuessService, OverlayDemoService
+  combatant/                  Combatant interface over Player/NPC (mockable) + Combatants factory + pure CombatEventFactory
+  model/                      immutable event/data classes + seed maps (AnimationStyleMap,
+                              SpotanimDebuffs, WeaponStyleMap) + combo / hit-summary / debuff models
 ```
 
 See [`docs/building-and-testing.md`](docs/building-and-testing.md) (build, run, Jagex-account

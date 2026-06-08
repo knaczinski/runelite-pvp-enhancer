@@ -1,17 +1,39 @@
 ---
 scope: com.knz.pvpenhancer.overlay
-load_when: changing screen-view overlays (heartbeat, not-attacking alert, combo popup)
+load_when: changing any screen/scene/overhead overlay
 ---
 
-purpose: screen-view effects and alerts. DATA overlays (tick history, hit summary) moved to the sidebar panel (com.knz.pvpenhancer.panel) — only effects/alerts live here.
+purpose: all Overlay subclasses (one per rendering concern). DATA views (tick history, hit summary)
+live in the sidebar panel (com.knz.pvpenhancer.panel), NOT here. Full catalogue with scopes + dev
+mocks: docs/overlays.md.
+
+overlays:
+  - HeartbeatOverlay — ABOVE_SCENE. Red edge vignette, pulses once per game tick in combat
+    (CombatStateService); recordTick() each GameTick, ~600ms decay.
+  - NotRetaliatingOverlay — flashes the OPPONENT's model outline red↔yellow when in combat but not
+    attacking ≥2 ticks. Plugin pushes the opponent actor via setOpponent. (Was a screen text; now an outline.)
+  - ComboFeedbackOverlay — ABOVE_SCENE. Centre popup naming a combo, tier-coloured, ~1.5s fade. showCombo(result). clear().
+  - HealOverlay — ABOVE_WIDGETS (paints over native HP bar/overheads). Floating "+N"/"~N" beside the
+    health bar. addHeal(actor, amount, estimate). Local exact; remote estimate ("~") via HealMath using
+    REAL max HP (NPCManager + Hiscores, resolved in the plugin), not assumed 99. Scope = healDisplayMode.
+  - HitPredictOverlay — orange predicted outgoing damage near the target from the Hitpoints-XP drop. addPrediction(actor, dmg).
+  - DebuffTimerOverlay — freeze/snare/TB wiki icon + seconds, stacked beside the health bar. Reads
+    DebuffTrackerService.getActive (per-actor EnumMap<Debuff,ticks>). Scope = debuffTimers.
+  - PrayerHighlightOverlay — ABOVE_WIDGETS. Boxes the protect prayer countering the target's weapon
+    style; found by NAME scan over InterfaceID.Prayerbook.PRAYER1..30. setTargetStyle. config prayerHighlight.
+  - VengeanceTextOverlay — ABOVE_SCENE. Redraws cleared native "Vengeance!" text scaled. add(actor, text). vengTextScope/Size.
+  - SkullResizeOverlay — ABOVE_WIDGETS. Redraws the hidden native skull scaled + centred, raised above
+    HP/prayer when active. setTargets(players). skullScope/Size. Regular skull only.
+  - PidIndicatorOverlay — TOP_CENTER OverlayPanel. Experimental PID guess (you/them/?) + swap flash. pidIndicator.
+  - GhostifyOutlineOverlay — ABOVE_SCENE. Draws each ghosted player's contour in its category colour
+    via ModelOutlineRenderer. Reads GhostifyService.getGhosted (player→colour).
 
 patterns:
-  - HeartbeatOverlay extends Overlay (ABOVE_SCENE, DYNAMIC). Red edge vignette, pulses once per game tick while in combat (CombatStateService). Plugin calls recordTick() each GameTick; exponential decay over 600ms. Constant intensity.
-  - ComboFeedbackOverlay extends Overlay (ABOVE_SCENE). Transient centered popup (~1.5s fade), tier-colored. Plugin calls showCombo(result) when a combo fires.
-  - NotRetaliatingOverlay extends OverlayPanel (ABOVE_CHATBOX_RIGHT). "NOT ATTACKING" warning when CombatStateService.isNotRetaliating(). Stays on-screen (must be seen mid-fight).
-  - HealOverlay extends Overlay (ABOVE_SCENE). Floating green "+N" near the healer's health bar (actor.getCanvasTextLocation at logicalHeight), rises + fades ~1.5s. Plugin calls addHeal(actor, amount, estimate). Local heals exact ("+"); remote heals estimated ("~", via HealMath from health-ratio delta, assumed 99 HP). Scope = config.healDisplayMode (OFF/SELF/OPPONENTS/EVERYONE).
-  - registered/removed in the plugin startUp/shutDown via overlayManager.
+  - registered/removed in plugin startUp/shutDown via overlayManager; gate on their own config.
+  - floating popups (Heal/HitPredict/Debuff/Combo/Veng/PID) register one-click mocks in
+    service/OverlayDemoService → DevPanel. Annotate @Singleton so demo + plugin share the instance.
 
 constraint:
   - do NOT call setPriority(OverlayPriority...) — enum removed on current API.
-  - these are screen effects by design; do not move them into the sidebar panel (they lose their purpose). Tick history / hit summary belong in the panel, not here.
+  - to paint OVER native overhead bars/icons use OverlayLayer.ABOVE_WIDGETS (ABOVE_SCENE draws under them).
+  - screen effects stay overlays; do not move them into the sidebar panel.
