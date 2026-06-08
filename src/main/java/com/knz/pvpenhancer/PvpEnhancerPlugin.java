@@ -427,7 +427,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 		for (Player p : client.getTopLevelWorldView().players())
 		{
-			if (p == null || p == local)
+			// A null name makes Player.isFriend()/isClanMember()/isFriendsChatMember() NPE (same
+			// guard EntityHider uses); such a player is also unclassifiable, so skip it.
+			if (p == null || p == local || p.getName() == null)
 			{
 				continue;
 			}
