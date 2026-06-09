@@ -261,6 +261,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** One-shot guard for the combat-tab structure dump (tuning the spec-bar resize). */
 	private boolean combatTabDumped;
 
+	/** One-shot guard for the resizable-classic toplevel dump (designing fixed-layout-in-resizable). */
+	private boolean resizableDumped;
+
 	/** Players whose native Vengeance overhead text we keep clearing → epoch-ms to stop clearing. */
 	private final Map<Player, Long> vengClearUntil = new HashMap<>();
 
@@ -685,6 +688,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 		// 4d4. Combat-tab spec-bar resize
 		applyCombatTabLayout();
+
+		// 4d5. One-shot resizable-classic widget dump (designing fixed-layout-in-resizable)
+		dumpResizableToplevelOnce();
 
 		// 4e. Flash the opponent if in combat but not attacking it
 		boolean notRetaliating = config.showNotRetaliating() && combatState.isNotRetaliating(tick);
@@ -1716,6 +1722,47 @@ public class PvpEnhancerPlugin extends Plugin
 			int[] base = captureBase(kid.getId(), kid);
 			kid.setOriginalHeight(base[1] + extra);
 			kid.revalidate();
+		}
+	}
+
+	/**
+	 * One-shot dump of the Resizable-Classic toplevel widget tree (2 levels) when in that layout and
+	 * developer mode is on — gathers the container ids + bounds needed to implement the
+	 * fixed-layout-in-resizable feature (see docs/fixed-resizable-layout.md).
+	 */
+	private void dumpResizableToplevelOnce()
+	{
+		if (resizableDumped || !config.developerMode())
+		{
+			return;
+		}
+		Widget root = client.getWidget(InterfaceID.ToplevelOsrsStretch.CONTROL);
+		if (root == null)
+		{
+			return; // not in Resizable-Classic
+		}
+		resizableDumped = true;
+		log.info("=== Resizable-Classic toplevel dump (group 161) ===");
+		dumpWidgetTree(root.getParent() != null ? root.getParent() : root, 0);
+	}
+
+	private void dumpWidgetTree(Widget w, int depth)
+	{
+		if (w == null || depth > 2)
+		{
+			return;
+		}
+		log.info("[d{}] id={} bounds={} oy={} oh={}", depth, w.getId(), w.getBounds(), w.getOriginalY(), w.getOriginalHeight());
+		Widget[] kids = w.getChildren();
+		if (kids != null)
+		{
+			for (Widget k : kids)
+			{
+				if (k != null)
+				{
+					dumpWidgetTree(k, depth + 1);
+				}
+			}
 		}
 	}
 

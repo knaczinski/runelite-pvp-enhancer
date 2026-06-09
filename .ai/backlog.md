@@ -46,6 +46,20 @@ Done (history): B013-B017 (all shipped S005-S006). See backlog-history.md.
 
 ---
 
+## ▶ PHASE 6 — Fixed-layout in Resizable (PK muscle memory)
+
+### B030 — Fixed-layout-in-resizable
+**Effort:** L — **OPEN, design validated (S016, /grill-me).** Full spec: `docs/fixed-resizable-layout.md`.
+Let PKers run Resizable-Classic while UI click targets stay at fixed-mode positions. Decisions:
+full fixed replica; anchor relative to the VIEWPORT CENTRE (char↔inventory travel preserved, scene
+stays full-window); per-element toggles (panel / minimap+orbs / chat); only acts in Resizable-Classic
+(no forced layout switch). Mechanism: reposition container widgets to (viewportCentre + fixedOffset),
+re-applied after the layout script, restorable (same class as the spec-bar resize — fragile, live-tune).
+**Blocked on:** the Resizable-Classic toplevel widget-tree dump (added behind developer mode) → pins
+the container ids + fixed offsets. HT to validate click positions.
+
+---
+
 ## ▶ PHASE 4 — PvP overlays (focus, prediction, timers, prayer) — CODE COMPLETE
 
 All Phase 4 dev items shipped (S012): **B018** combat focus, **B019** hit prediction,
