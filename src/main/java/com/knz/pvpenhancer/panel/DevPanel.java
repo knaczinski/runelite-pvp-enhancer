@@ -56,6 +56,15 @@ public class DevPanel extends PluginPanel
 		clearButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
 		clearButton.addActionListener(e -> demoService.clearAll());
 		container.add(clearButton);
+
+		JButton dumpButton = new JButton("Dump widget tree (log)");
+		dumpButton.setFont(LINE_FONT);
+		dumpButton.setFocusable(false);
+		dumpButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+		dumpButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+		dumpButton.setToolTipText("Logs the active layout + widget tree + combat tab to the client log");
+		dumpButton.addActionListener(e -> demoService.dumpWidgetTrees());
+		container.add(dumpButton);
 		container.add(javax.swing.Box.createVerticalStrut(8));
 
 		String currentGroup = null;

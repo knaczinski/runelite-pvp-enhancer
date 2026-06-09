@@ -14,7 +14,10 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Central registry of overlay "demo" scenarios for the developer panel. Each scenario is a
@@ -133,6 +136,58 @@ public class OverlayDemoService
 			vengeanceTextOverlay.clear();
 			pidGuess.reset();
 		});
+	}
+
+	private static final Logger log = LoggerFactory.getLogger(OverlayDemoService.class);
+
+	/**
+	 * Dumps (to the client log) which toplevel layout is active + its widget tree, plus the combat
+	 * tab — on demand from the dev panel, so it's captured in the exact state with no timing/gating
+	 * ambiguity. Used to design the fixed-layout-in-resizable feature + tune the spec-bar resize.
+	 */
+	public void dumpWidgetTrees()
+	{
+		clientThread.invoke(() ->
+		{
+			log.info("=== PvP Enhancer widget dump ===");
+			log.info("viewport off=({},{}) size={}x{}", client.getViewportXOffset(), client.getViewportYOffset(),
+				client.getViewportWidth(), client.getViewportHeight());
+			int[] groups = {548, 161, 164};
+			String[] names = {"FIXED(548)", "RESIZABLE_CLASSIC(161)", "RESIZABLE_MODERN(164)"};
+			for (int i = 0; i < groups.length; i++)
+			{
+				Widget root = client.getWidget(groups[i], 0);
+				log.info("layout {} -> {}", names[i], root == null ? "absent" : "PRESENT bounds=" + root.getBounds());
+				if (root != null)
+				{
+					dumpTree(root, 0);
+				}
+			}
+			// Combat tab (spec bar) — group 593.
+			Widget combatRoot = client.getWidget(593, 0);
+			if (combatRoot != null)
+			{
+				log.info("--- combat tab (593) ---");
+				dumpTree(combatRoot, 0);
+			}
+		});
+	}
+
+	private void dumpTree(Widget w, int depth)
+	{
+		if (w == null || depth > 2)
+		{
+			return;
+		}
+		log.info("[d{}] id={} bounds={} oy={} oh={}", depth, w.getId(), w.getBounds(), w.getOriginalY(), w.getOriginalHeight());
+		Widget[] kids = w.getChildren();
+		if (kids != null)
+		{
+			for (Widget k : kids)
+			{
+				dumpTree(k, depth + 1);
+			}
+		}
 	}
 
 	/** Fires a scenario on the client thread (no-op if not logged in). */
