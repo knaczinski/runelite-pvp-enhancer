@@ -152,41 +152,37 @@ public class OverlayDemoService
 			log.info("=== PvP Enhancer widget dump ===");
 			log.info("viewport off=({},{}) size={}x{}", client.getViewportXOffset(), client.getViewportYOffset(),
 				client.getViewportWidth(), client.getViewportHeight());
-			int[] groups = {548, 161, 164};
-			String[] names = {"FIXED(548)", "RESIZABLE_CLASSIC(161)", "RESIZABLE_MODERN(164)"};
-			for (int i = 0; i < groups.length; i++)
-			{
-				Widget root = client.getWidget(groups[i], 0);
-				log.info("layout {} -> {}", names[i], root == null ? "absent" : "PRESENT bounds=" + root.getBounds());
-				if (root != null)
-				{
-					dumpTree(root, 0);
-				}
-			}
-			// Combat tab (spec bar) — group 593.
-			Widget combatRoot = client.getWidget(593, 0);
-			if (combatRoot != null)
-			{
-				log.info("--- combat tab (593) ---");
-				dumpTree(combatRoot, 0);
-			}
+			log.info("layouts: FIXED(548)={} CLASSIC(161)={} MODERN(164)={}",
+				present(548), present(161), present(164));
+			// Components are addressed by (group, child) index — enumerate, don't recurse getChildren.
+			dumpGroup(161, "RESIZABLE_CLASSIC");
+			dumpGroup(593, "COMBAT_TAB");
 		});
 	}
 
-	private void dumpTree(Widget w, int depth)
+	private String present(int group)
 	{
-		if (w == null || depth > 2)
+		return client.getWidget(group, 0) != null ? "present" : "absent";
+	}
+
+	/** Logs every non-null component of an interface group with its bounds (for layout work). */
+	private void dumpGroup(int group, String name)
+	{
+		log.info("--- {} ({}) components [child: id bounds hidden oy oh dynKids] ---", name, group);
+		int misses = 0;
+		for (int child = 0; child < 300 && misses < 50; child++)
 		{
-			return;
-		}
-		log.info("[d{}] id={} bounds={} oy={} oh={}", depth, w.getId(), w.getBounds(), w.getOriginalY(), w.getOriginalHeight());
-		Widget[] kids = w.getChildren();
-		if (kids != null)
-		{
-			for (Widget k : kids)
+			Widget w = client.getWidget(group, child);
+			if (w == null)
 			{
-				dumpTree(k, depth + 1);
+				misses++;
+				continue;
 			}
+			misses = 0;
+			Widget[] kids = w.getChildren();
+			log.info("  {}: id={} bounds={} hidden={} oy={} oh={} dynKids={}",
+				child, w.getId(), w.getBounds(), w.isHidden(), w.getOriginalY(), w.getOriginalHeight(),
+				kids == null ? 0 : kids.length);
 		}
 	}
 
