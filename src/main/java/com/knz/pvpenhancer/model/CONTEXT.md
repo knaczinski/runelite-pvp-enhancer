@@ -29,6 +29,7 @@ seed maps (memory-cited, grow from live debug logs):
   - AnimationStyleMap — animation-id → AttackStyle (attack detection).
   - SpotanimDebuffs — spot-anim id → (Debuff, base duration ticks).
   - WeaponStyleMap — equipped weapon item id → AttackStyle (prayer highlighter).
+  - WeaponSpeeds — weapon item id → base attack speed (ticks), default 4 (attack-again timer).
 
 constraint:
   - keep classes immutable (final fields, defensive copies). overlay reads them on the client thread.

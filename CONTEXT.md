@@ -6,9 +6,23 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S014
-phase: Phases 1-5 code-complete (PvP overlay suite + Ghostify + experimental PID). Docs refreshed S014. Only B008 open (live-data-gated). Live validation pending.
+latest_session: S015
+phase: Phases 1-5 code-complete + S015 prayer/hit-cue/attack-timer/spec-bar batch. Only B008 open (live-data-gated). Live validation pending.
 status: active
+
+## Current Focus (S015)
+
+S015 = 6-feature batch (design via /grill-me on uncertain points). Defensive prayer highlighter now
+also boxes the prayer-tab button; new offensive prayer highlighter (PRAYER_FROM_WEAPON → Piety/Rigour/
+Augury; WEAPON_FROM_PRAYER → WeaponSuggestOverlay boxes an inventory weapon). Hit-predict spec-combo HP
+cue (bigger+red when post-hit HP ≤ threshold%) + font size. Attack-again countdown above the skull
+(AttackCooldownService + AttackTimerOverlay + WeaponSpeeds seed; eat extends; per-scope). Taller spec
+bar (specBarExtraHeight resizes SP_ATTACKBAR + style boxes, restorable). Skull higher with overhead
+prayer. Earlier this turn: combat right-click filter, hit-predict size, UNDER_WIDGETS head overlays,
+ghostify per-group show-chat. Build green, 79 tests. NEXT: live validation (HT-025 + earlier) + tune
+weapon speeds / spec-bar px / skull offsets.
+
+--- S014 detail (prior) ---
 
 ## Current Focus (S014)
 

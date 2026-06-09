@@ -5,6 +5,25 @@ format: append-only. newest at top. full spec preserved per item.
 
 # BACKLOG HISTORY
 
+## S015 — prayer split, hit-predict cue, attack timer, spec bar, skull (6-item batch)
+
+**Done S015** (design via /grill-me on the uncertain points, then implemented in chunks):
+- **Prayer-tab cue + offensive prayer split.** Defensive highlighter also boxes the prayer-tab button
+  (visible with inventory open). New `offensivePrayerMode`: PRAYER_FROM_WEAPON boxes Piety/Rigour/Augury
+  for your weapon; WEAPON_FROM_PRAYER boxes a matching inventory weapon (new `WeaponSuggestOverlay`).
+  `PrayerHighlightOverlay` reworked to `setPrayers(names)`.
+- **Hit-predict spec-combo HP cue.** `hitPredictThreshold` %: when the opponent's estimated HP after the
+  predicted hit ≤ that % of max HP, the number renders bigger + red. + `hitPredictionSize`.
+- **Attack-again timer.** `AttackCooldownService` + `AttackTimerOverlay`: countdown (s, 2dp) above the
+  skull to next attack. `WeaponSpeeds` seed (item→ticks, HT-validate); eat/drink (anim 829) extends.
+  Per-scope toggles self/opponents/others.
+- **Taller spec bar.** `specBarExtraHeight` px grows SP_ATTACKBAR (upward) + shrinks the style boxes in
+  the Combat Options tab, off a captured base (idempotent); restores natively when off/shutdown.
+- **PK skull higher** when an overhead-prayer icon is active.
+- Plus (earlier this turn, S015): combat right-click filter, hit-predict font size, UNDER_WIDGETS layer
+  for head overlays, ghostify per-group show-chat. Heal precision confirmed (kept ~); ghost-clickable
+  dropped (model-pick limitation). Live-validate: weapon speeds, spec-bar layout, skull offsets (HT).
+
 ## S013 (cont.) — Ghostify (replaces combat focus)
 
 **Done S013.** Combat focus reworked into a dedicated **Ghostify** config section with per-category

@@ -26,6 +26,8 @@ services:
     NAME (robust to the talking re-draw using a different Player instance). getGhosted() for the outline overlay.
   - PidGuessService — experimental. noisy vote from contested same-tick hitsplats → guess LOCAL/OPPONENT/UNKNOWN
     + swap warning on lead flip (tracked across ties via lastDefinite). 1v1 only; dev-panel mock hooks.
+  - AttackCooldownService — per-actor wall-clock epoch-ms of when they can attack again (recordAttack from
+    weapon speed, recordConsume extends by the 3-tick eat delay, prune/remove). Drives AttackTimerOverlay.
   - OverlayDemoService — central registry of dev-panel mock scenarios (group/label/Runnable) firing on the
     local player; clearAll() wipes transient debuff timers + floating overlays. Backs DevPanel.
 

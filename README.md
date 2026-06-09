@@ -57,8 +57,15 @@ Config is grouped into **Tracking**, **Combat assist**, **Overhead displays**, *
   real activity, not on clicking an un-attackable target).
 - **Not-attacking warning** — flashes the opponent's outline red↔yellow when you stop attacking.
 - **Hit prediction** — orange predicted damage from the Hitpoints-XP drop, before the projectile
-  lands.
-- **Prayer highlighter** — boxes the protection prayer countering the target's weapon style.
+  lands; configurable text size. **Spec-combo HP cue**: when the opponent's estimated HP *after*
+  the hit drops to a configured % or below, the number turns bigger and red — start the switch + spec.
+- **Defensive prayer highlighter** — boxes the protection prayer countering the target's weapon
+  style, and flags the prayer-tab button (so you notice with the inventory open).
+- **Offensive prayer highlighter** — *Prayer from weapon* highlights Piety/Rigour/Augury for your
+  weapon, or *Weapon from prayer* highlights a matching weapon in your inventory.
+- **Taller spec bar** — grows the special-attack bar in the Combat Options tab by a configurable
+  px (shrinking the style boxes); restores natively when off.
+- **Right-click filter** — in combat, a player right-click shows only Walk here + Attack.
 - **Walk-here over Take** — de-prioritises ground-item "Take" in combat so a left-click walks.
 - **PID guess** *(experimental)* — best-effort guess of who has PID in a 1v1 you're in, plus a
   swap warning. PID isn't exposed by the API, so this is a noisy estimate (see
@@ -73,6 +80,8 @@ Config is grouped into **Tracking**, **Combat assist**, **Overhead displays**, *
 - **Vengeance text resize** / **PK skull resize** — re-render those overheads at a configurable
   size (the native size isn't resizable via the API, so the original is hidden/replaced; regular
   skull only — prayer-icon and health-bar resize aren't possible, see `docs/overhead-resize-spike.md`).
+- **Attack timer** — countdown (seconds, 2 dp) above the head/skull until the player can attack
+  again (weapon-speed seed table; resets on eat/drink). Per-scope toggles: self / opponents / others.
 
 ### Ghostify
 

@@ -16,11 +16,20 @@ overlays:
   - HealOverlay — UNDER_WIDGETS (over native HP bar/overheads, under the game UI). Floating "+N"/"~N" beside the
     health bar. addHeal(actor, amount, estimate). Local exact; remote estimate ("~") via HealMath using
     REAL max HP (NPCManager + Hiscores, resolved in the plugin), not assumed 99. Scope = healDisplayMode.
-  - HitPredictOverlay — orange predicted outgoing damage near the target from the Hitpoints-XP drop. addPrediction(actor, dmg).
+  - HitPredictOverlay — UNDER_WIDGETS. Orange predicted outgoing damage near the target from the
+    Hitpoints-XP drop; bigger + RED when the spec-combo HP cue fires. addPrediction(actor, dmg, critical).
+    Config hitPrediction / hitPredictionSize / hitPredictThreshold.
+  - AttackTimerOverlay — UNDER_WIDGETS. Countdown (seconds, 2dp) above the head/skull until the actor
+    can attack again. Reads AttackCooldownService; plugin feeds the in-scope set via setTimers.
+    Config attackTimerSelf/Opponents/Others.
+  - WeaponSuggestOverlay — ABOVE_WIDGETS. Boxes inventory weapons (WeaponStyleMap) of the style of your
+    active offensive prayer. setStyle. Config offensivePrayerMode = WEAPON_FROM_PRAYER.
   - DebuffTimerOverlay — freeze/snare/TB wiki icon + seconds, stacked beside the health bar. Reads
     DebuffTrackerService.getActive (per-actor EnumMap<Debuff,ticks>). Scope = debuffTimers.
-  - PrayerHighlightOverlay — ABOVE_WIDGETS. Boxes the protect prayer countering the target's weapon
-    style; found by NAME scan over InterfaceID.Prayerbook.PRAYER1..30. setTargetStyle. config prayerHighlight.
+  - PrayerHighlightOverlay — ABOVE_WIDGETS. Boxes prayers by NAME over InterfaceID.Prayerbook.PRAYER1..30
+    (defensive protect prayer + offensive Piety/Rigour/Augury) + the prayer-tab button (ComponentID
+    *_PRAYER_TAB) so the cue shows with the inventory open. setPrayers(names). Config prayerHighlight +
+    offensivePrayerMode (PRAYER_FROM_WEAPON).
   - VengeanceTextOverlay — ABOVE_SCENE. Redraws cleared native "Vengeance!" text scaled. add(actor, text). vengTextScope/Size.
   - SkullResizeOverlay — UNDER_WIDGETS (over native overheads, under the game UI). Redraws the hidden native skull scaled + centred, raised above
     HP/prayer when active. setTargets(players). skullScope/Size. Regular skull only.

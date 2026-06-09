@@ -183,6 +183,17 @@ Bring (or have a partner bring) ice spells / bind / teleblock.
 5. **Self:** set Self = Always + enable Entity Hider "Hide Local Player" → confirm your own model is an outline.
 **PASS CRITERIA:** each category ghostifies per its when-rule in its colour; priority correct; Wilderness range rule plausible; self works with Entity Hider.
 
+### HT-025 — S015 batch (prayer split, hit cue, attack timer, spec bar, skull)
+**STEPS / OBSERVE:**
+1. **Defensive prayer + tab cue:** target a player → the protect prayer is boxed AND the prayer-tab button is boxed even with the inventory tab open.
+2. **Offensive — prayer from weapon:** equip a melee/ranged/mage weapon → Piety/Rigour/Augury is boxed accordingly.
+3. **Offensive — weapon from prayer:** turn on Rigour (etc.) → a matching ranged weapon in your inventory is boxed.
+4. **Spec-combo HP cue:** set the cue % (e.g. 40) → when a predicted hit would drop the opponent to ≤40%, the number is bigger + red (before the hitsplat).
+5. **Attack timer:** enable self/opponents → a 2-decimal seconds countdown shows above the head until next attack; eating pushes it back. **Report any wrong durations** (weapon-speed seed → feeds WeaponSpeeds).
+6. **Taller spec bar:** set the px > 0 → the spec bar in the Combat Options tab is taller, style boxes shrink; set 0 → native layout restored. **Report if it overlaps/looks off** (I tune the px math).
+7. **Skull:** with an overhead prayer active, the resized skull sits a bit higher (not covered).
+**PASS CRITERIA:** each behaves as described; report weapon-speed/spec-bar/skull-offset tuning needs.
+
 ---
 
 ## RESULT TEMPLATE

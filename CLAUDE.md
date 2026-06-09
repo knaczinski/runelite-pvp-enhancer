@@ -10,7 +10,7 @@ project: runelite-pvp-enhancer
 platform: RuneLite (OSRS client plugin)
 phase: Phases 1-5 code-complete (PvP overlay suite + Ghostify + experimental PID). Docs refreshed S014. B008 open (live-gated). Live validation pending.
 status: active
-latest_session: S014
+latest_session: S015
 
 ## State
 
