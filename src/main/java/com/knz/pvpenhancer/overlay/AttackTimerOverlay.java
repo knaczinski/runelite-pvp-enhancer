@@ -2,7 +2,6 @@ package com.knz.pvpenhancer.overlay;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.util.Collections;
@@ -16,18 +15,21 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 /**
- * Draws, above each tracked actor's head (over the PK skull), a countdown in seconds (2 decimals)
- * until they can attack again. The plugin feeds the in-scope actors + their ready-at epoch-ms
- * each tick via {@link #setTimers}; the countdown ticks down smoothly off the wall clock.
+ * Draws, above each tracked actor's head (over the PK skull), a small depleting "cooldown pie"
+ * showing how much of the attack cooldown remains until they can attack again — a visual cue the
+ * brain reads faster than a number. The plugin feeds the in-scope actors + their
+ * {@code [startMs, readyMs]} window each tick via {@link #setTimers}; the wedge shrinks off the
+ * wall clock. The wedge colours green→red as it empties.
  */
 @Singleton
 public class AttackTimerOverlay extends Overlay
 {
-	private static final Color TEXT_COLOR = new Color(0xFF, 0xE0, 0x60);
-	private static final Font TIMER_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 13);
-	private static final int Z_OFFSET = 150; // above the resized skull
+	private static final int RADIUS = 9;
+	private static final int Z_OFFSET = 175; // above the resized skull
+	private static final Color DISC_BG = new Color(0, 0, 0, 150);
+	private static final Color OUTLINE = new Color(0, 0, 0, 200);
 
-	private Map<Actor, Long> timers = Collections.emptyMap();
+	private Map<Actor, long[]> timers = Collections.emptyMap();
 
 	@Inject
 	AttackTimerOverlay()
@@ -37,8 +39,8 @@ public class AttackTimerOverlay extends Overlay
 		setMovable(false);
 	}
 
-	/** Sets the actors to show a countdown for, mapped to their attack-ready epoch-ms. Client thread. */
-	public void setTimers(Map<Actor, Long> timers)
+	/** Sets the actors to show, mapped to their {@code [startMs, readyMs]} cooldown window. Client thread. */
+	public void setTimers(Map<Actor, long[]> timers)
 	{
 		this.timers = timers == null ? Collections.emptyMap() : timers;
 	}
@@ -50,32 +52,50 @@ public class AttackTimerOverlay extends Overlay
 		{
 			return null;
 		}
-		graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-		graphics.setFont(TIMER_FONT);
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		long now = System.currentTimeMillis();
-		for (Map.Entry<Actor, Long> e : timers.entrySet())
+		for (Map.Entry<Actor, long[]> e : timers.entrySet())
 		{
 			Actor actor = e.getKey();
-			if (actor == null)
+			long[] window = e.getValue();
+			if (actor == null || window == null || window[1] <= window[0])
 			{
 				continue;
 			}
-			float remaining = (e.getValue() - now) / 1000f;
-			if (remaining <= 0f)
+			float fraction = (window[1] - now) / (float) (window[1] - window[0]);
+			if (fraction <= 0f)
 			{
 				continue;
 			}
-			String text = String.format("%.2f", remaining);
-			Point loc = actor.getCanvasTextLocation(graphics, text, actor.getLogicalHeight() + Z_OFFSET);
+			fraction = Math.min(1f, fraction);
+
+			Point loc = actor.getCanvasTextLocation(graphics, "", actor.getLogicalHeight() + Z_OFFSET);
 			if (loc == null)
 			{
 				continue;
 			}
-			graphics.setColor(Color.BLACK);
-			graphics.drawString(text, loc.getX() + 1, loc.getY() + 1);
-			graphics.setColor(TEXT_COLOR);
-			graphics.drawString(text, loc.getX(), loc.getY());
+			int cx = loc.getX();
+			int cy = loc.getY();
+			int d = RADIUS * 2;
+
+			graphics.setColor(DISC_BG);
+			graphics.fillOval(cx - RADIUS, cy - RADIUS, d, d);
+
+			// Remaining wedge from the top, clockwise; green when fresh, red as it empties.
+			graphics.setColor(wedgeColour(fraction));
+			graphics.fillArc(cx - RADIUS, cy - RADIUS, d, d, 90, -(int) (fraction * 360));
+
+			graphics.setColor(OUTLINE);
+			graphics.drawOval(cx - RADIUS, cy - RADIUS, d, d);
 		}
 		return null;
+	}
+
+	private static Color wedgeColour(float fraction)
+	{
+		// fraction 1 (full) → green, 0 (empty) → red
+		int r = (int) (Math.min(1f, 2f * (1f - fraction)) * 255);
+		int g = (int) (Math.min(1f, 2f * fraction) * 255);
+		return new Color(r, g, 40, 220);
 	}
 }

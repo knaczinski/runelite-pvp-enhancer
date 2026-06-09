@@ -258,6 +258,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Combat-tab widget id → original {y, height}, captured before resizing (for restore). */
 	private final Map<Integer, int[]> combatTabBase = new HashMap<>();
 
+	/** One-shot guard for the combat-tab structure dump (tuning the spec-bar resize). */
+	private boolean combatTabDumped;
+
 	/** Players whose native Vengeance overhead text we keep clearing → epoch-ms to stop clearing. */
 	private final Map<Player, Long> vengClearUntil = new HashMap<>();
 
@@ -1092,10 +1095,6 @@ public class PvpEnhancerPlugin extends Plugin
 	 */
 	private int remoteMaxHp(Actor actor)
 	{
-		if (!config.accurateRemoteHp())
-		{
-			return ASSUMED_MAX_HP;
-		}
 		if (actor instanceof NPC)
 		{
 			Integer h = npcManager.getHealth(((NPC) actor).getId());
@@ -1611,9 +1610,13 @@ public class PvpEnhancerPlugin extends Plugin
 	}
 
 	/**
-	 * Grows the special-attack bar in the Combat Options tab taller (upward) and shrinks the four
-	 * attack-style boxes to make room, by {@code specBarExtraHeight} px. Uses absolute targets off a
-	 * captured base so re-applying each tick is idempotent; restores the native layout when off.
+	 * Grows the special-attack bar in the Combat Options tab taller (upward) — container AND its
+	 * inner bar graphics — and shifts the components just above it (auto-retaliate, set-effect) up
+	 * so they clear it, shrinking auto-retaliate + the attack-style boxes to make room. All by
+	 * {@code specBarExtraHeight} px off a captured base (idempotent); restores natively when off.
+	 *
+	 * <p>Layout is finicky and version-sensitive — the exact transforms are tuned live. A one-shot
+	 * widget-tree dump (see {@link #dumpCombatTabOnce}) helps verify the structure.
 	 */
 	private void applyCombatTabLayout()
 	{
@@ -1628,14 +1631,30 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return;
 		}
+		dumpCombatTabOnce();
+
+		// Spec bar grows upward; thicken its inner bar graphics too.
 		growUp(InterfaceID.CombatInterface.SP_ATTACKBAR, extra);
+		stretchChildren(InterfaceID.CombatInterface.SP_ATTACKBAR, extra);
 		growUp(InterfaceID.CombatInterface.SPECIAL_ATTACK, extra);
+		stretchChildren(InterfaceID.CombatInterface.SPECIAL_ATTACK, extra);
+
+		// Move the components above the bar up so they don't overlap it; shrink auto-retaliate.
+		moveUp(InterfaceID.CombatInterface.SET_EFFECT, extra);
+		moveUp(InterfaceID.CombatInterface.RETALIATE, extra);
+		shrinkHeight(InterfaceID.CombatInterface.RETALIATE, Math.min(extra / 2, 12));
+
 		int shrink = Math.min(extra / 2, 16);
 		for (int id : new int[]{InterfaceID.CombatInterface._0, InterfaceID.CombatInterface._1,
 			InterfaceID.CombatInterface._2, InterfaceID.CombatInterface._3})
 		{
 			shrinkHeight(id, shrink);
 		}
+	}
+
+	private int[] captureBase(int id, Widget w)
+	{
+		return combatTabBase.computeIfAbsent(id, k -> new int[]{w.getOriginalY(), w.getOriginalHeight()});
 	}
 
 	private void growUp(int widgetId, int extra)
@@ -1645,9 +1664,21 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return;
 		}
-		int[] base = combatTabBase.computeIfAbsent(widgetId, k -> new int[]{w.getOriginalY(), w.getOriginalHeight()});
+		int[] base = captureBase(widgetId, w);
 		w.setOriginalY(base[0] - extra);
 		w.setOriginalHeight(base[1] + extra);
+		w.revalidate();
+	}
+
+	private void moveUp(int widgetId, int dy)
+	{
+		Widget w = client.getWidget(widgetId);
+		if (w == null)
+		{
+			return;
+		}
+		int[] base = captureBase(widgetId, w);
+		w.setOriginalY(base[0] - dy);
 		w.revalidate();
 	}
 
@@ -1658,9 +1689,64 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return;
 		}
-		int[] base = combatTabBase.computeIfAbsent(widgetId, k -> new int[]{w.getOriginalY(), w.getOriginalHeight()});
+		int[] base = captureBase(widgetId, w);
 		w.setOriginalHeight(Math.max(8, base[1] - amount));
 		w.revalidate();
+	}
+
+	/** Thickens a container's child widgets (the visible bar graphics) by {@code extra} px. */
+	private void stretchChildren(int parentId, int extra)
+	{
+		Widget parent = client.getWidget(parentId);
+		if (parent == null)
+		{
+			return;
+		}
+		Widget[] kids = parent.getChildren();
+		if (kids == null)
+		{
+			return;
+		}
+		for (Widget kid : kids)
+		{
+			if (kid == null)
+			{
+				continue;
+			}
+			int[] base = captureBase(kid.getId(), kid);
+			kid.setOriginalHeight(base[1] + extra);
+			kid.revalidate();
+		}
+	}
+
+	/** Logs the combat-tab widget structure once, to tune the spec-bar resize. */
+	private void dumpCombatTabOnce()
+	{
+		if (combatTabDumped)
+		{
+			return;
+		}
+		combatTabDumped = true;
+		for (int id : new int[]{InterfaceID.CombatInterface.SP_ATTACKBAR, InterfaceID.CombatInterface.SPECIAL_ATTACK,
+			InterfaceID.CombatInterface.RETALIATE, InterfaceID.CombatInterface.SET_EFFECT})
+		{
+			Widget w = client.getWidget(id);
+			if (w != null)
+			{
+				log.info("CombatTab widget {} bounds={} y={} h={}", id, w.getBounds(), w.getOriginalY(), w.getOriginalHeight());
+				Widget[] kids = w.getChildren();
+				if (kids != null)
+				{
+					for (Widget kid : kids)
+					{
+						if (kid != null)
+						{
+							log.info("  child {} bounds={} y={} h={}", kid.getId(), kid.getBounds(), kid.getOriginalY(), kid.getOriginalHeight());
+						}
+					}
+				}
+			}
+		}
 	}
 
 	private void restoreCombatTab()
@@ -1696,13 +1782,13 @@ public class PvpEnhancerPlugin extends Plugin
 			return;
 		}
 		attackCooldown.prune();
-		Map<Actor, Long> show = new HashMap<>();
+		Map<Actor, long[]> show = new HashMap<>();
 		if (config.attackTimerSelf() && local != null)
 		{
-			Long r = attackCooldown.readyAt(local);
-			if (r != null)
+			long[] w = attackCooldown.window(local);
+			if (w != null)
 			{
-				show.put(local, r);
+				show.put(local, w);
 			}
 		}
 		if (config.attackTimerOpponents() || config.attackTimerOthers())
@@ -1713,15 +1799,15 @@ public class PvpEnhancerPlugin extends Plugin
 				{
 					continue;
 				}
-				Long r = attackCooldown.readyAt(p);
-				if (r == null)
+				long[] w = attackCooldown.window(p);
+				if (w == null)
 				{
 					continue;
 				}
 				boolean opponent = currentOpponents.contains(Text.removeTags(p.getName()));
 				if (opponent ? config.attackTimerOpponents() : config.attackTimerOthers())
 				{
-					show.put(p, r);
+					show.put(p, w);
 				}
 			}
 		}

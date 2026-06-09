@@ -83,7 +83,7 @@ public class HealOverlay extends Overlay
 		}
 
 		graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-		graphics.setFont(HEAL_FONT);
+		graphics.setFont(HEAL_FONT.deriveFont((float) config.healSize()));
 
 		long now = System.currentTimeMillis();
 		for (Iterator<HealPopup> it = popups.iterator(); it.hasNext(); )

@@ -138,51 +138,49 @@ public interface PvpEnhancerConfig extends Config
 	// ─── Overhead displays ──────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "healDisplayMode", name = "Healing",
-		description = "Show recovered HP near the health bar of whoever healed. Opponent "
-			+ "amounts are estimates (~) — the API only exposes their health ratio, not real HP. "
-			+ "Scope 'Others' = everyone except you and your opponents.",
+		description = "Show recovered HP near the health bar of whoever healed. Opponent amounts are "
+			+ "estimates (~) — using real max HP (NPC table + OSRS Hiscores) but bounded by the health "
+			+ "bar resolution. Scope 'Others' = everyone except you and your opponents.",
 		section = overheadSection, position = 0)
 	default HealDisplayMode healDisplayMode() { return HealDisplayMode.EVERYONE; }
+
+	@Range(min = 8, max = 48)
+	@ConfigItem(keyName = "healSize", name = "Healing text size",
+		description = "Font size of the healing number. Default 14.",
+		section = overheadSection, position = 1)
+	default int healSize() { return 14; }
 
 	@ConfigItem(keyName = "debuffTimers", name = "Freeze/TB",
 		description = "Freeze / snare / teleblock timers: an icon + seconds countdown over affected "
 			+ "players. Teleblock is tracked as half (~2.5 min) when the target prayed Magic as it landed.",
-		section = overheadSection, position = 1)
+		section = overheadSection, position = 2)
 	default DebuffScope debuffTimers() { return DebuffScope.OFF; }
 
 	@ConfigItem(keyName = "vengTextScope", name = "Veng resize",
 		description = "Re-render the 'Vengeance!' overhead text at a custom size (the native size "
 			+ "is not resizable via the API, so the original is replaced). Scope 'Others' = everyone "
 			+ "except you and your opponents.",
-		section = overheadSection, position = 2)
+		section = overheadSection, position = 3)
 	default OverheadScope vengTextScope() { return OverheadScope.OFF; }
 
 	@Range(min = 20, max = 400)
 	@ConfigItem(keyName = "vengTextSize", name = "Veng text size (%)",
 		description = "Size of the re-rendered Vengeance text. 100% ≈ the native size.",
-		section = overheadSection, position = 3)
+		section = overheadSection, position = 4)
 	default int vengTextSize() { return 100; }
 
 	@ConfigItem(keyName = "skullScope", name = "Skull resize",
 		description = "Re-render the PK skull at a custom size (the native size is not resizable, "
 			+ "so the native skull is hidden and replaced). Only the regular skull is handled. "
 			+ "Scope 'Others' = everyone except you and your opponents.",
-		section = overheadSection, position = 4)
+		section = overheadSection, position = 5)
 	default OverheadScope skullScope() { return OverheadScope.OFF; }
 
 	@Range(min = 20, max = 400)
 	@ConfigItem(keyName = "skullSize", name = "PK skull size (%)",
 		description = "Size of the re-rendered PK skull. 100% ≈ the native size.",
-		section = overheadSection, position = 5)
-	default int skullSize() { return 100; }
-
-	@ConfigItem(keyName = "accurateRemoteHp", name = "Accurate heal amounts",
-		description = "Use real max HP for the opponent heal estimate — NPC HP from RuneLite's "
-			+ "table, player Hitpoints level from the OSRS Hiscores (like Opponent Information) — "
-			+ "instead of assuming 99. Still a ~estimate (health-bar resolution / HP boosts). "
-			+ "Off = no Hiscores lookups.",
 		section = overheadSection, position = 6)
-	default boolean accurateRemoteHp() { return true; }
+	default int skullSize() { return 100; }
 
 	@ConfigItem(keyName = "attackTimerSelf", name = "Attack timer — self",
 		description = "Show a countdown (seconds, above the head/skull) until YOU can attack again.",

@@ -75,7 +75,7 @@ public class SkullResizeOverlay extends Overlay
 			int extra = 25;
 			if (p.getOverheadIcon() != null)
 			{
-				extra = 120; // above the overhead-prayer icon
+				extra = 140; // above the overhead-prayer icon
 			}
 			else if (p.getHealthRatio() >= 0)
 			{
