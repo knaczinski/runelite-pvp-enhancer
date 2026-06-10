@@ -1,6 +1,16 @@
 # Fixed-layout in Resizable — design (PK muscle memory)
 
-Status: **design validated (S016, /grill-me); implementation pending the resizable widget-tree dump.**
+Status: **first cut implemented (B030) from the Resizable-Classic dump; offsets are estimates —
+live-tuning via Nudge X/Y + the fixed-mode (group 548) dump pending.**
+
+## Mapped containers (Resizable-Classic, group 161; 919×1000 window, viewport centre ≈ 459,500)
+
+- Inventory/tabs block: children **38..90 + 97** (anchor 97 = panel bg [678,665,241×335]).
+- Minimap + orbs: children **19, 22–33, 95** (anchor 95 [708,0,211×207]).
+- Chatbox: child **96** [0,835,519×165].
+
+Spec bar (group 593): SP_ATTACKBAR = child 38 (150×26 @ y204), SPECIAL_ATTACK = child 39 (fill,
+9 dyn children — must resize the children, not just the container).
 
 ## Why PKers use fixed mode (research)
 
