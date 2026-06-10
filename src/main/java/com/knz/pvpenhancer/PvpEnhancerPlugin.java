@@ -87,6 +87,7 @@ import net.runelite.api.WorldType;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ClientTick;
@@ -264,6 +265,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** One-shot guard for the resizable-classic toplevel dump (designing fixed-layout-in-resizable). */
 	private boolean resizableDumped;
 
+	/** Resizable-classic widget child index → captured [xMode, yMode, origX, origY, absX, absY] for fixed-layout repositioning + restore. */
+	private final Map<Integer, int[]> frBase = new HashMap<>();
+
 	/** Players whose native Vengeance overhead text we keep clearing → epoch-ms to stop clearing. */
 	private final Map<Player, Long> vengClearUntil = new HashMap<>();
 
@@ -348,6 +352,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(ghostifyOutlineOverlay);
 		restoreAllSkulls();
 		restoreCombatTab();
+		restoreFixedResizable();
 		unregisterGhostifyListener();
 		clientToolbar.removeNavigation(navButton);
 		if (devNavAdded)
@@ -691,6 +696,9 @@ public class PvpEnhancerPlugin extends Plugin
 
 		// 4d5. One-shot resizable-classic widget dump (designing fixed-layout-in-resizable)
 		dumpResizableToplevelOnce();
+
+		// 4d6. Fixed-layout-in-resizable (B030)
+		applyFixedResizableLayout();
 
 		// 4e. Flash the opponent if in combat but not attacking it
 		boolean notRetaliating = config.showNotRetaliating() && combatState.isNotRetaliating(tick);
@@ -1813,6 +1821,124 @@ public class PvpEnhancerPlugin extends Plugin
 			}
 		}
 		combatTabBase.clear();
+	}
+
+	// Fixed-mode block offsets from the fixed viewport centre (≈256,171 in 765×503) — estimates,
+	// tune via frNudgeX/Y + the fixed-mode widget dump.
+	private static final int FR_INV_OFF_X = 256, FR_INV_OFF_Y = -3;
+	private static final int FR_MM_OFF_X = 256, FR_MM_OFF_Y = -171;
+	private static final int FR_CHAT_OFF_X = -260, FR_CHAT_OFF_Y = 167;
+
+	/**
+	 * Fixed-layout-in-resizable (B030): in Resizable-Classic, repositions enabled UI blocks so they
+	 * sit at fixed-mode's distance from the character (viewport centre), preserving muscle memory.
+	 * Each block's member widgets are shifted by one delta (the anchor's target minus its native
+	 * position) in ABSOLUTE position mode, off a captured native base (idempotent); restored on
+	 * disable / not-classic / shutdown. EXPERIMENTAL — fights the relayout; offsets are tunable.
+	 */
+	private void applyFixedResizableLayout()
+	{
+		if (!config.fixedResizableLayout() || client.getWidget(161, 0) == null)
+		{
+			restoreFixedResizable();
+			return;
+		}
+		int cx = client.getViewportXOffset() + client.getViewportWidth() / 2 + config.frNudgeX();
+		int cy = client.getViewportYOffset() + client.getViewportHeight() / 2 + config.frNudgeY();
+
+		if (config.frInventory())
+		{
+			int[] inv = new int[54];
+			for (int i = 0; i < 53; i++)
+			{
+				inv[i] = 38 + i; // 38..90: tab stones, rails, tab contents
+			}
+			inv[53] = 97; // panel background
+			shiftFrBlock(97, cx + FR_INV_OFF_X, cy + FR_INV_OFF_Y, inv);
+		}
+		if (config.frMinimap())
+		{
+			shiftFrBlock(95, cx + FR_MM_OFF_X, cy + FR_MM_OFF_Y,
+				19, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 95);
+		}
+		if (config.frChat())
+		{
+			shiftFrBlock(96, cx + FR_CHAT_OFF_X, cy + FR_CHAT_OFF_Y, 96);
+		}
+	}
+
+	private void shiftFrBlock(int anchorChild, int targetX, int targetY, int... members)
+	{
+		int[] anchor = captureFr(anchorChild);
+		if (anchor == null)
+		{
+			return;
+		}
+		int dx = targetX - anchor[4];
+		int dy = targetY - anchor[5];
+		for (int child : members)
+		{
+			Widget w = client.getWidget(161, child);
+			if (w == null)
+			{
+				continue;
+			}
+			int[] base = captureFr(child);
+			if (base == null)
+			{
+				continue; // hidden / not laid out yet — capture+shift once it appears
+			}
+			w.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
+			w.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+			w.setOriginalX(base[4] + dx);
+			w.setOriginalY(base[5] + dy);
+			w.revalidate();
+		}
+	}
+
+	/** @return captured [xMode, yMode, origX, origY, nativeAbsX, nativeAbsY], or null if not yet laid out. */
+	private int[] captureFr(int child)
+	{
+		int[] existing = frBase.get(child);
+		if (existing != null)
+		{
+			return existing;
+		}
+		Widget w = client.getWidget(161, child);
+		if (w == null)
+		{
+			return null;
+		}
+		java.awt.Rectangle bb = w.getBounds();
+		if (bb == null || bb.x < 0 || bb.y < 0)
+		{
+			return null; // hidden / not laid out — capture native position later
+		}
+		int[] base = {w.getXPositionMode(), w.getYPositionMode(), w.getOriginalX(), w.getOriginalY(), bb.x, bb.y};
+		frBase.put(child, base);
+		return base;
+	}
+
+	private void restoreFixedResizable()
+	{
+		if (frBase.isEmpty())
+		{
+			return;
+		}
+		for (Map.Entry<Integer, int[]> e : frBase.entrySet())
+		{
+			Widget w = client.getWidget(161, e.getKey());
+			if (w != null)
+			{
+				int[] b = e.getValue();
+				w.setXPositionMode(b[0]);
+				w.setYPositionMode(b[1]);
+				w.setOriginalX(b[2]);
+				w.setOriginalY(b[3]);
+				w.revalidate();
+			}
+		}
+		frBase.clear();
 	}
 
 	private boolean anyAttackTimer()

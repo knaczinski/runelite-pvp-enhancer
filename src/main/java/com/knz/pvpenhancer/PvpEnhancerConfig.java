@@ -45,7 +45,14 @@ public interface PvpEnhancerConfig extends Config
 		position = 3, closedByDefault = true)
 	String ghostifySection = "ghostify";
 
-	@ConfigSection(name = "Developer", description = "Tools for testing overlays without a live fight.", position = 4, closedByDefault = true)
+	@ConfigSection(name = "Fixed-resizable layout",
+		description = "EXPERIMENTAL. In Resizable-Classic, pin the inventory/minimap/chat to fixed-mode's "
+			+ "distance from your character (viewport centre) so fixed-mode muscle memory carries over. "
+			+ "See docs/fixed-resizable-layout.md.",
+		position = 4, closedByDefault = true)
+	String fixedResizableSection = "fixedresizable";
+
+	@ConfigSection(name = "Developer", description = "Tools for testing overlays without a live fight.", position = 5, closedByDefault = true)
 	String developerSection = "developer";
 
 	// ─── Tracking ───────────────────────────────────────────────────────────
@@ -286,6 +293,44 @@ public interface PvpEnhancerConfig extends Config
 		description = "Show ghostified other players' name/chat overhead.",
 		section = ghostifySection, position = 14)
 	default boolean ghostChatOthers() { return false; }
+
+	// ─── Fixed-resizable layout ─────────────────────────────────────────────────
+
+	@ConfigItem(keyName = "fixedResizableLayout", name = "Enable",
+		description = "Master switch. Only acts in Resizable-Classic. Pins enabled UI blocks to "
+			+ "fixed-mode positions relative to your character. EXPERIMENTAL — fights the native "
+			+ "relayout; expect tuning.",
+		section = fixedResizableSection, position = 0)
+	default boolean fixedResizableLayout() { return false; }
+
+	@ConfigItem(keyName = "frInventory", name = "Pin inventory / tabs",
+		description = "Move the tabs + inventory/prayer/spellbook panel to its fixed-mode distance "
+			+ "from your character.",
+		section = fixedResizableSection, position = 1)
+	default boolean frInventory() { return true; }
+
+	@ConfigItem(keyName = "frMinimap", name = "Pin minimap + orbs",
+		description = "Move the minimap and orbs to their fixed-mode position.",
+		section = fixedResizableSection, position = 2)
+	default boolean frMinimap() { return false; }
+
+	@ConfigItem(keyName = "frChat", name = "Pin chatbox",
+		description = "Move the chatbox to its fixed-mode position.",
+		section = fixedResizableSection, position = 3)
+	default boolean frChat() { return false; }
+
+	@Range(min = -400, max = 400)
+	@ConfigItem(keyName = "frNudgeX", name = "Nudge X (px)",
+		description = "Fine-tune: shift all pinned blocks horizontally. Tune until clicks land where "
+			+ "fixed-mode muscle memory expects.",
+		section = fixedResizableSection, position = 4)
+	default int frNudgeX() { return 0; }
+
+	@Range(min = -400, max = 400)
+	@ConfigItem(keyName = "frNudgeY", name = "Nudge Y (px)",
+		description = "Fine-tune: shift all pinned blocks vertically.",
+		section = fixedResizableSection, position = 5)
+	default int frNudgeY() { return 0; }
 
 	// ─── Developer ────────────────────────────────────────────────────────────
 

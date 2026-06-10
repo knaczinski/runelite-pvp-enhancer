@@ -155,6 +155,7 @@ public class OverlayDemoService
 			log.info("layouts: FIXED(548)={} CLASSIC(161)={} MODERN(164)={}",
 				present(548), present(161), present(164));
 			// Components are addressed by (group, child) index — enumerate, don't recurse getChildren.
+			dumpGroup(548, "FIXED");
 			dumpGroup(161, "RESIZABLE_CLASSIC");
 			dumpGroup(593, "COMBAT_TAB");
 		});
