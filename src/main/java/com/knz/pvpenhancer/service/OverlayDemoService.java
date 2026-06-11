@@ -184,6 +184,22 @@ public class OverlayDemoService
 			log.info("  {}: id={} bounds={} hidden={} oy={} oh={} dynKids={}",
 				child, w.getId(), w.getBounds(), w.isHidden(), w.getOriginalY(), w.getOriginalHeight(),
 				kids == null ? 0 : kids.length);
+			// Dynamic children carry the spec-bar fill segments — log their bounds so the taller-bar
+			// resize can target the right widgets (the green fill, not just the frame).
+			if (kids != null && kids.length > 0)
+			{
+				for (int k = 0; k < kids.length; k++)
+				{
+					Widget kid = kids[k];
+					if (kid == null)
+					{
+						continue;
+					}
+					log.info("      [{}.dyn{}] bounds={} hidden={} ox={} oy={} ow={} oh={} type={} text='{}'",
+						child, k, kid.getBounds(), kid.isHidden(), kid.getOriginalX(), kid.getOriginalY(),
+						kid.getOriginalWidth(), kid.getOriginalHeight(), kid.getType(), kid.getText());
+				}
+			}
 		}
 	}
 
