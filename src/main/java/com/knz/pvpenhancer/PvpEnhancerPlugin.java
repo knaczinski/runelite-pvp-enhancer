@@ -792,18 +792,22 @@ public class PvpEnhancerPlugin extends Plugin
 			return;
 		}
 
+		// Attack-cooldown timer: independent of the AnimationStyleMap, so it works for weapons whose
+		// attack animation isn't mapped (e.g. the Eclipse atlatl). Any non-eat animation on a player
+		// who is interacting with a target starts the weapon-speed countdown. Speed comes from the
+		// equipped weapon (WeaponSpeeds), not the animation.
+		if (anyAttackTimer() && event.getActor() instanceof Player
+			&& event.getActor().getInteracting() != null)
+		{
+			PlayerComposition comp = ((Player) event.getActor()).getPlayerComposition();
+			int weaponId = comp != null ? comp.getEquipmentId(KitType.WEAPON) : -1;
+			attackCooldown.recordAttack(event.getActor(), WeaponSpeeds.ticks(weaponId));
+		}
+
 		AttackEvent attack = CombatEventFactory.fromAttack(attacker);
 		if (attack != null)
 		{
 			history.addEvent(attack);
-
-			// Attack-cooldown timer: an attack starts the weapon-speed countdown (players only).
-			if (anyAttackTimer() && event.getActor() instanceof Player)
-			{
-				PlayerComposition comp = ((Player) event.getActor()).getPlayerComposition();
-				int weaponId = comp != null ? comp.getEquipmentId(KitType.WEAPON) : -1;
-				attackCooldown.recordAttack(event.getActor(), WeaponSpeeds.ticks(weaponId));
-			}
 
 			// Feed correlator + hit summary
 			int tick = client.getTickCount();
