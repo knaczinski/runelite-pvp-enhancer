@@ -1873,11 +1873,15 @@ public class PvpEnhancerPlugin extends Plugin
 			restoreFixedResizable();
 			return;
 		}
-		// Anchor relative to the viewport CENTRE (where the character renders): blocks float at
-		// fixed-mode distance from the character. This is correct on a wide window. (A small/narrow
-		// window can't fit the float — handled separately, not by moving this anchor.)
-		int cx = client.getViewportXOffset() + client.getViewportWidth() / 2 + config.frNudgeX();
-		int cy = client.getViewportYOffset() + client.getViewportHeight() / 2 + config.frNudgeY();
+		// Anchor at the viewport CENTRE (character) on a wide window; auto-shift the whole anchor when
+		// the window is too narrow so the inventory still fits (the character then sits right-of-centre
+		// of the fixed overlay, like fixed mode). Shared with the guide overlay so both match.
+		int[] a = FixedLayoutGeometry.anchor(client.getViewportXOffset(), client.getViewportYOffset(),
+			client.getViewportWidth(), client.getViewportHeight(),
+			client.getCanvasWidth(), client.getCanvasHeight(), config.frNudgeX(), config.frNudgeY(),
+			config.frInventory(), config.frMinimap(), config.frChat());
+		int cx = a[0];
+		int cy = a[1];
 
 		applyOrRestoreFrBlock(config.frInventory(), FR_INV_ROOT,
 			cx + FixedLayoutGeometry.INV_OFF_X, cy + FixedLayoutGeometry.INV_OFF_Y);
@@ -1917,17 +1921,10 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return; // hidden / not laid out yet — capture once it appears
 		}
+		// No per-block clamp: the anchor auto-fit (FixedLayoutGeometry.anchor) already keeps the
+		// enabled blocks on-screen as a group, preserving their relative fixed-mode arrangement.
 		int x = targetX;
 		int y = targetY;
-		if (config.frClampOnScreen())
-		{
-			// Keep the block fully visible (no off-screen vanish on a too-narrow window). Off = exact
-			// fixed distance even if it clips (the inventory-too-close-to-character fix on narrow windows).
-			int blockW = base[6];
-			int blockH = base[7];
-			x = Math.max(0, Math.min(targetX, client.getCanvasWidth() - blockW));
-			y = Math.max(0, Math.min(targetY, client.getCanvasHeight() - blockH));
-		}
 		w.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
 		w.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
 		w.setOriginalX(x);

@@ -56,9 +56,13 @@ public class FixedLayoutGuideOverlay extends Overlay
 			return null;
 		}
 
-		// Anchor relative to the viewport CENTRE (matches the live pin in applyFixedResizableLayout).
-		int cx = client.getViewportXOffset() + client.getViewportWidth() / 2 + config.frNudgeX();
-		int cy = client.getViewportYOffset() + client.getViewportHeight() / 2 + config.frNudgeY();
+		// Shared anchor (centre + auto-fit) — matches the live pin in applyFixedResizableLayout.
+		int[] a = FixedLayoutGeometry.anchor(client.getViewportXOffset(), client.getViewportYOffset(),
+			client.getViewportWidth(), client.getViewportHeight(),
+			client.getCanvasWidth(), client.getCanvasHeight(), config.frNudgeX(), config.frNudgeY(),
+			config.frInventory(), config.frMinimap(), config.frChat());
+		int cx = a[0];
+		int cy = a[1];
 
 		// Fixed scene (3D viewport) centred on the resizable viewport centre.
 		int sceneX = cx - FixedLayoutGeometry.SCENE_HALF_X;
@@ -96,12 +100,6 @@ public class FixedLayoutGuideOverlay extends Overlay
 
 	private void box(Graphics2D g, Color color, String text, int x, int y, int w, int h)
 	{
-		// Same clamp as the live pin so the guide matches the moved widgets.
-		if (config.frClampOnScreen())
-		{
-			x = Math.max(0, Math.min(x, client.getCanvasWidth() - w));
-			y = Math.max(0, Math.min(y, client.getCanvasHeight() - h));
-		}
 		g.setStroke(SOLID);
 		g.setColor(color);
 		g.drawRect(x, y, w, h);

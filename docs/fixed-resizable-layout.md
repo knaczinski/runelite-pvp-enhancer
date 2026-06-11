@@ -51,20 +51,22 @@ reflecting into another plugin's state — fragile and Hub-disallowed). They are
 position them by hand. A native-buff-bar pin was tried and removed: most PKers use the Boost
 Information plugin instead, which this can't move.
 
-## On-screen clamp toggle
+## Auto-fit on narrow windows (replaces the per-block clamp)
 
-`frClampOnScreen` (default on) pulls a pinned block back inside the window if it would cross an edge
-— prevents vanishing on a narrow window, but on a window as narrow as fixed it drags the inventory
-closer to the character than fixed distance. Turn **off** for exact fixed distance (requires a
-window wide enough that the block still fits: roughly `window width ≥ 2·(287 + blockWidth)` for the
-inventory). The guide overlay honours the same toggle so it always matches the live result.
+`FixedLayoutGeometry.anchor(...)` computes the anchor as the viewport centre, then — only when the
+enabled blocks don't fit — shifts the whole anchor as a group to bring them back on-screen,
+preserving their relative fixed-mode arrangement. Horizontal overflow is right-biased so the
+inventory stays fully visible and the character ends up right-of-centre of the fixed overlay (like
+fixed mode). On a wide window the shift is zero, so the centre-anchor behaviour is unchanged. The
+plugin and the guide overlay share this helper so they always agree. This replaced the old
+per-block on-screen clamp (which distorted the relative layout on narrow windows).
 
 ## Fixed-size guide overlay (visual only)
 
 `frShowGuide` draws reference outlines at the pinned positions without moving any widget: the fixed
 client footprint (765×503, dashed), the fixed scene (512×334), and the inventory / minimap / chat
-boxes for whichever blocks are enabled — clamped the same way as the live pin, so the guide matches
-the real result. Use it to gauge the layout before/while tuning Nudge X/Y.
+boxes for whichever blocks are enabled — using the same shared anchor, so the guide matches the real
+result. Use it to gauge the layout before/while tuning.
 
 Spec bar (group 593): SP_ATTACKBAR = child 38 (150×26 @ y204), SPECIAL_ATTACK = child 39 (fill,
 9 dyn children — must resize the children, not just the container).

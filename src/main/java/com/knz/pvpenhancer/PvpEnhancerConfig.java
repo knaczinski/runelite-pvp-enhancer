@@ -357,14 +357,6 @@ public interface PvpEnhancerConfig extends Config
 		section = fixedResizableSection, position = 6)
 	default boolean frShowGuide() { return false; }
 
-	@ConfigItem(keyName = "frClampOnScreen", name = "Keep blocks on-screen",
-		description = "Pull a pinned block back inside the window if it would extend past an edge. "
-			+ "ON prevents blocks vanishing on a narrow window, but on a window as narrow as fixed it "
-			+ "drags the inventory closer to your character than fixed distance. Turn OFF for exact "
-			+ "fixed distance (use a window wide enough that the block still fits).",
-		section = fixedResizableSection, position = 7)
-	default boolean frClampOnScreen() { return true; }
-
 	// ─── Developer ────────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "developerMode", name = "Developer mode",
