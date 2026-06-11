@@ -104,6 +104,24 @@ public interface PvpEnhancerConfig extends Config
 		section = alertsSection, position = 4)
 	default ComboPopups comboPopups() { return ComboPopups.IN_COMBAT; }
 
+	@ConfigItem(keyName = "specBar", name = "Spec bar HUD",
+		description = "Draw a large, always-readable special-attack bar (green = ready %) as a movable "
+			+ "overlay — drag it where you want. Independent of the cramped Combat Options tab bar.",
+		section = alertsSection, position = 5)
+	default boolean specBar() { return false; }
+
+	@Range(min = 10, max = 60)
+	@ConfigItem(keyName = "specBarHeight", name = "Spec bar height",
+		description = "Height (px) of the spec bar HUD. Default 22.",
+		section = alertsSection, position = 6)
+	default int specBarHeight() { return 22; }
+
+	@Range(min = 60, max = 400)
+	@ConfigItem(keyName = "specBarWidth", name = "Spec bar width",
+		description = "Width (px) of the spec bar HUD. Default 140.",
+		section = alertsSection, position = 7)
+	default int specBarWidth() { return 140; }
+
 	// ─── Targeting aids ─────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "hitPrediction", name = "Hit predict",
@@ -374,14 +392,6 @@ public interface PvpEnhancerConfig extends Config
 			+ "and chat boxes) at their pinned positions, so you can gauge the layout. Visual only.",
 		section = layoutSection, position = 6)
 	default boolean frShowGuide() { return false; }
-
-	@Range(max = 80)
-	@ConfigItem(keyName = "specBarExtraHeight", name = "Taller spec bar",
-		description = "Grow the special-attack bar in the Combat Options tab taller by this many "
-			+ "pixels (upward) and shrink the attack-style boxes to make room. 0 = off. Native layout "
-			+ "is restored when set back to 0 / on tab rebuild.",
-		section = layoutSection, position = 7)
-	default int specBarExtraHeight() { return 0; }
 
 	// ─── Developer ────────────────────────────────────────────────────────────
 

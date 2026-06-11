@@ -40,6 +40,7 @@ import com.knz.pvpenhancer.overlay.HealOverlay;
 import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
 import com.knz.pvpenhancer.overlay.HitPredictOverlay;
 import com.knz.pvpenhancer.overlay.NotRetaliatingOverlay;
+import com.knz.pvpenhancer.overlay.SpecBarOverlay;
 import com.knz.pvpenhancer.overlay.PidIndicatorOverlay;
 import com.knz.pvpenhancer.overlay.PrayerHighlightOverlay;
 import com.knz.pvpenhancer.overlay.SkullResizeOverlay;
@@ -183,6 +184,7 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private PidGuessService pidGuess;
 	@Inject private GhostifyOutlineOverlay ghostifyOutlineOverlay;
 	@Inject private FixedLayoutGuideOverlay fixedLayoutGuideOverlay;
+	@Inject private SpecBarOverlay specBarOverlay;
 
 	@Inject private DebuffTrackerService debuffTracker;
 	@Inject private GhostifyService ghostify;
@@ -266,9 +268,6 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Combat-tab widget id → original {y, height}, captured before resizing (for restore). */
 	private final Map<Integer, int[]> combatTabBase = new HashMap<>();
 
-	/** One-shot guard for the combat-tab structure dump (tuning the spec-bar resize). */
-	private boolean combatTabDumped;
-
 	/** One-shot guard for the resizable-classic toplevel dump (designing fixed-layout-in-resizable). */
 	private boolean resizableDumped;
 
@@ -316,6 +315,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(pidIndicatorOverlay);
 		overlayManager.add(ghostifyOutlineOverlay);
 		overlayManager.add(fixedLayoutGuideOverlay);
+		overlayManager.add(specBarOverlay);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 		panel.setOnOpenDevPanel(() ->
@@ -362,6 +362,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(pidIndicatorOverlay);
 		overlayManager.remove(ghostifyOutlineOverlay);
 		overlayManager.remove(fixedLayoutGuideOverlay);
+		overlayManager.remove(specBarOverlay);
 		restoreAllSkulls();
 		restoreCombatTab();
 		restoreFixedResizable();
@@ -1703,105 +1704,13 @@ public class PvpEnhancerPlugin extends Plugin
 	 * <p>Layout is finicky and version-sensitive — the exact transforms are tuned live. A one-shot
 	 * widget-tree dump (see {@link #dumpCombatTabOnce}) helps verify the structure.
 	 */
+	// The native combat-tab spec-bar resize was removed: the bar's fill layers are auto-sized and
+	// auto-positioned by the client, so overriding them fought the relayout and broke (the green
+	// fill fell below the rest). The taller bar is now a custom overlay (SpecBarOverlay). This stub
+	// only undoes any geometry captured by older versions.
 	private void applyCombatTabLayout()
 	{
-		int extra = config.specBarExtraHeight();
-		if (extra <= 0)
-		{
-			restoreCombatTab();
-			return;
-		}
-		Widget bar = client.getWidget(InterfaceID.CombatInterface.SP_ATTACKBAR);
-		if (bar == null || bar.isHidden())
-		{
-			return;
-		}
-		dumpCombatTabOnce();
-
-		// Spec bar grows upward; thicken its inner bar graphics too.
-		growUp(InterfaceID.CombatInterface.SP_ATTACKBAR, extra);
-		stretchChildren(InterfaceID.CombatInterface.SP_ATTACKBAR, extra);
-		growUp(InterfaceID.CombatInterface.SPECIAL_ATTACK, extra);
-		stretchChildren(InterfaceID.CombatInterface.SPECIAL_ATTACK, extra);
-
-		// Move the components above the bar up so they don't overlap it; shrink auto-retaliate.
-		moveUp(InterfaceID.CombatInterface.SET_EFFECT, extra);
-		moveUp(InterfaceID.CombatInterface.RETALIATE, extra);
-		shrinkHeight(InterfaceID.CombatInterface.RETALIATE, Math.min(extra / 2, 12));
-
-		int shrink = Math.min(extra / 2, 16);
-		for (int id : new int[]{InterfaceID.CombatInterface._0, InterfaceID.CombatInterface._1,
-			InterfaceID.CombatInterface._2, InterfaceID.CombatInterface._3})
-		{
-			shrinkHeight(id, shrink);
-		}
-	}
-
-	private int[] captureBase(int id, Widget w)
-	{
-		return combatTabBase.computeIfAbsent(id, k -> new int[]{w.getOriginalY(), w.getOriginalHeight()});
-	}
-
-	private void growUp(int widgetId, int extra)
-	{
-		Widget w = client.getWidget(widgetId);
-		if (w == null)
-		{
-			return;
-		}
-		int[] base = captureBase(widgetId, w);
-		w.setOriginalY(base[0] - extra);
-		w.setOriginalHeight(base[1] + extra);
-		w.revalidate();
-	}
-
-	private void moveUp(int widgetId, int dy)
-	{
-		Widget w = client.getWidget(widgetId);
-		if (w == null)
-		{
-			return;
-		}
-		int[] base = captureBase(widgetId, w);
-		w.setOriginalY(base[0] - dy);
-		w.revalidate();
-	}
-
-	private void shrinkHeight(int widgetId, int amount)
-	{
-		Widget w = client.getWidget(widgetId);
-		if (w == null)
-		{
-			return;
-		}
-		int[] base = captureBase(widgetId, w);
-		w.setOriginalHeight(Math.max(8, base[1] - amount));
-		w.revalidate();
-	}
-
-	/** Thickens a container's child widgets (the visible bar graphics) by {@code extra} px. */
-	private void stretchChildren(int parentId, int extra)
-	{
-		Widget parent = client.getWidget(parentId);
-		if (parent == null)
-		{
-			return;
-		}
-		Widget[] kids = parent.getChildren();
-		if (kids == null)
-		{
-			return;
-		}
-		for (Widget kid : kids)
-		{
-			if (kid == null)
-			{
-				continue;
-			}
-			int[] base = captureBase(kid.getId(), kid);
-			kid.setOriginalHeight(base[1] + extra);
-			kid.revalidate();
-		}
+		restoreCombatTab();
 	}
 
 	/**
@@ -1840,36 +1749,6 @@ public class PvpEnhancerPlugin extends Plugin
 				if (k != null)
 				{
 					dumpWidgetTree(k, depth + 1);
-				}
-			}
-		}
-	}
-
-	/** Logs the combat-tab widget structure once, to tune the spec-bar resize. */
-	private void dumpCombatTabOnce()
-	{
-		if (combatTabDumped)
-		{
-			return;
-		}
-		combatTabDumped = true;
-		for (int id : new int[]{InterfaceID.CombatInterface.SP_ATTACKBAR, InterfaceID.CombatInterface.SPECIAL_ATTACK,
-			InterfaceID.CombatInterface.RETALIATE, InterfaceID.CombatInterface.SET_EFFECT})
-		{
-			Widget w = client.getWidget(id);
-			if (w != null)
-			{
-				log.info("CombatTab widget {} bounds={} y={} h={}", id, w.getBounds(), w.getOriginalY(), w.getOriginalHeight());
-				Widget[] kids = w.getChildren();
-				if (kids != null)
-				{
-					for (Widget kid : kids)
-					{
-						if (kid != null)
-						{
-							log.info("  child {} bounds={} y={} h={}", kid.getId(), kid.getBounds(), kid.getOriginalY(), kid.getOriginalHeight());
-						}
-					}
 				}
 			}
 		}

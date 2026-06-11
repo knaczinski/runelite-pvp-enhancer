@@ -68,8 +68,10 @@ client footprint (765×503, dashed), the fixed scene (512×334), and the invento
 boxes for whichever blocks are enabled — using the same shared anchor, so the guide matches the real
 result. Use it to gauge the layout before/while tuning.
 
-Spec bar (group 593): SP_ATTACKBAR = child 38 (150×26 @ y204), SPECIAL_ATTACK = child 39 (fill,
-9 dyn children — must resize the children, not just the container).
+Spec bar: the native combat-tab resize (group 593: SP_ATTACKBAR = child 38, SPECIAL_ATTACK = child
+39, fill layers = childs 40–42, text = 44) was abandoned — the fill layers are auto-sized (`oh=0`)
+and auto-positioned (`oy=0`), so overriding them fought the client and the green fill fell below the
+frame. Replaced by a custom movable overlay (`SpecBarOverlay`) reading `VarPlayerID.SA_ENERGY`.
 
 ## Why PKers use fixed mode (research)
 
