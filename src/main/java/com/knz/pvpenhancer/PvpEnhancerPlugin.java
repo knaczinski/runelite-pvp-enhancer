@@ -1823,18 +1823,31 @@ public class PvpEnhancerPlugin extends Plugin
 		combatTabBase.clear();
 	}
 
-	// Fixed-mode block offsets from the fixed viewport centre (≈256,171 in 765×503) — estimates,
-	// tune via frNudgeX/Y + the fixed-mode widget dump.
-	private static final int FR_INV_OFF_X = 256, FR_INV_OFF_Y = -3;
-	private static final int FR_MM_OFF_X = 256, FR_MM_OFF_Y = -171;
+	// Fixed-mode block offset from the fixed scene centre (≈260,171 in the 765×503 fixed root), to
+	// each block's ROOT-container top-left. Measured from the fixed-mode (548) dump:
+	//   inventory panel-bg top-left ≈ (516,167) → (516-260, 167-171) = (256,-4)
+	//   minimap+orbs panel top-left ≈ (516,  4) → (256,-167)
+	//   chatbox top-left            = (  0,338) → (-260,167)
+	// Each block is moved by relocating ONLY its root container (its children follow); tune the
+	// residual with frNudgeX/Y.
+	private static final int FR_INV_OFF_X = 256, FR_INV_OFF_Y = -4;
+	private static final int FR_MM_OFF_X = 256, FR_MM_OFF_Y = -167;
 	private static final int FR_CHAT_OFF_X = -260, FR_CHAT_OFF_Y = 167;
+
+	// Resizable-Classic (161) root container of each block (covers the whole region; children are
+	// positioned relative to it, so moving it alone moves the block — moving children too would
+	// double-count the parent offset and fling them off-screen).
+	private static final int FR_INV_ROOT = 97;  // [524,168,241×335] tabs + inventory
+	private static final int FR_MM_ROOT = 95;   // [554,0,211×207]  minimap + orbs
+	private static final int FR_CHAT_ROOT = 96;  // [0,338,519×165]  chatbox
 
 	/**
 	 * Fixed-layout-in-resizable (B030): in Resizable-Classic, repositions enabled UI blocks so they
 	 * sit at fixed-mode's distance from the character (viewport centre), preserving muscle memory.
-	 * Each block's member widgets are shifted by one delta (the anchor's target minus its native
-	 * position) in ABSOLUTE position mode, off a captured native base (idempotent); restored on
-	 * disable / not-classic / shutdown. EXPERIMENTAL — fights the relayout; offsets are tunable.
+	 * Only each block's ROOT container is relocated (ABSOLUTE from the interface root); its children
+	 * ride along. The target is clamped on-screen so a narrow window can't push a block out of view.
+	 * Captured native geometry is restored on disable / not-classic / shutdown. EXPERIMENTAL —
+	 * fights the relayout; offsets are tunable via frNudgeX/Y.
 	 */
 	private void applyFixedResizableLayout()
 	{
@@ -1848,55 +1861,50 @@ public class PvpEnhancerPlugin extends Plugin
 
 		if (config.frInventory())
 		{
-			int[] inv = new int[54];
-			for (int i = 0; i < 53; i++)
-			{
-				inv[i] = 38 + i; // 38..90: tab stones, rails, tab contents
-			}
-			inv[53] = 97; // panel background
-			shiftFrBlock(97, cx + FR_INV_OFF_X, cy + FR_INV_OFF_Y, inv);
+			shiftFrRoot(FR_INV_ROOT, cx + FR_INV_OFF_X, cy + FR_INV_OFF_Y);
 		}
 		if (config.frMinimap())
 		{
-			shiftFrBlock(95, cx + FR_MM_OFF_X, cy + FR_MM_OFF_Y,
-				19, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 95);
+			shiftFrRoot(FR_MM_ROOT, cx + FR_MM_OFF_X, cy + FR_MM_OFF_Y);
 		}
 		if (config.frChat())
 		{
-			shiftFrBlock(96, cx + FR_CHAT_OFF_X, cy + FR_CHAT_OFF_Y, 96);
+			shiftFrRoot(FR_CHAT_ROOT, cx + FR_CHAT_OFF_X, cy + FR_CHAT_OFF_Y);
 		}
 	}
 
-	private void shiftFrBlock(int anchorChild, int targetX, int targetY, int... members)
+	/**
+	 * Relocates a single block-root container to (targetX,targetY) absolute, clamped fully on-screen.
+	 * Children follow because they are laid out relative to this root. Idempotent: positions are set
+	 * absolutely each tick, never accumulated.
+	 */
+	private void shiftFrRoot(int rootChild, int targetX, int targetY)
 	{
-		int[] anchor = captureFr(anchorChild);
-		if (anchor == null)
+		Widget w = client.getWidget(161, rootChild);
+		if (w == null)
 		{
 			return;
 		}
-		int dx = targetX - anchor[4];
-		int dy = targetY - anchor[5];
-		for (int child : members)
+		int[] base = captureFr(rootChild);
+		if (base == null)
 		{
-			Widget w = client.getWidget(161, child);
-			if (w == null)
-			{
-				continue;
-			}
-			int[] base = captureFr(child);
-			if (base == null)
-			{
-				continue; // hidden / not laid out yet — capture+shift once it appears
-			}
-			w.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
-			w.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
-			w.setOriginalX(base[4] + dx);
-			w.setOriginalY(base[5] + dy);
-			w.revalidate();
+			return; // hidden / not laid out yet — capture once it appears
 		}
+		int blockW = base[6];
+		int blockH = base[7];
+		int canvasW = client.getCanvasWidth();
+		int canvasH = client.getCanvasHeight();
+		// Keep the block fully visible (no off-screen vanish on a too-narrow window).
+		int x = Math.max(0, Math.min(targetX, canvasW - blockW));
+		int y = Math.max(0, Math.min(targetY, canvasH - blockH));
+		w.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
+		w.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+		w.setOriginalX(x);
+		w.setOriginalY(y);
+		w.revalidate();
 	}
 
-	/** @return captured [xMode, yMode, origX, origY, nativeAbsX, nativeAbsY], or null if not yet laid out. */
+	/** @return captured [xMode, yMode, origX, origY, nativeAbsX, nativeAbsY, w, h], or null if not laid out. */
 	private int[] captureFr(int child)
 	{
 		int[] existing = frBase.get(child);
@@ -1910,11 +1918,12 @@ public class PvpEnhancerPlugin extends Plugin
 			return null;
 		}
 		java.awt.Rectangle bb = w.getBounds();
-		if (bb == null || bb.x < 0 || bb.y < 0)
+		if (bb == null || bb.x < 0 || bb.y < 0 || bb.width <= 0 || bb.height <= 0)
 		{
 			return null; // hidden / not laid out — capture native position later
 		}
-		int[] base = {w.getXPositionMode(), w.getYPositionMode(), w.getOriginalX(), w.getOriginalY(), bb.x, bb.y};
+		int[] base = {w.getXPositionMode(), w.getYPositionMode(), w.getOriginalX(), w.getOriginalY(),
+			bb.x, bb.y, bb.width, bb.height};
 		frBase.put(child, base);
 		return base;
 	}

@@ -1,13 +1,28 @@
 # Fixed-layout in Resizable — design (PK muscle memory)
 
-Status: **first cut implemented (B030) from the Resizable-Classic dump; offsets are estimates —
-live-tuning via Nudge X/Y + the fixed-mode (group 548) dump pending.**
+Status: **second cut implemented (B030); root-only move + on-screen clamp; offsets pinned from the
+fixed-mode (548) dump. Live Nudge X/Y tuning pending.**
 
-## Mapped containers (Resizable-Classic, group 161; 919×1000 window, viewport centre ≈ 459,500)
+## Mapped containers (Resizable-Classic, group 161)
 
-- Inventory/tabs block: children **38..90 + 97** (anchor 97 = panel bg [678,665,241×335]).
-- Minimap + orbs: children **19, 22–33, 95** (anchor 95 [708,0,211×207]).
-- Chatbox: child **96** [0,835,519×165].
+Each block is moved by relocating **only its ROOT container** — children are laid out relative to
+the root, so moving the root moves the whole block. (The first cut moved each child to an absolute
+screen coord too; nested children then got `parentOffset + absoluteTarget` and flew off-screen —
+the inventory "disappeared". Fixed by moving the root alone.)
+
+- Inventory/tabs root: child **97** [524,168,241×335].
+- Minimap + orbs root: child **95** [554,0,211×207].
+- Chatbox root: child **96** [0,338,519×165].
+
+## Offsets (measured from the fixed-mode 548 dump; fixed scene centre ≈ 260,171)
+
+Block root top-left in fixed → offset from fixed scene centre:
+
+- Inventory panel-bg ≈ (516,167) → **(256, -4)**.
+- Minimap+orbs panel ≈ (516, 4) → **(256, -167)**.
+- Chatbox = (0,338) → **(-260, 167)**.
+
+In Resizable-Classic the target = `resizableSceneCentre + offset`, clamped fully on-screen.
 
 Spec bar (group 593): SP_ATTACKBAR = child 38 (150×26 @ y204), SPECIAL_ATTACK = child 39 (fill,
 9 dyn children — must resize the children, not just the container).
