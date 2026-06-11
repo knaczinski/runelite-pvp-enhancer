@@ -11,14 +11,9 @@ import net.runelite.client.config.Range;
 /**
  * User-configurable settings for the PvP Enhancer plugin.
  *
- * <p>Two groups of settings:
- * <ul>
- *   <li><b>Shown in the RuneLite config panel</b> — Tracking, Heartbeat, Indicators
- *   (settings for screen-view behaviour that has no sidebar block).</li>
- *   <li><b>Controlled inline in the sidebar panel</b> ({@code hidden = true} here) — the
- *   tick-history filters / depth and the hit-summary toggle / row cap live next to their
- *   block in {@code PvpEnhancerPanel}, not in the config panel.</li>
- * </ul>
+ * <p>Sections are grouped by where the feature draws: screen alerts, targeting aids (on the target),
+ * overheads (over heads), PID, click helpers, ghostify, and the resizable layout. A handful of
+ * sidebar-panel settings are {@code hidden = true} here and edited inline in {@code PvpEnhancerPanel}.
  * RuneLite persists all values automatically regardless of where they are edited.
  */
 @ConfigGroup("pvpenhancer")
@@ -29,148 +24,146 @@ public interface PvpEnhancerConfig extends Config
 	@ConfigSection(name = "Tracking", description = "What the plugin records for the sidebar panel.", position = 0)
 	String trackingSection = "tracking";
 
-	@ConfigSection(name = "Combat assist", description = "On-screen combat aids and alerts.", position = 1)
-	String combatSection = "combat";
+	@ConfigSection(name = "Screen alerts", description = "Full-screen / target-agnostic combat alerts.", position = 1)
+	String alertsSection = "alerts";
 
-	@ConfigSection(name = "Overhead displays",
-		description = "Info drawn over players' heads — healing, debuff timers, and resized "
+	@ConfigSection(name = "Targeting aids", description = "Aids drawn on or about your target and your switches.", position = 2)
+	String targetingSection = "targeting";
+
+	@ConfigSection(name = "Overheads",
+		description = "Info drawn over players' heads — healing, freeze/TB timers, and resized "
 			+ "Vengeance text / PK skull. Each has its own scope (who it applies to).",
-		position = 2)
+		position = 3)
 	String overheadSection = "overhead";
+
+	@ConfigSection(name = "PID guess", description = "Experimental 1v1 PID (processing-order) indicator.", position = 4)
+	String pidSection = "pid";
+
+	@ConfigSection(name = "Click helpers", description = "Left/right-click tweaks to avoid mis-clicks in combat.", position = 5)
+	String clicksSection = "clicks";
 
 	@ConfigSection(name = "Ghostify",
 		description = "Reduce characters to just a coloured outline (hidden model + contour). "
 			+ "Set, per category, WHEN to ghostify and the outline COLOUR. You stay attackable; "
 			+ "to ghost your own model you also need Entity Hider's 'Hide Local Player'.",
-		position = 3, closedByDefault = true)
+		position = 6, closedByDefault = true)
 	String ghostifySection = "ghostify";
 
-	@ConfigSection(name = "Fixed-resizable layout",
+	@ConfigSection(name = "Fixed layout in resizable",
 		description = "EXPERIMENTAL. In Resizable-Classic, pin the inventory/minimap/chat to fixed-mode's "
-			+ "distance from your character (viewport centre) so fixed-mode muscle memory carries over. "
-			+ "See docs/fixed-resizable-layout.md.",
-		position = 4, closedByDefault = true)
-	String fixedResizableSection = "fixedresizable";
+			+ "distance from your character so fixed-mode muscle memory carries over. Includes the "
+			+ "taller spec bar. See docs/fixed-resizable-layout.md.",
+		position = 7, closedByDefault = true)
+	String layoutSection = "layout";
 
-	@ConfigSection(name = "Developer", description = "Tools for testing overlays without a live fight.", position = 5, closedByDefault = true)
+	@ConfigSection(name = "Developer", description = "Tools for testing overlays without a live fight.", position = 8, closedByDefault = true)
 	String developerSection = "developer";
 
 	// ─── Tracking ───────────────────────────────────────────────────────────
 
-	@ConfigItem(keyName = "trackScope", name = "Record events for",
+	@ConfigItem(keyName = "trackScope", name = "Record for",
 		description = "Which players the tick history and hit summary record events for. "
 			+ "Self + opponents = only you and players currently fighting you; Everyone = all visible players.",
 		section = trackingSection, position = 0)
 	default TrackScope trackScope() { return TrackScope.EVERYONE; }
 
-	@ConfigItem(keyName = "trackNpcs", name = "Track NPCs (testing)",
+	@ConfigItem(keyName = "trackNpcs", name = "Track NPCs",
 		description = "Record combat events for NPCs. Useful for testing without a second player.",
 		section = trackingSection, position = 1)
 	default boolean trackNpcs() { return false; }
 
-	// ─── Combat assist ──────────────────────────────────────────────────────
+	// ─── Screen alerts ────────────────────────────────────────────────────────
 
-	@ConfigItem(keyName = "showHeartbeat", name = "Heartbeat vignette",
+	@ConfigItem(keyName = "showHeartbeat", name = "Heartbeat",
 		description = "Show a red vignette pulsing once per game tick while in combat.",
-		section = combatSection, position = 0)
+		section = alertsSection, position = 0)
 	default boolean showHeartbeat() { return true; }
 
 	@Range(min = 10, max = 250)
-	@ConfigItem(keyName = "heartbeatDepth", name = "Vignette size (px)",
-		description = "How far the heartbeat vignette reaches inward from the viewport edges. Default 80.",
-		section = combatSection, position = 0)
+	@ConfigItem(keyName = "heartbeatDepth", name = "Vignette size",
+		description = "How far the heartbeat vignette reaches inward from the viewport edges (px). Default 80.",
+		section = alertsSection, position = 1)
 	default int heartbeatDepth() { return 80; }
 
 	@Range(min = 5, max = 100)
-	@ConfigItem(keyName = "heartbeatIntensity", name = "Vignette intensity (%)",
-		description = "Peak opacity of the heartbeat vignette at the start of each tick. Default 55.",
-		section = combatSection, position = 0)
+	@ConfigItem(keyName = "heartbeatIntensity", name = "Vignette intensity",
+		description = "Peak opacity (%) of the heartbeat vignette at the start of each tick. Default 55.",
+		section = alertsSection, position = 2)
 	default int heartbeatIntensity() { return 55; }
 
-	@ConfigItem(keyName = "showNotRetaliating", name = "Not-attacking warning",
+	@ConfigItem(keyName = "showNotRetaliating", name = "Not attacking",
 		description = "Flash the opponent's outline (red/yellow) when in combat but not attacking "
 			+ "them for >= 2 ticks (you walked off, looted, or mis-clicked).",
-		section = combatSection, position = 1)
+		section = alertsSection, position = 3)
 	default boolean showNotRetaliating() { return true; }
-
-	@ConfigItem(keyName = "hitPrediction", name = "Hit prediction",
-		description = "Show your outgoing damage near your target. Derived from the Hitpoints XP drop "
-			+ "(appears before ranged/magic projectiles land). Where XP is blocked (Duel/PvP Arena) it "
-			+ "falls back to your hitsplat on the target, so it still works there (not predictive).",
-		section = combatSection, position = 2)
-	default boolean hitPrediction() { return true; }
-
-	@Range(min = 8, max = 48)
-	@ConfigItem(keyName = "hitPredictionSize", name = "Hit prediction text size",
-		description = "Font size of the predicted-damage number. Default 15.",
-		section = combatSection, position = 3)
-	default int hitPredictionSize() { return 15; }
-
-	@ConfigItem(keyName = "hitPredictAnchor", name = "Hit predict position",
-		description = "Where the predicted-damage number appears: over the opponent, or over your own "
-			+ "character next to the health bar (the same spot as heal numbers).",
-		section = combatSection, position = 3)
-	default HitPredictAnchor hitPredictAnchor() { return HitPredictAnchor.OPPONENT; }
-
-	@Range(max = 100)
-	@ConfigItem(keyName = "hitPredictThreshold", name = "Spec-combo HP cue (%)",
-		description = "When the opponent's estimated HP AFTER this predicted hit drops to this % of "
-			+ "their max HP or below, the predicted number shows bigger and redder — your cue to start "
-			+ "the switch + special before the hitsplat lands. 0 = off. HP is an estimate (health bar).",
-		section = combatSection, position = 3)
-	default int hitPredictThreshold() { return 0; }
-
-	@ConfigItem(keyName = "prayerHighlight", name = "Defensive prayer highlighter",
-		description = "Highlight the PROTECTION prayer matching your current target's equipped "
-			+ "weapon style (predictive). Also flags the prayer tab button so you notice with the "
-			+ "inventory open.",
-		section = combatSection, position = 4)
-	default boolean prayerHighlight() { return false; }
-
-	@Range(max = 80)
-	@ConfigItem(keyName = "specBarExtraHeight", name = "Taller spec bar (px)",
-		description = "Grow the special-attack bar in the Combat Options tab taller by this many "
-			+ "pixels (upward) and shrink the attack-style boxes to make room. 0 = off. Native layout "
-			+ "is restored when set back to 0 / on tab rebuild.",
-		section = combatSection, position = 6)
-	default int specBarExtraHeight() { return 0; }
-
-	@ConfigItem(keyName = "offensivePrayerMode", name = "Offensive prayer highlighter",
-		description = "Highlight your offensive prayer vs weapon. 'Prayer from weapon' = your equipped "
-			+ "weapon highlights Piety/Rigour/Augury in the prayer tab. 'Weapon from prayer' = your "
-			+ "active offensive prayer highlights a matching weapon in your inventory.",
-		section = combatSection, position = 5)
-	default OffensivePrayerMode offensivePrayerMode() { return OffensivePrayerMode.OFF; }
-
-	@ConfigItem(keyName = "combatPlayerMenuFilter", name = "Walk/Att Restrict. Menu in combat",
-		description = "While in combat, right-clicking a player shows only \"Walk here\" and "
-			+ "\"Attack\" — hides Follow/Trade/Report/etc. to avoid mis-clicks.",
-		section = combatSection, position = 8)
-	default boolean combatPlayerMenuFilter() { return false; }
-
-	@ConfigItem(keyName = "swapPickupInCombat", name = "Walk-here over Take (in combat)",
-		description = "While in combat, de-prioritise ground-item \"Take\" so a left-click "
-			+ "walks instead of picking up (avoids breaking your attack). Take stays on right-click.",
-		section = combatSection, position = 6)
-	default boolean swapPickupInCombat() { return false; }
-
-	@ConfigItem(keyName = "pidIndicator", name = "PID guess (experimental)",
-		description = "EXPERIMENTAL. Only works in a 1v1 you're part of. Draws a small star (with a "
-			+ "tiny 'pid' label) over the head of whoever likely has PID (processing order) — green = "
-			+ "you, red = them, grey = still computing — and flashes on a likely PID swap. PID isn't "
-			+ "exposed by the API; this is a noisy best-effort vote from contested same-tick hits, not "
-			+ "certainty. See docs/pid-indicator-spike.md.",
-		section = combatSection, position = 7)
-	default boolean pidIndicator() { return false; }
 
 	@ConfigItem(keyName = "comboPopups", name = "Combo popups",
 		description = "When the floating combo popup (e.g. GODLIKE SWITCH, TRIPLE EAT) is shown. "
 			+ "'In combat' = only while fighting (avoids banking false-triggers); 'Always' = also out "
 			+ "of combat (useful for testing); 'Never' = detect but don't pop. Needs combos enabled.",
-		section = combatSection, position = 9)
+		section = alertsSection, position = 4)
 	default ComboPopups comboPopups() { return ComboPopups.IN_COMBAT; }
 
-	// ─── Overhead displays ──────────────────────────────────────────────────
+	// ─── Targeting aids ─────────────────────────────────────────────────────────
+
+	@ConfigItem(keyName = "hitPrediction", name = "Hit predict",
+		description = "Show your outgoing damage near your target. Derived from the Hitpoints XP drop "
+			+ "(appears before ranged/magic projectiles land). Where XP is blocked (Duel/PvP Arena) it "
+			+ "falls back to your hitsplat on the target, so it still works there (not predictive).",
+		section = targetingSection, position = 0)
+	default boolean hitPrediction() { return true; }
+
+	@Range(min = 8, max = 48)
+	@ConfigItem(keyName = "hitPredictionSize", name = "Hit predict size",
+		description = "Font size of the predicted-damage number. Default 15.",
+		section = targetingSection, position = 1)
+	default int hitPredictionSize() { return 15; }
+
+	@ConfigItem(keyName = "hitPredictAnchor", name = "Hit predict spot",
+		description = "Where the predicted-damage number appears: over the opponent, or over your own "
+			+ "character next to the health bar (the same spot as heal numbers).",
+		section = targetingSection, position = 2)
+	default HitPredictAnchor hitPredictAnchor() { return HitPredictAnchor.OPPONENT; }
+
+	@Range(max = 100)
+	@ConfigItem(keyName = "hitPredictThreshold", name = "Spec-combo HP cue %",
+		description = "When the opponent's estimated HP AFTER this predicted hit drops to this % of "
+			+ "their max HP or below, the predicted number shows bigger and redder — your cue to start "
+			+ "the switch + special before the hitsplat lands. 0 = off. HP is an estimate (health bar).",
+		section = targetingSection, position = 3)
+	default int hitPredictThreshold() { return 0; }
+
+	@ConfigItem(keyName = "prayerHighlight", name = "Def prayer hint",
+		description = "Highlight the PROTECTION prayer matching your current target's equipped "
+			+ "weapon style (predictive). Also flags the prayer tab button so you notice with the "
+			+ "inventory open.",
+		section = targetingSection, position = 4)
+	default boolean prayerHighlight() { return false; }
+
+	@ConfigItem(keyName = "offensivePrayerMode", name = "Off prayer hint",
+		description = "Highlight your offensive prayer vs weapon. 'Prayer from weapon' = your equipped "
+			+ "weapon highlights Piety/Rigour/Augury in the prayer tab. 'Weapon from prayer' = your "
+			+ "active offensive prayer highlights a matching weapon in your inventory.",
+		section = targetingSection, position = 5)
+	default OffensivePrayerMode offensivePrayerMode() { return OffensivePrayerMode.OFF; }
+
+	@ConfigItem(keyName = "attackTimerSelf", name = "Atk timer: self",
+		description = "Show a countdown (seconds, above the head/skull) until YOU can attack again.",
+		section = targetingSection, position = 6)
+	default boolean attackTimerSelf() { return false; }
+
+	@ConfigItem(keyName = "attackTimerOpponents", name = "Atk timer: opponents",
+		description = "Show the attack-again countdown over players fighting you. Speed from a "
+			+ "weapon table (best-effort); resets on eat/drink.",
+		section = targetingSection, position = 7)
+	default boolean attackTimerOpponents() { return false; }
+
+	@ConfigItem(keyName = "attackTimerOthers", name = "Atk timer: others",
+		description = "Show the attack-again countdown over other players.",
+		section = targetingSection, position = 8)
+	default boolean attackTimerOthers() { return false; }
+
+	// ─── Overheads ──────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "healDisplayMode", name = "Healing",
 		description = "Show recovered HP near the health bar of whoever healed. Opponent amounts are "
@@ -180,64 +173,73 @@ public interface PvpEnhancerConfig extends Config
 	default HealDisplayMode healDisplayMode() { return HealDisplayMode.EVERYONE; }
 
 	@Range(min = 8, max = 48)
-	@ConfigItem(keyName = "healSize", name = "Healing text size",
+	@ConfigItem(keyName = "healSize", name = "Heal size",
 		description = "Font size of the healing number. Default 14.",
 		section = overheadSection, position = 1)
 	default int healSize() { return 14; }
 
-	@ConfigItem(keyName = "healNumberStyle", name = "Healing number style",
+	@ConfigItem(keyName = "healNumberStyle", name = "Heal style",
 		description = "'Heal only' shows just the recovered HP (+25). 'Before + heal = total' shows "
 			+ "the full breakdown (65 + 25 = 90); remote players are estimates (~).",
-		section = overheadSection, position = 1)
+		section = overheadSection, position = 2)
 	default HealNumberStyle healNumberStyle() { return HealNumberStyle.AMOUNT; }
 
 	@ConfigItem(keyName = "debuffTimers", name = "Freeze/TB",
 		description = "Freeze / snare / teleblock timers: an icon + seconds countdown over affected "
 			+ "players. Teleblock is tracked as half (~2.5 min) when the target prayed Magic as it landed.",
-		section = overheadSection, position = 2)
+		section = overheadSection, position = 3)
 	default DebuffScope debuffTimers() { return DebuffScope.OFF; }
 
 	@ConfigItem(keyName = "vengTextScope", name = "Veng resize",
 		description = "Re-render the 'Vengeance!' overhead text at a custom size (the native size "
 			+ "is not resizable via the API, so the original is replaced). Scope 'Others' = everyone "
 			+ "except you and your opponents.",
-		section = overheadSection, position = 3)
+		section = overheadSection, position = 4)
 	default OverheadScope vengTextScope() { return OverheadScope.OFF; }
 
 	@Range(min = 20, max = 400)
-	@ConfigItem(keyName = "vengTextSize", name = "Veng text size (%)",
-		description = "Size of the re-rendered Vengeance text. 100% ≈ the native size.",
-		section = overheadSection, position = 4)
+	@ConfigItem(keyName = "vengTextSize", name = "Veng size",
+		description = "Size (%) of the re-rendered Vengeance text. 100% ≈ the native size.",
+		section = overheadSection, position = 5)
 	default int vengTextSize() { return 100; }
 
 	@ConfigItem(keyName = "skullScope", name = "Skull resize",
 		description = "Re-render the PK skull at a custom size (the native size is not resizable, "
 			+ "so the native skull is hidden and replaced). Only the regular skull is handled. "
 			+ "Scope 'Others' = everyone except you and your opponents.",
-		section = overheadSection, position = 5)
+		section = overheadSection, position = 6)
 	default OverheadScope skullScope() { return OverheadScope.OFF; }
 
 	@Range(min = 20, max = 400)
-	@ConfigItem(keyName = "skullSize", name = "PK skull size (%)",
-		description = "Size of the re-rendered PK skull. 100% ≈ the native size.",
-		section = overheadSection, position = 6)
+	@ConfigItem(keyName = "skullSize", name = "Skull size",
+		description = "Size (%) of the re-rendered PK skull. 100% ≈ the native size.",
+		section = overheadSection, position = 7)
 	default int skullSize() { return 100; }
 
-	@ConfigItem(keyName = "attackTimerSelf", name = "Attack timer — self",
-		description = "Show a countdown (seconds, above the head/skull) until YOU can attack again.",
-		section = overheadSection, position = 7)
-	default boolean attackTimerSelf() { return false; }
+	// ─── PID guess ──────────────────────────────────────────────────────────
 
-	@ConfigItem(keyName = "attackTimerOpponents", name = "Attack timer — opponents",
-		description = "Show the attack-again countdown over players fighting you. Speed from a "
-			+ "weapon table (best-effort); resets on eat/drink.",
-		section = overheadSection, position = 8)
-	default boolean attackTimerOpponents() { return false; }
+	@ConfigItem(keyName = "pidIndicator", name = "PID guess (exp)",
+		description = "EXPERIMENTAL. Only works in a 1v1 you're part of. Draws a small star (with a "
+			+ "tiny 'pid' label) over the head of whoever likely has PID (processing order) — green = "
+			+ "you, red = them, grey = still computing — and flashes on a likely PID swap. PID isn't "
+			+ "exposed by the API; this is a noisy best-effort vote from contested same-tick hits, not "
+			+ "certainty. See docs/pid-indicator-spike.md.",
+		section = pidSection, position = 0)
+	default boolean pidIndicator() { return false; }
 
-	@ConfigItem(keyName = "attackTimerOthers", name = "Attack timer — others",
-		description = "Show the attack-again countdown over other players.",
-		section = overheadSection, position = 9)
-	default boolean attackTimerOthers() { return false; }
+	// ─── Click helpers ──────────────────────────────────────────────────────
+
+	@ConfigItem(keyName = "combatPlayerMenuFilter", name = "Combat right-click filter",
+		description = "While in combat, right-clicking a player shows only \"Walk here\" and "
+			+ "\"Attack\" — hides Follow/Trade/Report/etc. to avoid mis-clicks.",
+		section = clicksSection, position = 0)
+	default boolean combatPlayerMenuFilter() { return false; }
+
+	@ConfigItem(keyName = "swapPickupInCombat", name = "Walk over Take (combat)",
+		description = "While in combat, de-prioritise ground-item \"Take\" so a left-click "
+			+ "walks instead of picking up (avoids breaking your attack). Take stays on right-click.",
+		section = clicksSection, position = 1)
+	default boolean swapPickupInCombat() { return false; }
 
 	// ─── Ghostify ──────────────────────────────────────────────────────────────
 	// When (per category) + outline colour (per category). Priority when a player fits several:
@@ -290,7 +292,8 @@ public interface PvpEnhancerConfig extends Config
 
 	@ConfigItem(keyName = "ghostifyOthers", name = "Others — when",
 		description = "When to ghostify everyone else. 'Can't attack here' = their combat level "
-			+ "is outside your attackable range at the current Wilderness level.",
+			+ "is outside your attackable range at the current Wilderness level; '+ idle' also requires "
+			+ "them to not be in combat.",
 		section = ghostifySection, position = 8)
 	default GhostifyOthersWhen ghostifyOthers() { return GhostifyOthersWhen.NEVER; }
 
@@ -328,49 +331,57 @@ public interface PvpEnhancerConfig extends Config
 		section = ghostifySection, position = 14)
 	default boolean ghostChatOthers() { return false; }
 
-	// ─── Fixed-resizable layout ─────────────────────────────────────────────────
+	// ─── Fixed layout in resizable ───────────────────────────────────────────────
 
 	@ConfigItem(keyName = "fixedResizableLayout", name = "Enable",
 		description = "Master switch. Only acts in Resizable-Classic. Pins enabled UI blocks to "
 			+ "fixed-mode positions relative to your character. EXPERIMENTAL — fights the native "
 			+ "relayout; expect tuning.",
-		section = fixedResizableSection, position = 0)
+		section = layoutSection, position = 0)
 	default boolean fixedResizableLayout() { return false; }
 
-	@ConfigItem(keyName = "frInventory", name = "Pin inventory / tabs",
+	@ConfigItem(keyName = "frInventory", name = "Pin inventory",
 		description = "Move the tabs + inventory/prayer/spellbook panel to its fixed-mode distance "
 			+ "from your character.",
-		section = fixedResizableSection, position = 1)
+		section = layoutSection, position = 1)
 	default boolean frInventory() { return true; }
 
-	@ConfigItem(keyName = "frMinimap", name = "Pin minimap + orbs",
+	@ConfigItem(keyName = "frMinimap", name = "Pin minimap",
 		description = "Move the minimap and orbs to their fixed-mode position.",
-		section = fixedResizableSection, position = 2)
+		section = layoutSection, position = 2)
 	default boolean frMinimap() { return false; }
 
-	@ConfigItem(keyName = "frChat", name = "Pin chatbox",
+	@ConfigItem(keyName = "frChat", name = "Pin chat",
 		description = "Move the chatbox to its fixed-mode position.",
-		section = fixedResizableSection, position = 3)
+		section = layoutSection, position = 3)
 	default boolean frChat() { return false; }
 
 	@Range(min = -400, max = 400)
-	@ConfigItem(keyName = "frNudgeX", name = "Nudge X (px)",
-		description = "Fine-tune: shift all pinned blocks horizontally. Tune until clicks land where "
-			+ "fixed-mode muscle memory expects.",
-		section = fixedResizableSection, position = 4)
+	@ConfigItem(keyName = "frNudgeX", name = "Nudge X",
+		description = "Fine-tune: shift all pinned blocks horizontally (px). Tune until clicks land "
+			+ "where fixed-mode muscle memory expects.",
+		section = layoutSection, position = 4)
 	default int frNudgeX() { return 0; }
 
 	@Range(min = -400, max = 400)
-	@ConfigItem(keyName = "frNudgeY", name = "Nudge Y (px)",
-		description = "Fine-tune: shift all pinned blocks vertically.",
-		section = fixedResizableSection, position = 5)
+	@ConfigItem(keyName = "frNudgeY", name = "Nudge Y",
+		description = "Fine-tune: shift all pinned blocks vertically (px).",
+		section = layoutSection, position = 5)
 	default int frNudgeY() { return 0; }
 
-	@ConfigItem(keyName = "frShowGuide", name = "Show fixed-size guide",
+	@ConfigItem(keyName = "frShowGuide", name = "Show guide",
 		description = "Draw reference outlines of the fixed-mode client (scene + inventory, minimap "
 			+ "and chat boxes) at their pinned positions, so you can gauge the layout. Visual only.",
-		section = fixedResizableSection, position = 6)
+		section = layoutSection, position = 6)
 	default boolean frShowGuide() { return false; }
+
+	@Range(max = 80)
+	@ConfigItem(keyName = "specBarExtraHeight", name = "Taller spec bar",
+		description = "Grow the special-attack bar in the Combat Options tab taller by this many "
+			+ "pixels (upward) and shrink the attack-style boxes to make room. 0 = off. Native layout "
+			+ "is restored when set back to 0 / on tab rebuild.",
+		section = layoutSection, position = 7)
+	default int specBarExtraHeight() { return 0; }
 
 	// ─── Developer ────────────────────────────────────────────────────────────
 
