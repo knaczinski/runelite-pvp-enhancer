@@ -23,10 +23,6 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 public class HeartbeatOverlay extends Overlay
 {
 	private static final Color EDGE_COLOR = new Color(180, 0, 0);
-	/** How far inward the vignette reaches, in pixels. */
-	private static final int VIGNETTE_DEPTH = 80;
-	/** Maximum alpha (0–1) of the vignette at peak intensity. */
-	private static final float MAX_ALPHA = 0.55f;
 	/** One server tick in milliseconds. */
 	private static final float TICK_MS = 600f;
 
@@ -71,8 +67,9 @@ public class HeartbeatOverlay extends Overlay
 
 		long elapsed = System.currentTimeMillis() - lastTickMs;
 		float phase = Math.min(1f, elapsed / TICK_MS);
+		float maxAlpha = clamp(config.heartbeatIntensity(), 5, 100) / 100f;
 		// Exponential decay: strong at tick start, fades quickly
-		float alpha = (float) Math.pow(1.0 - phase, 1.5) * MAX_ALPHA;
+		float alpha = (float) Math.pow(1.0 - phase, 1.5) * maxAlpha;
 		if (alpha <= 0.01f)
 		{
 			return null;
@@ -82,7 +79,7 @@ public class HeartbeatOverlay extends Overlay
 		int yOff = client.getViewportYOffset();
 		int w = client.getViewportWidth();
 		int h = client.getViewportHeight();
-		int depth = Math.min(VIGNETTE_DEPTH, Math.min(w, h) / 3);
+		int depth = Math.min(clamp(config.heartbeatDepth(), 10, 250), Math.min(w, h) / 3);
 
 		Color peak = new Color(EDGE_COLOR.getRed(), EDGE_COLOR.getGreen(), EDGE_COLOR.getBlue(),
 			(int) (alpha * 255));
@@ -105,5 +102,10 @@ public class HeartbeatOverlay extends Overlay
 		graphics.fillRect(xOff + w - depth, yOff, depth, h);
 
 		return null;
+	}
+
+	private static int clamp(int v, int lo, int hi)
+	{
+		return Math.max(lo, Math.min(hi, v));
 	}
 }

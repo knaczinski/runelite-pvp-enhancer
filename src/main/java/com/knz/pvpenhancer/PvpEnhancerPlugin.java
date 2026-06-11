@@ -274,6 +274,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Once-guard so a failing widget-relayout hack logs a single warning instead of spamming each tick. */
 	private boolean loggedLayoutError;
 
+	/** Captured native geometry [xMode, yMode, origX, origY, absX, absY] of the buff-bar root, or null. */
+	private int[] buffBarBase;
+
 	/** Players whose native Vengeance overhead text we keep clearing → epoch-ms to stop clearing. */
 	private final Map<Player, Long> vengClearUntil = new HashMap<>();
 
@@ -695,11 +698,18 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			detectSpecialUse(tick);
 			List<ComboResult> combos = comboDetector.flush(invIds, invQty, tick);
-			if (combatState.isInCombat(tick))
+			boolean inCombat = combatState.isInCombat(tick);
+			boolean popup = config.comboPopups().shows(inCombat);
+			for (ComboResult combo : combos)
 			{
-				for (ComboResult combo : combos)
+				// History stays combat-only (out-of-combat bulk equipment changes are banking noise);
+				// the popup follows the user's never/in-combat/always choice.
+				if (inCombat)
 				{
 					history.addEvent(new ComboEvent(combo));
+				}
+				if (popup)
+				{
 					comboFeedbackOverlay.showCombo(combo);
 				}
 			}
@@ -1875,6 +1885,75 @@ public class PvpEnhancerPlugin extends Plugin
 			cx + FixedLayoutGeometry.MM_OFF_X, cy + FixedLayoutGeometry.MM_OFF_Y);
 		applyOrRestoreFrBlock(config.frChat(), FR_CHAT_ROOT,
 			cx + FixedLayoutGeometry.CHAT_OFF_X, cy + FixedLayoutGeometry.CHAT_OFF_Y);
+		applyOrRestoreBuffBar(config.frBuffBar(), cx, cy);
+	}
+
+	/**
+	 * Pins the game's buff bar (its own interface group) so it keeps the same position relative to
+	 * the minimap as it has natively — i.e. it rides the minimap's move delta. Needs no buff-bar
+	 * size or fixed-mode coords. Restored to native when disabled.
+	 */
+	private void applyOrRestoreBuffBar(boolean enabled, int cx, int cy)
+	{
+		Widget bb = client.getWidget(InterfaceID.BuffBar.UNIVERSE);
+		if (bb == null)
+		{
+			return; // buff-bar interface not loaded
+		}
+		if (!enabled)
+		{
+			restoreBuffBar();
+			return;
+		}
+		java.awt.Rectangle r = bb.getBounds();
+		if (buffBarBase == null)
+		{
+			if (r == null || r.x < 0 || r.y < 0)
+			{
+				return; // hidden / no active buffs yet — capture once it appears
+			}
+			buffBarBase = new int[]{bb.getXPositionMode(), bb.getYPositionMode(),
+				bb.getOriginalX(), bb.getOriginalY(), r.x, r.y};
+		}
+		int[] mm = captureFr(FR_MM_ROOT);
+		if (mm == null)
+		{
+			return; // need the minimap's native anchor to preserve the relative offset
+		}
+		// Buff bar keeps its native offset from the minimap's EFFECTIVE position: the pinned target
+		// when the minimap is pinned, otherwise its native spot (so the bar never detaches from it).
+		int mmX = config.frMinimap() ? cx + FixedLayoutGeometry.MM_OFF_X : mm[4];
+		int mmY = config.frMinimap() ? cy + FixedLayoutGeometry.MM_OFF_Y : mm[5];
+		int targetX = mmX + (buffBarBase[4] - mm[4]);
+		int targetY = mmY + (buffBarBase[5] - mm[5]);
+		if (config.frClampOnScreen() && r != null)
+		{
+			targetX = Math.max(0, Math.min(targetX, client.getCanvasWidth() - r.width));
+			targetY = Math.max(0, Math.min(targetY, client.getCanvasHeight() - r.height));
+		}
+		bb.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
+		bb.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+		bb.setOriginalX(targetX);
+		bb.setOriginalY(targetY);
+		bb.revalidate();
+	}
+
+	private void restoreBuffBar()
+	{
+		if (buffBarBase == null)
+		{
+			return;
+		}
+		Widget bb = client.getWidget(InterfaceID.BuffBar.UNIVERSE);
+		if (bb != null)
+		{
+			bb.setXPositionMode(buffBarBase[0]);
+			bb.setYPositionMode(buffBarBase[1]);
+			bb.setOriginalX(buffBarBase[2]);
+			bb.setOriginalY(buffBarBase[3]);
+			bb.revalidate();
+		}
+		buffBarBase = null;
 	}
 
 	/** Pins a block to (targetX,targetY) when enabled, else restores it to its native position. */
@@ -1907,13 +1986,17 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return; // hidden / not laid out yet — capture once it appears
 		}
-		int blockW = base[6];
-		int blockH = base[7];
-		int canvasW = client.getCanvasWidth();
-		int canvasH = client.getCanvasHeight();
-		// Keep the block fully visible (no off-screen vanish on a too-narrow window).
-		int x = Math.max(0, Math.min(targetX, canvasW - blockW));
-		int y = Math.max(0, Math.min(targetY, canvasH - blockH));
+		int x = targetX;
+		int y = targetY;
+		if (config.frClampOnScreen())
+		{
+			// Keep the block fully visible (no off-screen vanish on a too-narrow window). Off = exact
+			// fixed distance even if it clips (the inventory-too-close-to-character fix on narrow windows).
+			int blockW = base[6];
+			int blockH = base[7];
+			x = Math.max(0, Math.min(targetX, client.getCanvasWidth() - blockW));
+			y = Math.max(0, Math.min(targetY, client.getCanvasHeight() - blockH));
+		}
 		w.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
 		w.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
 		w.setOriginalX(x);
@@ -1947,6 +2030,7 @@ public class PvpEnhancerPlugin extends Plugin
 
 	private void restoreFixedResizable()
 	{
+		restoreBuffBar();
 		if (frBase.isEmpty())
 		{
 			return;

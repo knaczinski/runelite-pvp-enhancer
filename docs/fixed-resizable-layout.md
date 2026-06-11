@@ -31,6 +31,23 @@ Each tick a block that is **not** pinned (its toggle off, master still on) is re
 position individually — not only when the master switch is off. So unchecking one block returns it
 home; the captured base is forgotten on restore and re-captured on re-enable.
 
+## Buff bar (separate interface group)
+
+`frBuffBar` pins the game's buff bar (boost/debuff timers — vengeance, freeze, TB, antifire…),
+which lives in its own interface group (`InterfaceID.BuffBar.UNIVERSE`, group 651), not the
+toplevel. It rides the **minimap's effective position**: it keeps its native offset from the minimap
+and moves to (minimap pinned-target-or-native + that offset). So it follows the minimap when the
+minimap is pinned and stays put otherwise — never detaches. No buff-bar size or fixed-mode coords
+needed. Captured lazily (only when buffs are active and the bar has bounds).
+
+## On-screen clamp toggle
+
+`frClampOnScreen` (default on) pulls a pinned block back inside the window if it would cross an edge
+— prevents vanishing on a narrow window, but on a window as narrow as fixed it drags the inventory
+closer to the character than fixed distance. Turn **off** for exact fixed distance (requires a
+window wide enough that the block still fits: roughly `window width ≥ 2·(287 + blockWidth)` for the
+inventory). The guide overlay honours the same toggle so it always matches the live result.
+
 ## Fixed-size guide overlay (visual only)
 
 `frShowGuide` draws reference outlines at the pinned positions without moving any widget: the fixed

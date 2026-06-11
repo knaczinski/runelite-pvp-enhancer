@@ -75,6 +75,18 @@ public interface PvpEnhancerConfig extends Config
 		section = combatSection, position = 0)
 	default boolean showHeartbeat() { return true; }
 
+	@Range(min = 10, max = 250)
+	@ConfigItem(keyName = "heartbeatDepth", name = "Vignette size (px)",
+		description = "How far the heartbeat vignette reaches inward from the viewport edges. Default 80.",
+		section = combatSection, position = 0)
+	default int heartbeatDepth() { return 80; }
+
+	@Range(min = 5, max = 100)
+	@ConfigItem(keyName = "heartbeatIntensity", name = "Vignette intensity (%)",
+		description = "Peak opacity of the heartbeat vignette at the start of each tick. Default 55.",
+		section = combatSection, position = 0)
+	default int heartbeatIntensity() { return 55; }
+
 	@ConfigItem(keyName = "showNotRetaliating", name = "Not-attacking warning",
 		description = "Flash the opponent's outline (red/yellow) when in combat but not attacking "
 			+ "them for >= 2 ticks (you walked off, looted, or mis-clicked).",
@@ -141,6 +153,13 @@ public interface PvpEnhancerConfig extends Config
 			+ "API — this is a noisy best-effort vote, not certainty. See docs/pid-indicator-spike.md.",
 		section = combatSection, position = 7)
 	default boolean pidIndicator() { return false; }
+
+	@ConfigItem(keyName = "comboPopups", name = "Combo popups",
+		description = "When the floating combo popup (e.g. GODLIKE SWITCH, TRIPLE EAT) is shown. "
+			+ "'In combat' = only while fighting (avoids banking false-triggers); 'Always' = also out "
+			+ "of combat (useful for testing); 'Never' = detect but don't pop. Needs combos enabled.",
+		section = combatSection, position = 9)
+	default ComboPopups comboPopups() { return ComboPopups.IN_COMBAT; }
 
 	// ─── Overhead displays ──────────────────────────────────────────────────
 
@@ -319,6 +338,12 @@ public interface PvpEnhancerConfig extends Config
 		section = fixedResizableSection, position = 3)
 	default boolean frChat() { return false; }
 
+	@ConfigItem(keyName = "frBuffBar", name = "Pin buff bar",
+		description = "Move the game's buff bar (boost/debuff timers below the minimap — vengeance, "
+			+ "freeze, TB, antifire, etc.) along with the minimap, keeping its position relative to it.",
+		section = fixedResizableSection, position = 4)
+	default boolean frBuffBar() { return false; }
+
 	@Range(min = -400, max = 400)
 	@ConfigItem(keyName = "frNudgeX", name = "Nudge X (px)",
 		description = "Fine-tune: shift all pinned blocks horizontally. Tune until clicks land where "
@@ -337,6 +362,14 @@ public interface PvpEnhancerConfig extends Config
 			+ "and chat boxes) at their pinned positions, so you can gauge the layout. Visual only.",
 		section = fixedResizableSection, position = 6)
 	default boolean frShowGuide() { return false; }
+
+	@ConfigItem(keyName = "frClampOnScreen", name = "Keep blocks on-screen",
+		description = "Pull a pinned block back inside the window if it would extend past an edge. "
+			+ "ON prevents blocks vanishing on a narrow window, but on a window as narrow as fixed it "
+			+ "drags the inventory closer to your character than fixed distance. Turn OFF for exact "
+			+ "fixed distance (use a window wide enough that the block still fits).",
+		section = fixedResizableSection, position = 7)
+	default boolean frClampOnScreen() { return true; }
 
 	// ─── Developer ────────────────────────────────────────────────────────────
 

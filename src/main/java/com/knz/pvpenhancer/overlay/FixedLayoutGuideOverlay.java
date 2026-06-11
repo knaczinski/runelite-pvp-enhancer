@@ -96,10 +96,11 @@ public class FixedLayoutGuideOverlay extends Overlay
 	private void box(Graphics2D g, Color color, String text, int x, int y, int w, int h)
 	{
 		// Same clamp as the live pin so the guide matches the moved widgets.
-		int cw = client.getCanvasWidth();
-		int ch = client.getCanvasHeight();
-		x = Math.max(0, Math.min(x, cw - w));
-		y = Math.max(0, Math.min(y, ch - h));
+		if (config.frClampOnScreen())
+		{
+			x = Math.max(0, Math.min(x, client.getCanvasWidth() - w));
+			y = Math.max(0, Math.min(y, client.getCanvasHeight() - h));
+		}
 		g.setStroke(SOLID);
 		g.setColor(color);
 		g.drawRect(x, y, w, h);
