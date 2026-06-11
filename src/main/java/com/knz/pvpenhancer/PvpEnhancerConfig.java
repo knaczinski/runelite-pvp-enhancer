@@ -105,6 +105,12 @@ public interface PvpEnhancerConfig extends Config
 		section = combatSection, position = 3)
 	default int hitPredictionSize() { return 15; }
 
+	@ConfigItem(keyName = "hitPredictAnchor", name = "Hit predict position",
+		description = "Where the predicted-damage number appears: over the opponent, or over your own "
+			+ "character next to the health bar (the same spot as heal numbers).",
+		section = combatSection, position = 3)
+	default HitPredictAnchor hitPredictAnchor() { return HitPredictAnchor.OPPONENT; }
+
 	@Range(max = 100)
 	@ConfigItem(keyName = "hitPredictThreshold", name = "Spec-combo HP cue (%)",
 		description = "When the opponent's estimated HP AFTER this predicted hit drops to this % of "
@@ -175,6 +181,12 @@ public interface PvpEnhancerConfig extends Config
 		description = "Font size of the healing number. Default 14.",
 		section = overheadSection, position = 1)
 	default int healSize() { return 14; }
+
+	@ConfigItem(keyName = "healNumberStyle", name = "Healing number style",
+		description = "'Heal only' shows just the recovered HP (+25). 'Before + heal = total' shows "
+			+ "the full breakdown (65 + 25 = 90); remote players are estimates (~).",
+		section = overheadSection, position = 1)
+	default HealNumberStyle healNumberStyle() { return HealNumberStyle.AMOUNT; }
 
 	@ConfigItem(keyName = "debuffTimers", name = "Freeze/TB",
 		description = "Freeze / snare / teleblock timers: an icon + seconds countdown over affected "

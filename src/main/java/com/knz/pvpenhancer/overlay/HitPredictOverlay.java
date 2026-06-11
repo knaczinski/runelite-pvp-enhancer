@@ -95,7 +95,16 @@ public class HitPredictOverlay extends Overlay
 			graphics.setFont(PREDICT_FONT.deriveFont(p.critical ? baseSize * CRITICAL_SCALE : baseSize));
 			Color colour = p.critical ? CRITICAL_COLOR : PREDICT_COLOR;
 
-			Point base = p.target.getCanvasTextLocation(graphics, p.text, p.target.getLogicalHeight() + 20);
+			// Anchor over the opponent (default) or over your own character, by the health bar where
+			// heal numbers appear — your outgoing damage shown on yourself, like a damage log.
+			boolean overSelf = config.hitPredictAnchor() == com.knz.pvpenhancer.HitPredictAnchor.SELF;
+			Actor anchor = overSelf ? client.getLocalPlayer() : p.target;
+			if (anchor == null)
+			{
+				continue;
+			}
+			int zOffset = overSelf ? anchor.getLogicalHeight() : anchor.getLogicalHeight() + 20;
+			Point base = anchor.getCanvasTextLocation(graphics, p.text, zOffset);
 			if (base == null)
 			{
 				continue;
@@ -103,12 +112,13 @@ public class HitPredictOverlay extends Overlay
 
 			float progress = (float) elapsed / DURATION_MS;
 			int alpha = (int) ((1f - progress) * 255);
+			int x = base.getX() + (overSelf ? 20 : 0); // mirror the heal overlay's right offset
 			int y = base.getY() - (int) (progress * RISE_PX);
 
 			graphics.setColor(new Color(0, 0, 0, Math.min(alpha, 200)));
-			graphics.drawString(p.text, base.getX() + 1, y + 1);
+			graphics.drawString(p.text, x + 1, y + 1);
 			graphics.setColor(new Color(colour.getRed(), colour.getGreen(), colour.getBlue(), alpha));
-			graphics.drawString(p.text, base.getX(), y);
+			graphics.drawString(p.text, x, y);
 		}
 
 		return null;

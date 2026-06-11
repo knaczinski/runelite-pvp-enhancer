@@ -1,6 +1,7 @@
 package com.knz.pvpenhancer.overlay;
 
 import com.knz.pvpenhancer.HealDisplayMode;
+import com.knz.pvpenhancer.HealNumberStyle;
 import com.knz.pvpenhancer.PvpEnhancerConfig;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -51,21 +52,28 @@ public class HealOverlay extends Overlay
 		setMovable(false);
 	}
 
+	/** Convenience: heal with no before/after context (breakdown falls back to amount-only). */
+	public void addHeal(Actor actor, int amount, boolean estimate)
+	{
+		addHeal(actor, amount, estimate, -1, -1);
+	}
+
 	/**
 	 * Queues a healing popup over the given actor.
 	 *
 	 * @param actor    the healed actor (its live position is used each frame)
 	 * @param amount   HP healed
 	 * @param estimate true if the amount is an estimate (remote player) — shown with "~"
+	 * @param beforeHp HP before the heal, or -1 if unknown (disables breakdown)
+	 * @param afterHp  HP after the heal, or -1 if unknown (disables breakdown)
 	 */
-	public void addHeal(Actor actor, int amount, boolean estimate)
+	public void addHeal(Actor actor, int amount, boolean estimate, int beforeHp, int afterHp)
 	{
 		if (actor == null || amount <= 0)
 		{
 			return;
 		}
-		String text = (estimate ? "~" : "+") + amount;
-		popups.add(new HealPopup(actor, text, System.currentTimeMillis()));
+		popups.add(new HealPopup(actor, amount, estimate, beforeHp, afterHp, System.currentTimeMillis()));
 	}
 
 	public void clear()
@@ -108,10 +116,11 @@ public class HealOverlay extends Overlay
 			int x = base.getX() + HBAR_RIGHT_OFFSET;
 			int y = base.getY() - (int) (progress * RISE_PX);
 
+			String text = popup.format(config.healNumberStyle());
 			graphics.setColor(new Color(0, 0, 0, Math.min(alpha, 200)));
-			graphics.drawString(popup.text, x + 1, y + 1);
+			graphics.drawString(text, x + 1, y + 1);
 			graphics.setColor(new Color(HEAL_COLOR.getRed(), HEAL_COLOR.getGreen(), HEAL_COLOR.getBlue(), alpha));
-			graphics.drawString(popup.text, x, y);
+			graphics.drawString(text, x, y);
 		}
 
 		return null;
@@ -120,14 +129,31 @@ public class HealOverlay extends Overlay
 	private static final class HealPopup
 	{
 		private final Actor actor;
-		private final String text;
+		private final int amount;
+		private final boolean estimate;
+		private final int beforeHp;
+		private final int afterHp;
 		private final long startMs;
 
-		HealPopup(Actor actor, String text, long startMs)
+		HealPopup(Actor actor, int amount, boolean estimate, int beforeHp, int afterHp, long startMs)
 		{
 			this.actor = actor;
-			this.text = text;
+			this.amount = amount;
+			this.estimate = estimate;
+			this.beforeHp = beforeHp;
+			this.afterHp = afterHp;
 			this.startMs = startMs;
+		}
+
+		/** "+25" / "~25", or "65 + 25 = 90" / "~65 + 25 = ~90" when breakdown data is present. */
+		String format(HealNumberStyle style)
+		{
+			if (style == HealNumberStyle.BREAKDOWN && beforeHp >= 0 && afterHp >= 0)
+			{
+				String pfx = estimate ? "~" : "";
+				return pfx + beforeHp + " + " + amount + " = " + pfx + afterHp;
+			}
+			return (estimate ? "~" : "+") + amount;
 		}
 	}
 }

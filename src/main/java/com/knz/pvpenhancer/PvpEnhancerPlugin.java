@@ -1205,7 +1205,7 @@ public class PvpEnhancerPlugin extends Plugin
 				int hp = client.getBoostedSkillLevel(Skill.HITPOINTS);
 				if (previousLocalHp >= 0 && hp - previousLocalHp >= 2) // skip +1 natural regen
 				{
-					healOverlay.addHeal(local, hp - previousLocalHp, false);
+					healOverlay.addHeal(local, hp - previousLocalHp, false, previousLocalHp, hp);
 				}
 				previousLocalHp = hp;
 			}
@@ -1237,10 +1237,13 @@ public class PvpEnhancerPlugin extends Plugin
 				// Only show this remote player's heal if they are in scope (opponent vs everyone).
 				if (prev != null && ratio > prev && mode.matches(false, currentOpponents.contains(name)))
 				{
-					int estimate = HealMath.estimateRemoteHeal(prev, ratio, scale, remoteMaxHp(player));
+					int maxHp = remoteMaxHp(player);
+					int estimate = HealMath.estimateRemoteHeal(prev, ratio, scale, maxHp);
 					if (estimate >= 1)
 					{
-						healOverlay.addHeal(player, estimate, true);
+						// Estimate before/after HP from the health ratio for the breakdown display.
+						int afterHp = Math.round((float) ratio / scale * maxHp);
+						healOverlay.addHeal(player, estimate, true, afterHp - estimate, afterHp);
 					}
 				}
 				current.put(name, ratio);

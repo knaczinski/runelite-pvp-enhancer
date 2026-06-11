@@ -11,7 +11,8 @@ public enum GhostifyOthersWhen
 	ALWAYS("Always"),
 	IN_COMBAT("In combat"),
 	NOT_IN_COMBAT("Not in combat"),
-	CANNOT_ATTACK("Can't attack here");
+	CANNOT_ATTACK("Can't attack here"),
+	CANNOT_ATTACK_AND_IDLE("Can't attack here + idle");
 
 	private final String label;
 
@@ -37,6 +38,8 @@ public enum GhostifyOthersWhen
 				return !inCombat;
 			case CANNOT_ATTACK:
 				return cannotAttack;
+			case CANNOT_ATTACK_AND_IDLE:
+				return cannotAttack && !inCombat;
 			default: // NEVER
 				return false;
 		}
