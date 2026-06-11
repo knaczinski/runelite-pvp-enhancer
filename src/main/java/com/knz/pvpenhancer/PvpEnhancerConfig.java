@@ -154,9 +154,11 @@ public interface PvpEnhancerConfig extends Config
 	default boolean swapPickupInCombat() { return false; }
 
 	@ConfigItem(keyName = "pidIndicator", name = "PID guess (experimental)",
-		description = "EXPERIMENTAL. In a 1v1 you're part of, guess who has PID (processing order) "
-			+ "from contested same-tick hits, and warn on a likely PID swap. PID isn't exposed by the "
-			+ "API — this is a noisy best-effort vote, not certainty. See docs/pid-indicator-spike.md.",
+		description = "EXPERIMENTAL. Only works in a 1v1 you're part of. Draws a small star (with a "
+			+ "tiny 'pid' label) over the head of whoever likely has PID (processing order) — green = "
+			+ "you, red = them, grey = still computing — and flashes on a likely PID swap. PID isn't "
+			+ "exposed by the API; this is a noisy best-effort vote from contested same-tick hits, not "
+			+ "certainty. See docs/pid-indicator-spike.md.",
 		section = combatSection, position = 7)
 	default boolean pidIndicator() { return false; }
 

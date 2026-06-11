@@ -56,6 +56,7 @@ import com.knz.pvpenhancer.service.ComboDetectorService;
 import com.knz.pvpenhancer.service.DebuffTrackerService;
 import com.knz.pvpenhancer.service.HitSummaryService;
 import com.knz.pvpenhancer.service.PidGuessService;
+import com.knz.pvpenhancer.service.PidGuessService.Pid;
 import com.knz.pvpenhancer.service.TickHistoryService;
 import com.knz.pvpenhancer.util.FixedLayoutGeometry;
 import java.util.ArrayList;
@@ -1429,6 +1430,17 @@ public class PvpEnhancerPlugin extends Plugin
 			opponent = currentOpponents.iterator().next();
 		}
 		pidGuess.setFight(opponent);
+
+		// Push the over-head indicator state: the star sits over the guessed PID holder (you or the
+		// opponent); while still computing (UNKNOWN) it shows greyed over you, so it's visible in a
+		// 1v1 as soon as the fight starts.
+		Actor holder = null;
+		if (pidGuess.isActive())
+		{
+			Pid g = pidGuess.getGuess();
+			holder = g == Pid.OPPONENT ? combatOpponent : local; // LOCAL or UNKNOWN → over you
+		}
+		pidIndicatorOverlay.setState(holder, pidGuess.getGuess(), pidGuess.isSwapWarningActive());
 	}
 
 	/**
