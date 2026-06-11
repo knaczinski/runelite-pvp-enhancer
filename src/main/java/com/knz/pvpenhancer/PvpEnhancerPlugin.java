@@ -257,6 +257,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Local player's special-attack energy last tick (-1 = not baselined), for spec-combo detection. */
 	private int previousSpecialEnergy = -1;
 
+	/** Epoch-ms of the last XP-based hit prediction; used to suppress the hitsplat fallback where XP works. */
+	private long lastXpPredictMs = -1L;
+
 	/** Players whose native skull we hid (setSkullIcon(-1)) → their original skull id, for restore. */
 	private final Map<Player, Integer> hiddenSkulls = new HashMap<>();
 
@@ -889,6 +892,27 @@ public class PvpEnhancerPlugin extends Plugin
 			comboDetector.onOpponentHit(tick);
 		}
 
+		// Hit prediction fallback for XP-blocked areas (Duel Arena / PvP Arena): the XP-drop path
+		// never fires there, so derive the outgoing number from your own hitsplat on the target.
+		// Suppressed wherever the XP path is working (fired within the last few ticks) to avoid
+		// double numbers. This is not predictive (the hit already landed) but it makes the feature
+		// work where XP is locked.
+		if (actor != null && actor == combatOpponent && event.getHitsplat().isMine()
+			&& event.getHitsplat().getAmount() >= 0)
+		{
+			// Dealing damage means you're in combat — register it here too (the XP-gain path that
+			// normally does this is dead where XP is blocked).
+			combatState.recordCombatActivity(tick);
+
+			Hitsplat hs = event.getHitsplat();
+			boolean xpWorkingRecently = lastXpPredictMs >= 0
+				&& System.currentTimeMillis() - lastXpPredictMs < 2500L;
+			if (config.hitPrediction() && hs.getAmount() > 0 && !xpWorkingRecently)
+			{
+				hitPredictOverlay.addPrediction(actor, hs.getAmount(), isSpecComboCue(actor, hs.getAmount()));
+			}
+		}
+
 		Combatant target = Combatants.of(actor, client.getLocalPlayer());
 		if (!isTracked(target))
 		{
@@ -959,6 +983,7 @@ public class PvpEnhancerPlugin extends Plugin
 				Actor target = local != null ? local.getInteracting() : null;
 				if (damage > 0 && target != null)
 				{
+					lastXpPredictMs = System.currentTimeMillis();
 					hitPredictOverlay.addPrediction(target, damage, isSpecComboCue(target, damage));
 				}
 			}

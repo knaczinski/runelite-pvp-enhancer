@@ -93,9 +93,10 @@ public interface PvpEnhancerConfig extends Config
 		section = combatSection, position = 1)
 	default boolean showNotRetaliating() { return true; }
 
-	@ConfigItem(keyName = "hitPrediction", name = "Hit prediction (XP)",
-		description = "Show predicted outgoing damage near your target, derived from the "
-			+ "Hitpoints XP drop — appears before ranged/magic projectiles land.",
+	@ConfigItem(keyName = "hitPrediction", name = "Hit prediction",
+		description = "Show your outgoing damage near your target. Derived from the Hitpoints XP drop "
+			+ "(appears before ranged/magic projectiles land). Where XP is blocked (Duel/PvP Arena) it "
+			+ "falls back to your hitsplat on the target, so it still works there (not predictive).",
 		section = combatSection, position = 2)
 	default boolean hitPrediction() { return true; }
 
