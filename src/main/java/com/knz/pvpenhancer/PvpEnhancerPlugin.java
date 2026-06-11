@@ -1873,13 +1873,11 @@ public class PvpEnhancerPlugin extends Plugin
 			restoreFixedResizable();
 			return;
 		}
-		// Anchor the virtual fixed scene at the real viewport's TOP-LEFT, not its centre: the fixed
-		// scene is always 512×334, so its centre is a constant 256/167 from its left/top edge —
-		// regardless of how wide the resizable window is. Using viewportWidth/2 here made everything
-		// drift right as the window widened. This makes the pinned scene start at the same X/Y the
-		// client's scene starts (per user spec), reproducing fixed-mode screen positions.
-		int cx = client.getViewportXOffset() + FixedLayoutGeometry.SCENE_HALF_X + config.frNudgeX();
-		int cy = client.getViewportYOffset() + FixedLayoutGeometry.SCENE_HALF_Y + config.frNudgeY();
+		// Anchor relative to the viewport CENTRE (where the character renders): blocks float at
+		// fixed-mode distance from the character. This is correct on a wide window. (A small/narrow
+		// window can't fit the float — handled separately, not by moving this anchor.)
+		int cx = client.getViewportXOffset() + client.getViewportWidth() / 2 + config.frNudgeX();
+		int cy = client.getViewportYOffset() + client.getViewportHeight() / 2 + config.frNudgeY();
 
 		applyOrRestoreFrBlock(config.frInventory(), FR_INV_ROOT,
 			cx + FixedLayoutGeometry.INV_OFF_X, cy + FixedLayoutGeometry.INV_OFF_Y);
