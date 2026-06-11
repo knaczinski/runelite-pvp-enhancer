@@ -40,14 +40,25 @@ public class ComboDetectorService
 	/** Max ticks between a ranged attack / special and the spec-combo hit landing. */
 	private static final int SPEC_WINDOW_TICKS = 4;
 
+	/**
+	 * Sliding window (in ticks, inclusive of the current tick) over which eat-clicks and gear-swap
+	 * slots are accumulated. {@code 2} = the current tick plus the previous one, so a combo eat /
+	 * switch done across two consecutive ticks still registers (not only when crammed into one tick).
+	 */
+	private static final int EAT_WINDOW_TICKS = 2;
+	private static final int SWAP_WINDOW_TICKS = 2;
+
 	// Per-tick pending state (set by on* calls, consumed by flush)
 	private final List<EatClick> currentEatClicks = new ArrayList<>();
 	private int currentGearSwapCount = 0;
 	private int currentOpponentHits = 0;
 
+	// Sliding-window accumulators of [tick, count], pruned to the window each flush, cleared on fire.
+	private final java.util.ArrayDeque<int[]> eatWindow = new java.util.ArrayDeque<>();
+	private final java.util.ArrayDeque<int[]> swapWindow = new java.util.ArrayDeque<>();
+
 	// Cross-tick state
 	private List<EatClick> prevEatClicks = new ArrayList<>();
-	private int prevGearSwapCount = 0;
 	private int prevOpponentHits = 0;
 	private int lastRangedAttackTick = Integer.MIN_VALUE;
 	private int lastSpecialTick = Integer.MIN_VALUE;
@@ -111,28 +122,41 @@ public class ComboDetectorService
 			}
 		}
 
-		// 2. Triple eat (3+ same tick; any food/potion)
-		if (currentEatClicks.size() >= 3)
+		// 2. Triple eat (3+ consumes within the eat window; any food/potion). Counting over a sliding
+		// window lets a combo eat spread across two consecutive ticks still register.
+		if (!currentEatClicks.isEmpty())
+		{
+			eatWindow.addLast(new int[]{tick, currentEatClicks.size()});
+		}
+		pruneWindow(eatWindow, tick, EAT_WINDOW_TICKS);
+		if (sumWindow(eatWindow) >= 3)
 		{
 			results.add(new ComboResult(ComboType.TRIPLE_EAT, ComboTier.SUCCESS, "TRIPLE EAT"));
+			eatWindow.clear(); // one combo per cluster; fresh count after firing
 		}
 
-		// 3. Gear switch tiers
-		if (currentGearSwapCount >= 5)
+		// 3. Gear switch tiers — total slots swapped within the swap window. A tight (single-tick)
+		// switch keeps the higher tier; the same total spread across ticks drops one tier.
+		if (currentGearSwapCount > 0)
 		{
-			results.add(new ComboResult(ComboType.GODLIKE_SWITCH, ComboTier.GODLIKE, "GODLIKE SWITCH"));
+			swapWindow.addLast(new int[]{tick, currentGearSwapCount});
 		}
-		else if (currentGearSwapCount >= 3)
+		pruneWindow(swapWindow, tick, SWAP_WINDOW_TICKS);
+		int swapTotal = sumWindow(swapWindow);
+		boolean singleTick = swapWindow.size() == 1;
+		if (swapTotal >= 5)
 		{
-			results.add(new ComboResult(ComboType.EXCELLENT_SWITCH, ComboTier.EXCELLENT, "EXCELLENT SWITCH"));
+			results.add(singleTick
+				? new ComboResult(ComboType.GODLIKE_SWITCH, ComboTier.GODLIKE, "GODLIKE SWITCH")
+				: new ComboResult(ComboType.EXCELLENT_SWITCH, ComboTier.EXCELLENT, "EXCELLENT SWITCH"));
+			swapWindow.clear();
 		}
-		else if (currentGearSwapCount >= 1 && prevGearSwapCount >= 1 && prevGearSwapCount < 3)
+		else if (swapTotal >= 3)
 		{
-			int spread = currentGearSwapCount + prevGearSwapCount;
-			if (spread >= 3 && spread <= 4)
-			{
-				results.add(new ComboResult(ComboType.HUMBLE_SWITCH, ComboTier.HUMBLE, "HUMBLE SWITCH"));
-			}
+			results.add(singleTick
+				? new ComboResult(ComboType.EXCELLENT_SWITCH, ComboTier.EXCELLENT, "EXCELLENT SWITCH")
+				: new ComboResult(ComboType.HUMBLE_SWITCH, ComboTier.HUMBLE, "HUMBLE SWITCH"));
+			swapWindow.clear();
 		}
 
 		// 4. Spec combo (ranged hit + special hit on the opponent)
@@ -155,7 +179,6 @@ public class ComboDetectorService
 		// Advance state
 		prevEatClicks = new ArrayList<>(currentEatClicks);
 		currentEatClicks.clear();
-		prevGearSwapCount = currentGearSwapCount;
 		currentGearSwapCount = 0;
 		prevOpponentHits = currentOpponentHits;
 		currentOpponentHits = 0;
@@ -167,13 +190,33 @@ public class ComboDetectorService
 	{
 		currentEatClicks.clear();
 		prevEatClicks.clear();
+		eatWindow.clear();
+		swapWindow.clear();
 		currentGearSwapCount = 0;
-		prevGearSwapCount = 0;
 		currentOpponentHits = 0;
 		prevOpponentHits = 0;
 		lastRangedAttackTick = Integer.MIN_VALUE;
 		lastSpecialTick = Integer.MIN_VALUE;
 		lastSpecComboTick = Integer.MIN_VALUE;
+	}
+
+	/** Drops window entries older than {@code window} ticks (keeps ticks > now - window). */
+	private static void pruneWindow(java.util.ArrayDeque<int[]> window, int now, int windowTicks)
+	{
+		while (!window.isEmpty() && window.peekFirst()[0] <= now - windowTicks)
+		{
+			window.removeFirst();
+		}
+	}
+
+	private static int sumWindow(java.util.ArrayDeque<int[]> window)
+	{
+		int sum = 0;
+		for (int[] entry : window)
+		{
+			sum += entry[1];
+		}
+		return sum;
 	}
 
 	private void markSpecComboFired(int tick)

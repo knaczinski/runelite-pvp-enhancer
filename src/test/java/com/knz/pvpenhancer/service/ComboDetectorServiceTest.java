@@ -49,6 +49,30 @@ public class ComboDetectorServiceTest
 	}
 
 	@Test
+	public void tripleEatAcrossTwoConsecutiveTicks()
+	{
+		detector.onEatClick(0, 385, 1);
+		detector.onEatClick(1, 3150, 1);
+		assertTrue(flush(100).isEmpty()); // 2 this tick — not yet
+
+		detector.onEatClick(2, 6687, 4);
+		assertContainsType(flush(101), ComboType.TRIPLE_EAT); // 2 + 1 over two ticks
+	}
+
+	@Test
+	public void eatsTooFarApartAreNotACombo()
+	{
+		detector.onEatClick(0, 385, 1);
+		detector.onEatClick(1, 3150, 1);
+		assertTrue(flush(100).isEmpty());
+
+		assertTrue(flush(101).isEmpty()); // gap tick, window slides
+
+		detector.onEatClick(2, 6687, 4);
+		assertTrue("eats 2 ticks apart must not combo", flush(102).isEmpty());
+	}
+
+	@Test
 	public void potlockDetectedWhenItemUnchangedNextTick()
 	{
 		detector.onEatClick(0, 385, 1);
@@ -118,6 +142,21 @@ public class ComboDetectorServiceTest
 	{
 		detector.onGearSwapCount(2);
 		assertTrue(flush(100).isEmpty());
+	}
+
+	@Test
+	public void fullSwitchSpreadOverTwoTicksIsExcellentNotGodlike()
+	{
+		detector.onGearSwapCount(3);
+		assertContainsType(flush(100), ComboType.EXCELLENT_SWITCH); // 3 same tick = excellent, clears
+
+		detector.onGearSwapCount(2);
+		assertTrue(flush(101).isEmpty()); // 2 alone after the clear
+
+		detector.onGearSwapCount(3);
+		List<ComboResult> spread = flush(102); // 2 + 3 = 5 over two ticks
+		assertContainsType(spread, ComboType.EXCELLENT_SWITCH);
+		assertNotContainsType(spread, ComboType.GODLIKE_SWITCH); // godlike is single-tick only
 	}
 
 	// ─── Spec combo ───────────────────────────────────────────────────────────
