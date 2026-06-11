@@ -271,6 +271,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Resizable-classic widget child index → captured [xMode, yMode, origX, origY, absX, absY] for fixed-layout repositioning + restore. */
 	private final Map<Integer, int[]> frBase = new HashMap<>();
 
+	/** Once-guard so a failing widget-relayout hack logs a single warning instead of spamming each tick. */
+	private boolean loggedLayoutError;
+
 	/** Players whose native Vengeance overhead text we keep clearing → epoch-ms to stop clearing. */
 	private final Map<Player, Long> vengClearUntil = new HashMap<>();
 
@@ -683,35 +686,11 @@ public class PvpEnhancerPlugin extends Plugin
 		// 4b3. PK skull resize (hides the native skull, redraws scaled)
 		detectSkullResize(local);
 
-		// 4c. Ghostify — hide + outline players per category/when rules
-		updateGhostify(local, tick);
-
-		// 4d. Count down debuff timers + update the predictive prayer highlight
-		debuffTracker.tick();
-		updatePrayerHighlight(local);
-
-		// 4d2. Experimental PID guess (1v1 the local player is in)
-		updatePidGuess(local, tick);
-
-		// 4d3. Attack-again countdown timers (per scope)
-		updateAttackTimers(local);
-
-		// 4d4. Combat-tab spec-bar resize
-		applyCombatTabLayout();
-
-		// 4d5. One-shot resizable-classic widget dump (designing fixed-layout-in-resizable)
-		dumpResizableToplevelOnce();
-
-		// 4d6. Fixed-layout-in-resizable (B030)
-		applyFixedResizableLayout();
-
-		// 4e. Flash the opponent if in combat but not attacking it
-		boolean notRetaliating = config.showNotRetaliating() && combatState.isNotRetaliating(tick);
-		notRetaliatingOverlay.setOpponent(notRetaliating ? combatOpponent : null);
-
-		// 5. Detect combos (before flush so ComboEvents land in this tick). Always advance the
-		// detector's state, but only EMIT combos while in combat — otherwise out-of-combat bulk
-		// equipment changes (e.g. banking / depositing all worn items) register as a gear switch.
+		// 5. Detect combos EARLY — before any cosmetic/overlay/layout step, so a failure in those
+		// (e.g. the experimental widget-relayout hacks, or a stray NPE in ghostify) can never abort
+		// the tick before combos are emitted. Detect before flush so ComboEvents land in this tick.
+		// Always advance the detector's state, but only EMIT combos while in combat — otherwise
+		// out-of-combat bulk equipment changes (banking / deposit-all) register as a gear switch.
 		if (config.showCombos())
 		{
 			detectSpecialUse(tick);
@@ -725,6 +704,42 @@ public class PvpEnhancerPlugin extends Plugin
 				}
 			}
 		}
+
+		// 4c. Ghostify — hide + outline players per category/when rules
+		updateGhostify(local, tick);
+
+		// 4d. Count down debuff timers + update the predictive prayer highlight
+		debuffTracker.tick();
+		updatePrayerHighlight(local);
+
+		// 4d2. Experimental PID guess (1v1 the local player is in)
+		updatePidGuess(local, tick);
+
+		// 4d3. Attack-again countdown timers (per scope)
+		updateAttackTimers(local);
+
+		// 4d4–4d6. Experimental widget-relayout hacks (spec-bar resize, dev dump,
+		// fixed-layout-in-resizable). These fight the native relayout and are version-sensitive, so
+		// they are isolated: a failure here must never abort the rest of the tick (combos, history,
+		// panel). See the combo block below.
+		try
+		{
+			applyCombatTabLayout();
+			dumpResizableToplevelOnce();
+			applyFixedResizableLayout();
+		}
+		catch (Exception ex)
+		{
+			if (!loggedLayoutError)
+			{
+				loggedLayoutError = true;
+				log.warn("Widget-relayout hack failed (disabling further log spam); core features unaffected", ex);
+			}
+		}
+
+		// 4e. Flash the opponent if in combat but not attacking it
+		boolean notRetaliating = config.showNotRetaliating() && combatState.isNotRetaliating(tick);
+		notRetaliatingOverlay.setOpponent(notRetaliating ? combatOpponent : null);
 
 		// 6. Flush tick history
 		history.setMaxHistory(config.maxHistoryTicks());
