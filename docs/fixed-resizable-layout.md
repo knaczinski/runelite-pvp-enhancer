@@ -22,7 +22,21 @@ Block root top-left in fixed → offset from fixed scene centre:
 - Minimap+orbs panel ≈ (516, 4) → **(256, -167)**.
 - Chatbox = (0,338) → **(-260, 167)**.
 
-In Resizable-Classic the target = `resizableSceneCentre + offset`, clamped fully on-screen.
+In Resizable-Classic the target = `resizableSceneCentre + offset`, clamped fully on-screen. The
+constants live in `util/FixedLayoutGeometry`, shared by the plugin (live move) and the guide overlay.
+
+## Per-block restore
+
+Each tick a block that is **not** pinned (its toggle off, master still on) is restored to its native
+position individually — not only when the master switch is off. So unchecking one block returns it
+home; the captured base is forgotten on restore and re-captured on re-enable.
+
+## Fixed-size guide overlay (visual only)
+
+`frShowGuide` draws reference outlines at the pinned positions without moving any widget: the fixed
+client footprint (765×503, dashed), the fixed scene (512×334), and the inventory / minimap / chat
+boxes for whichever blocks are enabled — clamped the same way as the live pin, so the guide matches
+the real result. Use it to gauge the layout before/while tuning Nudge X/Y.
 
 Spec bar (group 593): SP_ATTACKBAR = child 38 (150×26 @ y204), SPECIAL_ATTACK = child 39 (fill,
 9 dyn children — must resize the children, not just the container).

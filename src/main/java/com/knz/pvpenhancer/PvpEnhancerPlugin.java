@@ -34,6 +34,7 @@ import com.knz.pvpenhancer.model.XpDamage;
 import com.knz.pvpenhancer.overlay.AttackTimerOverlay;
 import com.knz.pvpenhancer.overlay.ComboFeedbackOverlay;
 import com.knz.pvpenhancer.overlay.DebuffTimerOverlay;
+import com.knz.pvpenhancer.overlay.FixedLayoutGuideOverlay;
 import com.knz.pvpenhancer.overlay.GhostifyOutlineOverlay;
 import com.knz.pvpenhancer.overlay.HealOverlay;
 import com.knz.pvpenhancer.overlay.HeartbeatOverlay;
@@ -56,6 +57,7 @@ import com.knz.pvpenhancer.service.DebuffTrackerService;
 import com.knz.pvpenhancer.service.HitSummaryService;
 import com.knz.pvpenhancer.service.PidGuessService;
 import com.knz.pvpenhancer.service.TickHistoryService;
+import com.knz.pvpenhancer.util.FixedLayoutGeometry;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -179,6 +181,7 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private PidIndicatorOverlay pidIndicatorOverlay;
 	@Inject private PidGuessService pidGuess;
 	@Inject private GhostifyOutlineOverlay ghostifyOutlineOverlay;
+	@Inject private FixedLayoutGuideOverlay fixedLayoutGuideOverlay;
 
 	@Inject private DebuffTrackerService debuffTracker;
 	@Inject private GhostifyService ghostify;
@@ -305,6 +308,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(skullResizeOverlay);
 		overlayManager.add(pidIndicatorOverlay);
 		overlayManager.add(ghostifyOutlineOverlay);
+		overlayManager.add(fixedLayoutGuideOverlay);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 		panel.setOnOpenDevPanel(() ->
@@ -350,6 +354,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(skullResizeOverlay);
 		overlayManager.remove(pidIndicatorOverlay);
 		overlayManager.remove(ghostifyOutlineOverlay);
+		overlayManager.remove(fixedLayoutGuideOverlay);
 		restoreAllSkulls();
 		restoreCombatTab();
 		restoreFixedResizable();
@@ -1823,20 +1828,9 @@ public class PvpEnhancerPlugin extends Plugin
 		combatTabBase.clear();
 	}
 
-	// Fixed-mode block offset from the fixed scene centre (≈260,171 in the 765×503 fixed root), to
-	// each block's ROOT-container top-left. Measured from the fixed-mode (548) dump:
-	//   inventory panel-bg top-left ≈ (516,167) → (516-260, 167-171) = (256,-4)
-	//   minimap+orbs panel top-left ≈ (516,  4) → (256,-167)
-	//   chatbox top-left            = (  0,338) → (-260,167)
-	// Each block is moved by relocating ONLY its root container (its children follow); tune the
-	// residual with frNudgeX/Y.
-	private static final int FR_INV_OFF_X = 256, FR_INV_OFF_Y = -4;
-	private static final int FR_MM_OFF_X = 256, FR_MM_OFF_Y = -167;
-	private static final int FR_CHAT_OFF_X = -260, FR_CHAT_OFF_Y = 167;
-
 	// Resizable-Classic (161) root container of each block (covers the whole region; children are
 	// positioned relative to it, so moving it alone moves the block — moving children too would
-	// double-count the parent offset and fling them off-screen).
+	// double-count the parent offset and fling them off-screen). Offsets/sizes: FixedLayoutGeometry.
 	private static final int FR_INV_ROOT = 97;  // [524,168,241×335] tabs + inventory
 	private static final int FR_MM_ROOT = 95;   // [554,0,211×207]  minimap + orbs
 	private static final int FR_CHAT_ROOT = 96;  // [0,338,519×165]  chatbox
@@ -1846,8 +1840,9 @@ public class PvpEnhancerPlugin extends Plugin
 	 * sit at fixed-mode's distance from the character (viewport centre), preserving muscle memory.
 	 * Only each block's ROOT container is relocated (ABSOLUTE from the interface root); its children
 	 * ride along. The target is clamped on-screen so a narrow window can't push a block out of view.
-	 * Captured native geometry is restored on disable / not-classic / shutdown. EXPERIMENTAL —
-	 * fights the relayout; offsets are tunable via frNudgeX/Y.
+	 * A block that is currently un-pinned is restored individually (not just on master-off), so
+	 * unchecking one toggle returns that block to its native place. EXPERIMENTAL — fights the
+	 * relayout; offsets are tunable via frNudgeX/Y.
 	 */
 	private void applyFixedResizableLayout()
 	{
@@ -1859,17 +1854,24 @@ public class PvpEnhancerPlugin extends Plugin
 		int cx = client.getViewportXOffset() + client.getViewportWidth() / 2 + config.frNudgeX();
 		int cy = client.getViewportYOffset() + client.getViewportHeight() / 2 + config.frNudgeY();
 
-		if (config.frInventory())
+		applyOrRestoreFrBlock(config.frInventory(), FR_INV_ROOT,
+			cx + FixedLayoutGeometry.INV_OFF_X, cy + FixedLayoutGeometry.INV_OFF_Y);
+		applyOrRestoreFrBlock(config.frMinimap(), FR_MM_ROOT,
+			cx + FixedLayoutGeometry.MM_OFF_X, cy + FixedLayoutGeometry.MM_OFF_Y);
+		applyOrRestoreFrBlock(config.frChat(), FR_CHAT_ROOT,
+			cx + FixedLayoutGeometry.CHAT_OFF_X, cy + FixedLayoutGeometry.CHAT_OFF_Y);
+	}
+
+	/** Pins a block to (targetX,targetY) when enabled, else restores it to its native position. */
+	private void applyOrRestoreFrBlock(boolean enabled, int rootChild, int targetX, int targetY)
+	{
+		if (enabled)
 		{
-			shiftFrRoot(FR_INV_ROOT, cx + FR_INV_OFF_X, cy + FR_INV_OFF_Y);
+			shiftFrRoot(rootChild, targetX, targetY);
 		}
-		if (config.frMinimap())
+		else
 		{
-			shiftFrRoot(FR_MM_ROOT, cx + FR_MM_OFF_X, cy + FR_MM_OFF_Y);
-		}
-		if (config.frChat())
-		{
-			shiftFrRoot(FR_CHAT_ROOT, cx + FR_CHAT_OFF_X, cy + FR_CHAT_OFF_Y);
+			restoreFrChild(rootChild);
 		}
 	}
 
@@ -1934,20 +1936,29 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return;
 		}
-		for (Map.Entry<Integer, int[]> e : frBase.entrySet())
+		for (Integer child : new java.util.ArrayList<>(frBase.keySet()))
 		{
-			Widget w = client.getWidget(161, e.getKey());
-			if (w != null)
-			{
-				int[] b = e.getValue();
-				w.setXPositionMode(b[0]);
-				w.setYPositionMode(b[1]);
-				w.setOriginalX(b[2]);
-				w.setOriginalY(b[3]);
-				w.revalidate();
-			}
+			restoreFrChild(child);
 		}
-		frBase.clear();
+	}
+
+	/** Restores a single captured block-root to its native position + mode, and forgets its base. */
+	private void restoreFrChild(int child)
+	{
+		int[] b = frBase.remove(child);
+		if (b == null)
+		{
+			return; // never pinned / already restored
+		}
+		Widget w = client.getWidget(161, child);
+		if (w != null)
+		{
+			w.setXPositionMode(b[0]);
+			w.setYPositionMode(b[1]);
+			w.setOriginalX(b[2]);
+			w.setOriginalY(b[3]);
+			w.revalidate();
+		}
 	}
 
 	private boolean anyAttackTimer()

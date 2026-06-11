@@ -332,6 +332,12 @@ public interface PvpEnhancerConfig extends Config
 		section = fixedResizableSection, position = 5)
 	default int frNudgeY() { return 0; }
 
+	@ConfigItem(keyName = "frShowGuide", name = "Show fixed-size guide",
+		description = "Draw reference outlines of the fixed-mode client (scene + inventory, minimap "
+			+ "and chat boxes) at their pinned positions, so you can gauge the layout. Visual only.",
+		section = fixedResizableSection, position = 6)
+	default boolean frShowGuide() { return false; }
+
 	// ─── Developer ────────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "developerMode", name = "Developer mode",
