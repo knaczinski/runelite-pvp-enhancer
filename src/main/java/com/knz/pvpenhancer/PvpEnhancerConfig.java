@@ -338,12 +338,6 @@ public interface PvpEnhancerConfig extends Config
 		section = fixedResizableSection, position = 3)
 	default boolean frChat() { return false; }
 
-	@ConfigItem(keyName = "frBuffBar", name = "Pin buff bar",
-		description = "Move the game's buff bar (boost/debuff timers below the minimap — vengeance, "
-			+ "freeze, TB, antifire, etc.) along with the minimap, keeping its position relative to it.",
-		section = fixedResizableSection, position = 4)
-	default boolean frBuffBar() { return false; }
-
 	@Range(min = -400, max = 400)
 	@ConfigItem(keyName = "frNudgeX", name = "Nudge X (px)",
 		description = "Fine-tune: shift all pinned blocks horizontally. Tune until clicks land where "

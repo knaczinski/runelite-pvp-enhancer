@@ -56,8 +56,10 @@ public class FixedLayoutGuideOverlay extends Overlay
 			return null;
 		}
 
-		int cx = client.getViewportXOffset() + client.getViewportWidth() / 2 + config.frNudgeX();
-		int cy = client.getViewportYOffset() + client.getViewportHeight() / 2 + config.frNudgeY();
+		// Anchor at the real viewport top-left (fixed scene is always 512×334 → centre is a constant
+		// 256/167 from its edge), so the guide's scene box starts where the client's scene starts.
+		int cx = client.getViewportXOffset() + FixedLayoutGeometry.SCENE_HALF_X + config.frNudgeX();
+		int cy = client.getViewportYOffset() + FixedLayoutGeometry.SCENE_HALF_Y + config.frNudgeY();
 
 		// Fixed scene (3D viewport) centred on the resizable viewport centre.
 		int sceneX = cx - FixedLayoutGeometry.SCENE_HALF_X;

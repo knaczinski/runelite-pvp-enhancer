@@ -22,8 +22,21 @@ Block root top-left in fixed → offset from fixed scene centre:
 - Minimap+orbs panel ≈ (516, 4) → **(256, -167)**.
 - Chatbox = (0,338) → **(-260, 167)**.
 
-In Resizable-Classic the target = `resizableSceneCentre + offset`, clamped fully on-screen. The
-constants live in `util/FixedLayoutGeometry`, shared by the plugin (live move) and the guide overlay.
+## Anchor: viewport TOP-LEFT, not centre
+
+The virtual fixed scene is anchored at the **real viewport's top-left**, not its centre. The fixed
+scene is always 512×334, so its centre is a constant `(256,167)` from its left/top edge regardless
+of how wide the resizable window is. Earlier we used `viewportWidth/2`, which pushed every block
+further right as the window widened (and mis-drew the guide). Now:
+
+```
+cx = viewportXOffset + 256 + nudgeX      // 256 = SCENE_HALF_X, not window/2
+cy = viewportYOffset + 167 + nudgeY
+target(block) = (cx, cy) + offset(block)
+```
+
+So the pinned scene starts at the same X/Y the client's scene starts, reproducing fixed-mode screen
+positions. The constants live in `util/FixedLayoutGeometry`, shared by the plugin and the guide.
 
 ## Per-block restore
 
@@ -31,14 +44,12 @@ Each tick a block that is **not** pinned (its toggle off, master still on) is re
 position individually — not only when the master switch is off. So unchecking one block returns it
 home; the captured base is forgotten on restore and re-captured on re-enable.
 
-## Buff bar (separate interface group)
+## Other plugins' overlays (Boost Information, etc.) — not movable
 
-`frBuffBar` pins the game's buff bar (boost/debuff timers — vengeance, freeze, TB, antifire…),
-which lives in its own interface group (`InterfaceID.BuffBar.UNIVERSE`, group 651), not the
-toplevel. It rides the **minimap's effective position**: it keeps its native offset from the minimap
-and moves to (minimap pinned-target-or-native + that offset). So it follows the minimap when the
-minimap is pinned and stays put otherwise — never detaches. No buff-bar size or fixed-mode coords
-needed. Captured lazily (only when buffs are active and the bar has bounds).
+Third-party RuneLite overlays cannot be repositioned by this plugin (no clean API; would require
+reflecting into another plugin's state — fragile and Hub-disallowed). They are user-draggable —
+position them by hand. A native-buff-bar pin was tried and removed: most PKers use the Boost
+Information plugin instead, which this can't move.
 
 ## On-screen clamp toggle
 
