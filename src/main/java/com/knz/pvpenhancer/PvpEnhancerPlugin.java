@@ -125,6 +125,7 @@ import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.WidgetOverlay;
 import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.util.Text;
 import org.slf4j.Logger;
@@ -271,9 +272,6 @@ public class PvpEnhancerPlugin extends Plugin
 
 	/** One-shot guard for the resizable-classic toplevel dump (designing fixed-layout-in-resizable). */
 	private boolean resizableDumped;
-
-	/** Resizable-classic widget child index → captured [xMode, yMode, origX, origY, absX, absY] for fixed-layout repositioning + restore. */
-	private final Map<Integer, int[]> frBase = new HashMap<>();
 
 	/** Once-guard so a failing widget-relayout hack logs a single warning instead of spamming each tick. */
 	private boolean loggedLayoutError;
@@ -1390,51 +1388,14 @@ public class PvpEnhancerPlugin extends Plugin
 	@Subscribe
 	public void onBeforeRender(BeforeRender event)
 	{
+		// Set the WidgetOverlay preferredLocations before overlay rendering positions the widgets.
 		try
 		{
-			// Run the whole pin here (last hook before drawing) so it wins over any per-frame layout
-			// override — including a widget you moved by Alt-drag, whose saved position re-applies
-			// each frame and beat the old game-tick pin.
 			applyFixedResizableLayout();
-
-			// The chatbox is a separate interface (162) nested in slot 96; revalidate it so it follows
-			// the moved slot when pinned, and force it back to native (0,0) when unpinned so a
-			// previously-displaced chat reappears.
-			Widget chat = client.getWidget(162, 0);
-			if (chat != null && !chat.isHidden())
-			{
-				boolean pin = config.fixedResizableLayout() && config.frChat()
-					&& client.getWidget(161, 0) != null;
-				if (pin)
-				{
-					chat.revalidate();
-				}
-				else
-				{
-					restoreChatNative(chat);
-				}
-			}
 		}
 		catch (Exception ignored)
 		{
 			// experimental relayout hack — never let it break the frame
-		}
-	}
-
-	/**
-	 * Restores the chatbox root to its native layout (originalX/Y = 0, absolute top-left = it fills
-	 * its slot) so a previously-pinned chat reappears when Pin chat is turned off. Guarded so it only
-	 * revalidates when actually displaced — the layout script then keeps it native each frame.
-	 */
-	private void restoreChatNative(Widget chat)
-	{
-		if (chat.getOriginalX() != 0 || chat.getOriginalY() != 0)
-		{
-			chat.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
-			chat.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
-			chat.setOriginalX(0);
-			chat.setOriginalY(0);
-			chat.revalidate();
 		}
 	}
 
@@ -1833,20 +1794,26 @@ public class PvpEnhancerPlugin extends Plugin
 		combatTabBase.clear();
 	}
 
-	// Resizable-Classic (161) root container of each block (covers the whole region; children are
-	// positioned relative to it, so moving it alone moves the block — moving children too would
-	// double-count the parent offset and fling them off-screen). Offsets/sizes: FixedLayoutGeometry.
-	private static final int FR_INV_ROOT = 97;  // [524,168,241×335] tabs + inventory
-	private static final int FR_MM_ROOT = 95;   // [554,0,211×207]  minimap + orbs
-	private static final int FR_CHAT_ROOT = 96;  // [0,338,519×165]  chatbox
+	// RuneLite ships native draggable WidgetOverlays that wrap EXACTLY our blocks (Resizable-Classic
+	// minimap/inventory/chat = group 161 childs 95/97/96) and reposition the widget every frame
+	// during overlay render — after BeforeRender — so moving the widgets ourselves always lost. We
+	// instead DRIVE those overlays: set their preferredLocation and RuneLite places the widget there.
+	// Matched by WidgetInfo name.
+	private static final String FR_INV_NAME = "RESIZABLE_VIEWPORT_INVENTORY_PARENT";
+	private static final String FR_MM_NAME = "RESIZABLE_MINIMAP_STONES_WIDGET";
+	private static final String FR_CHAT_NAME = "RESIZABLE_VIEWPORT_CHATBOX_PARENT";
+
+	private WidgetOverlay frInvOverlay;
+	private WidgetOverlay frMmOverlay;
+	private WidgetOverlay frChatOverlay;
+	/** Overlay name → the user's preferredLocation before we overrode it (value may be null). */
+	private final Map<String, java.awt.Point> frSavedLoc = new HashMap<>();
 
 	/**
-	 * Fixed-layout-in-resizable (B030): in Resizable-Classic, pins each enabled UI block so it sits at
-	 * the position the movable guide overlay shows — drag the guide to place the whole fixed layout.
-	 * Only each block's ROOT container is relocated (ABSOLUTE from the interface root); its children
-	 * ride along. A block that is currently un-pinned is restored individually (not just on
-	 * master-off), so unchecking one toggle returns that block to its native place. EXPERIMENTAL —
-	 * fights the relayout.
+	 * Fixed-layout-in-resizable (B030): positions the minimap/inventory/chat where the movable guide
+	 * shows by setting each native WidgetOverlay's preferredLocation (RuneLite then places the
+	 * widget). Driving RuneLite's own mechanism avoids the per-frame fight that made direct widget
+	 * moves fail. Each block's prior user position is captured once and restored when unpinned.
 	 */
 	private void applyFixedResizableLayout()
 	{
@@ -1855,117 +1822,91 @@ public class PvpEnhancerPlugin extends Plugin
 			restoreFixedResizable();
 			return;
 		}
-		// The guide overlay's on-screen top-left is the fixed-client origin; blocks pin to it + their
-		// fixed-mode offset, so the live UI lands exactly where the guide shows it.
+		resolveFrOverlays();
 		java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
 		if (origin == null)
 		{
-			return; // guide not laid out yet this frame — pin next tick
+			return; // guide not laid out yet this frame
 		}
-
-		applyOrRestoreFrBlock(config.frInventory(), FR_INV_ROOT,
+		pinFrOverlay(frInvOverlay, config.frInventory(),
 			origin.x + FixedLayoutGeometry.INV_FX, origin.y + FixedLayoutGeometry.INV_FY);
-		applyOrRestoreFrBlock(config.frMinimap(), FR_MM_ROOT,
+		pinFrOverlay(frMmOverlay, config.frMinimap(),
 			origin.x + FixedLayoutGeometry.MM_FX, origin.y + FixedLayoutGeometry.MM_FY);
-		// Chat: move the toplevel slot 96; the nested chatbox interface (162) is revalidated in
-		// onBeforeRender so it follows. (When unpinned it's restored to native there too.)
-		applyOrRestoreFrBlock(config.frChat(), FR_CHAT_ROOT,
+		pinFrOverlay(frChatOverlay, config.frChat(),
 			origin.x + FixedLayoutGeometry.CHAT_FX, origin.y + FixedLayoutGeometry.CHAT_FY);
 	}
 
-	/** Pins a block to (targetX,targetY) when enabled, else restores it to its native position. */
-	private void applyOrRestoreFrBlock(boolean enabled, int rootChild, int targetX, int targetY)
+	/** Finds + caches the three native WidgetOverlays once they exist. */
+	private void resolveFrOverlays()
 	{
+		if (frInvOverlay != null && frMmOverlay != null && frChatOverlay != null)
+		{
+			return;
+		}
+		// getOverlays() is package-private; anyMatch is the public way to iterate. The predicate
+		// captures the references as a side effect and always returns false.
+		overlayManager.anyMatch(o ->
+		{
+			if (o instanceof WidgetOverlay)
+			{
+				String n = ((WidgetOverlay) o).getName();
+				if (FR_INV_NAME.equals(n))
+				{
+					frInvOverlay = (WidgetOverlay) o;
+				}
+				else if (FR_MM_NAME.equals(n))
+				{
+					frMmOverlay = (WidgetOverlay) o;
+				}
+				else if (FR_CHAT_NAME.equals(n))
+				{
+					frChatOverlay = (WidgetOverlay) o;
+				}
+			}
+			return false;
+		});
+	}
+
+	/** Overrides a WidgetOverlay's preferredLocation to (tx,ty) when enabled, else restores the user's. */
+	private void pinFrOverlay(WidgetOverlay ov, boolean enabled, int tx, int ty)
+	{
+		if (ov == null)
+		{
+			return;
+		}
 		if (enabled)
 		{
-			shiftFrRoot(rootChild, targetX, targetY);
+			if (!frSavedLoc.containsKey(ov.getName()))
+			{
+				frSavedLoc.put(ov.getName(), ov.getPreferredLocation()); // capture user's prior pos (may be null)
+			}
+			ov.setPreferredLocation(new java.awt.Point(tx, ty));
 		}
 		else
 		{
-			restoreFrChild(rootChild);
+			restoreFrOverlay(ov);
 		}
 	}
 
-	/**
-	 * Relocates a single block-root container to (targetX,targetY) absolute, clamped fully on-screen.
-	 * Children follow because they are laid out relative to this root. Idempotent: positions are set
-	 * absolutely each tick, never accumulated.
-	 */
-	private void shiftFrRoot(int rootChild, int targetX, int targetY)
+	private void restoreFrOverlay(WidgetOverlay ov)
 	{
-		Widget w = client.getWidget(161, rootChild);
-		if (w == null)
+		if (ov == null || !frSavedLoc.containsKey(ov.getName()))
 		{
 			return;
 		}
-		int[] base = captureFr(rootChild);
-		if (base == null)
-		{
-			return; // hidden / not laid out yet — capture once it appears
-		}
-		// The user positions the whole layout by dragging the guide, so no per-block clamp — blocks
-		// land exactly where the guide shows them (off-screen is the user's choice).
-		w.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
-		w.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
-		w.setOriginalX(targetX);
-		w.setOriginalY(targetY);
-		w.revalidate();
+		ov.setPreferredLocation(frSavedLoc.remove(ov.getName())); // null = RuneLite's default
 	}
 
-	/**
-	 * Captures a block-root's native position mode + originalX/Y for restore, returning the base.
-	 * Only the mode + originalX/Y are needed (the absolute target is computed from the guide), so
-	 * this no longer rejects widgets by their on-screen bounds — a chat that was moved off-screen or
-	 * sits at unusual coords still pins. Skips only widgets that don't exist or are hidden.
-	 *
-	 * @return captured [xMode, yMode, origX, origY], or null if the widget is absent/hidden.
-	 */
-	private int[] captureFr(int child)
-	{
-		int[] existing = frBase.get(child);
-		if (existing != null)
-		{
-			return existing;
-		}
-		Widget w = client.getWidget(161, child);
-		if (w == null || w.isHidden())
-		{
-			return null; // not present / collapsed — nothing to pin yet
-		}
-		int[] base = {w.getXPositionMode(), w.getYPositionMode(), w.getOriginalX(), w.getOriginalY()};
-		frBase.put(child, base);
-		return base;
-	}
-
+	/** Restores all three overlays to the user's prior positions (disable / not-classic / shutdown). */
 	private void restoreFixedResizable()
 	{
-		if (frBase.isEmpty())
+		if (frSavedLoc.isEmpty())
 		{
 			return;
 		}
-		for (Integer child : new java.util.ArrayList<>(frBase.keySet()))
-		{
-			restoreFrChild(child);
-		}
-	}
-
-	/** Restores a single captured block-root to its native position + mode, and forgets its base. */
-	private void restoreFrChild(int child)
-	{
-		int[] b = frBase.remove(child);
-		if (b == null)
-		{
-			return; // never pinned / already restored
-		}
-		Widget w = client.getWidget(161, child);
-		if (w != null)
-		{
-			w.setXPositionMode(b[0]);
-			w.setYPositionMode(b[1]);
-			w.setOriginalX(b[2]);
-			w.setOriginalY(b[3]);
-			w.revalidate();
-		}
+		restoreFrOverlay(frInvOverlay);
+		restoreFrOverlay(frMmOverlay);
+		restoreFrOverlay(frChatOverlay);
 	}
 
 	private boolean anyAttackTimer()
