@@ -1376,6 +1376,26 @@ public class PvpEnhancerPlugin extends Plugin
 				}
 			}
 		}
+
+		// The resizable layout re-positions the bottom-anchored chatbox every frame (far more often
+		// than the game tick), so re-pin it here too or it snaps back and looks like "Pin chat" does
+		// nothing. The inventory/minimap are static enough to hold from the game-tick pin.
+		if (config.fixedResizableLayout() && config.frChat() && client.getWidget(161, 0) != null)
+		{
+			java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
+			if (origin != null)
+			{
+				try
+				{
+					shiftFrRoot(FR_CHAT_ROOT, origin.x + FixedLayoutGeometry.CHAT_FX,
+						origin.y + FixedLayoutGeometry.CHAT_FY);
+				}
+				catch (Exception ignored)
+				{
+					// experimental relayout hack — never let it break the frame
+				}
+			}
+		}
 	}
 
 	/** Drops debuff timers + skull state for a player who leaves the scene (e.g. teleports away). */
