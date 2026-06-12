@@ -380,6 +380,20 @@ public interface PvpEnhancerConfig extends Config
 		section = layoutSection, position = 4)
 	default boolean frShowGuide() { return false; }
 
+	@ConfigItem(keyName = "frCameraAlign", name = "Align camera (exp)",
+		description = "VERY EXPERIMENTAL. Pan the camera so your character lines up with the guide's "
+			+ "scene box (useful when you drag the guide away from screen centre). Self-restoring — turn "
+			+ "off and the camera returns to normal. May fight manual camera panning; tune Strength.",
+		section = layoutSection, position = 5)
+	default boolean frCameraAlign() { return false; }
+
+	@Range(min = 0, max = 400)
+	@ConfigItem(keyName = "frCameraStrength", name = "Camera strength",
+		description = "How strongly the camera shifts per pixel of guide offset. Tune until your "
+			+ "character sits in the guide's scene box. 0 = no shift.",
+		section = layoutSection, position = 6)
+	default int frCameraStrength() { return 100; }
+
 	// ─── Developer ────────────────────────────────────────────────────────────
 
 	@ConfigItem(keyName = "developerMode", name = "Developer mode",

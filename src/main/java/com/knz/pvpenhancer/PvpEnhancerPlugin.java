@@ -94,6 +94,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.BeforeRender;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameTick;
@@ -1392,6 +1393,7 @@ public class PvpEnhancerPlugin extends Plugin
 		try
 		{
 			applyFixedResizableLayout();
+			applyFixedLayoutCamera();
 		}
 		catch (Exception ignored)
 		{
@@ -1907,6 +1909,54 @@ public class PvpEnhancerPlugin extends Plugin
 		restoreFrOverlay(frInvOverlay);
 		restoreFrOverlay(frMmOverlay);
 		restoreFrOverlay(frChatOverlay);
+	}
+
+	/**
+	 * VERY EXPERIMENTAL: pans the camera so the local player lines up with the guide's scene box, by
+	 * overriding the camera focal point each frame (after the game points it at the player). The
+	 * offset is the pixel gap between the guide scene centre and the viewport centre, projected into
+	 * world space along the camera's facing and scaled by Strength. Self-restoring: when off we never
+	 * touch the camera, so the game's normal follow resumes next frame.
+	 */
+	private void applyFixedLayoutCamera()
+	{
+		if (!config.fixedResizableLayout() || !config.frCameraAlign() || client.getWidget(161, 0) == null)
+		{
+			return;
+		}
+		Player local = client.getLocalPlayer();
+		java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
+		if (local == null || origin == null)
+		{
+			return;
+		}
+		LocalPoint lp = local.getLocalLocation();
+		if (lp == null)
+		{
+			return;
+		}
+		// Pixel gap: where we want the character (guide scene centre) minus where it renders now
+		// (viewport centre).
+		double dxPix = (origin.x + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_W / 2.0)
+			- (client.getViewportXOffset() + client.getViewportWidth() / 2.0);
+		double dyPix = (origin.y + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_H / 2.0)
+			- (client.getViewportYOffset() + client.getViewportHeight() / 2.0);
+
+		// Approximate world units per screen pixel from the zoom, scaled by Strength.
+		double wpp = (config.frCameraStrength() / 100.0) * (700.0 / Math.max(128, client.getScale()));
+
+		// Shift the focal point opposite the desired character shift (moving the look-at right makes
+		// the character appear left), along the camera facing. Yaw is 0..2047 over a full turn.
+		double yaw = client.getCameraYaw() * (Math.PI * 2.0 / 2048.0);
+		double sin = Math.sin(yaw);
+		double cos = Math.cos(yaw);
+		double right = -dxPix * wpp;
+		double fwd = dyPix * wpp;
+		double offX = right * cos + fwd * sin;
+		double offZ = -right * sin + fwd * cos;
+
+		client.setCameraFocalPointX(lp.getX() + offX);
+		client.setCameraFocalPointZ(lp.getY() + offZ);
 	}
 
 	private boolean anyAttackTimer()
