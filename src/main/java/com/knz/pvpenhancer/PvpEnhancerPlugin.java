@@ -1398,11 +1398,28 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return;
 		}
+		Widget chat = client.getWidget(162, 0); // chatbox interface root
+		if (chat == null || chat.isHidden())
+		{
+			return;
+		}
+		java.awt.Rectangle b = chat.getBounds();
+		if (b == null)
+		{
+			return;
+		}
 		try
 		{
-			shiftFrRoot(FR_CHAT_ROOT, origin.x + FixedLayoutGeometry.CHAT_FX,
-				origin.y + FixedLayoutGeometry.CHAT_FY);
-			revalidateChatContent(); // nested chatbox interface must follow the moved slot
+			// Move the chat content by the delta between where it currently renders and the target,
+			// applied to its originalX/Y. Self-correcting whether its position is parent- or
+			// canvas-relative, and re-applied every frame after the layout script resets it.
+			int targetX = origin.x + FixedLayoutGeometry.CHAT_FX;
+			int targetY = origin.y + FixedLayoutGeometry.CHAT_FY;
+			chat.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
+			chat.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+			chat.setOriginalX(chat.getOriginalX() + (targetX - b.x));
+			chat.setOriginalY(chat.getOriginalY() + (targetY - b.y));
+			chat.revalidate();
 		}
 		catch (Exception ignored)
 		{
@@ -1839,23 +1856,9 @@ public class PvpEnhancerPlugin extends Plugin
 			origin.x + FixedLayoutGeometry.INV_FX, origin.y + FixedLayoutGeometry.INV_FY);
 		applyOrRestoreFrBlock(config.frMinimap(), FR_MM_ROOT,
 			origin.x + FixedLayoutGeometry.MM_FX, origin.y + FixedLayoutGeometry.MM_FY);
-		applyOrRestoreFrBlock(config.frChat(), FR_CHAT_ROOT,
-			origin.x + FixedLayoutGeometry.CHAT_FX, origin.y + FixedLayoutGeometry.CHAT_FY);
-		revalidateChatContent();
-	}
-
-	/**
-	 * The chatbox is a separate interface (group 162) nested into toplevel slot 96; revalidating the
-	 * slot does NOT re-lay-out the nested interface, so the chat doesn't follow the slot's move until
-	 * we revalidate its content explicitly.
-	 */
-	private void revalidateChatContent()
-	{
-		Widget chat = client.getWidget(162, 0);
-		if (chat != null)
-		{
-			chat.revalidate();
-		}
+		// Chat is handled per-frame in onBeforeRender: moving toplevel slot 96 does NOT move the
+		// chatbox (it's a separate interface, group 162, positioned by the layout script each frame),
+		// so its content widget is repositioned directly there instead.
 	}
 
 	/** Pins a block to (targetX,targetY) when enabled, else restores it to its native position. */
