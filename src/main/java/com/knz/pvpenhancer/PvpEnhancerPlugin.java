@@ -1821,6 +1821,13 @@ public class PvpEnhancerPlugin extends Plugin
 	/** True while we hold the camera in free mode for the experimental align feature (for restore). */
 	private boolean cameraModeOverridden;
 
+	/** Cached focal offset (world units) + the guide target it was solved for — recomputed only when the guide moves. */
+	private double frFocalOffX;
+	private double frFocalOffZ;
+	private boolean frFocalValid;
+	private int frLastTargetX = Integer.MIN_VALUE;
+	private int frLastTargetY = Integer.MIN_VALUE;
+
 	/**
 	 * Fixed-layout-in-resizable (B030): positions the minimap/inventory/chat where the movable guide
 	 * shows by setting each native WidgetOverlay's preferredLocation (RuneLite then places the
@@ -1925,12 +1932,14 @@ public class PvpEnhancerPlugin extends Plugin
 	private static final int FR_CAM_STEP = 64;
 
 	/**
-	 * Keeps the local player projected to the EXACT centre of the guide's scene box (both axes) by
-	 * driving the free-camera focal point. Solves the focal offset analytically from the projection
-	 * Jacobian (via {@link Perspective#localToCanvas}): with focal at the player the player renders at
-	 * the viewport centre, and moving the focal by ΔF shifts the player on screen by −J·ΔF, so
-	 * {@code F = player + J⁻¹·(viewportCentre − guideSceneCentre)}. Correct under any yaw/pitch/zoom,
-	 * so manual camera control still works. Self-restoring: when inactive we drop back to camera mode 0.
+	 * Keeps the local player at the guide's scene-box position by driving the free-camera focal point
+	 * to {@code player + ΔF}, where ΔF is a constant world offset. ΔF is recomputed <b>only when the
+	 * guide is moved</b> (its scene-centre target changes) — solving it every frame fed the camera's
+	 * own (eased) projection back into the solve, causing a feedback tremor when you rotate/zoom. With
+	 * ΔF fixed, walking keeps you exactly in place automatically (a constant world offset projects to
+	 * a constant screen offset), and manual rotate/zoom is left alone (no per-frame recompute). The
+	 * offset is solved from the projection Jacobian: {@code ΔF = J⁻¹·(viewportCentre − guideCentre)}.
+	 * Self-restoring: when inactive we drop back to camera mode 0.
 	 */
 	private void applyFixedLayoutCamera()
 	{
@@ -1945,6 +1954,8 @@ public class PvpEnhancerPlugin extends Plugin
 				client.setCameraMode(0); // hand the camera back to normal player-follow
 				cameraModeOverridden = false;
 			}
+			frFocalValid = false;
+			frLastTargetX = Integer.MIN_VALUE;
 			return;
 		}
 		LocalPoint lp = local.getLocalLocation();
@@ -1953,7 +1964,33 @@ public class PvpEnhancerPlugin extends Plugin
 			return;
 		}
 		int plane = client.getPlane();
-		// Project the player + two unit-offset ground points to build the screen-space Jacobian.
+		int tx = origin.x + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_W / 2;
+		int ty = origin.y + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_H / 2;
+
+		// Recompute ΔF only when the guide target moved — never per frame (that's the tremor).
+		if (!frFocalValid || tx != frLastTargetX || ty != frLastTargetY)
+		{
+			if (!solveFrFocalOffset(lp, plane, tx, ty))
+			{
+				return; // couldn't project this frame — keep the last offset, retry next frame
+			}
+			frLastTargetX = tx;
+			frLastTargetY = ty;
+		}
+
+		if (!cameraModeOverridden)
+		{
+			client.setCameraMode(1); // free camera — required for the focal-point setters to take effect
+			cameraModeOverridden = true;
+		}
+		client.setCameraFocalPointX(lp.getX() + frFocalOffX);
+		client.setCameraFocalPointZ(lp.getY() + frFocalOffZ);
+		client.setCameraFocalPointY(Perspective.getTileHeight(client, lp, plane) - 200);
+	}
+
+	/** Solves + caches the world focal offset that lands the player at screen (tx,ty). @return success. */
+	private boolean solveFrFocalOffset(LocalPoint lp, int plane, int tx, int ty)
+	{
 		net.runelite.api.Point p0 = Perspective.localToCanvas(client, lp, plane);
 		net.runelite.api.Point pe = Perspective.localToCanvas(client,
 			new LocalPoint(lp.getX() + FR_CAM_STEP, lp.getY()), plane);
@@ -1961,9 +1998,9 @@ public class PvpEnhancerPlugin extends Plugin
 			new LocalPoint(lp.getX(), lp.getY() + FR_CAM_STEP), plane);
 		if (p0 == null || pe == null || pn == null)
 		{
-			return; // off-screen this frame — try again next frame
+			return false;
 		}
-		// J columns: screen delta per +X (east) and per +Y (north) world step.
+		// Jacobian columns: screen delta per +X (east) / +Y (north) world step.
 		double jxx = (pe.getX() - p0.getX()) / (double) FR_CAM_STEP;
 		double jyx = (pe.getY() - p0.getY()) / (double) FR_CAM_STEP;
 		double jxy = (pn.getX() - p0.getX()) / (double) FR_CAM_STEP;
@@ -1971,28 +2008,14 @@ public class PvpEnhancerPlugin extends Plugin
 		double det = jxx * jyy - jxy * jyx;
 		if (Math.abs(det) < 1e-6)
 		{
-			return; // degenerate view (e.g. top-down) — can't solve this frame
+			return false; // degenerate view (e.g. top-down)
 		}
-
-		// Desired player screen pos = guide scene centre; reference = viewport centre (where the
-		// focal renders). worldOffset = J⁻¹ · (centre − target).
-		double cxScreen = client.getViewportXOffset() + client.getViewportWidth() / 2.0;
-		double cyScreen = client.getViewportYOffset() + client.getViewportHeight() / 2.0;
-		double tx = origin.x + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_W / 2.0;
-		double ty = origin.y + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_H / 2.0;
-		double sx = cxScreen - tx;
-		double sy = cyScreen - ty;
-		double offX = (jyy * sx - jxy * sy) / det;
-		double offZ = (-jyx * sx + jxx * sy) / det;
-
-		if (!cameraModeOverridden)
-		{
-			client.setCameraMode(1); // free camera — required for the focal-point setters to take effect
-			cameraModeOverridden = true;
-		}
-		client.setCameraFocalPointX(lp.getX() + offX);
-		client.setCameraFocalPointZ(lp.getY() + offZ);
-		client.setCameraFocalPointY(Perspective.getTileHeight(client, lp, plane) - 200);
+		double sx = (client.getViewportXOffset() + client.getViewportWidth() / 2.0) - tx;
+		double sy = (client.getViewportYOffset() + client.getViewportHeight() / 2.0) - ty;
+		frFocalOffX = (jyy * sx - jxy * sy) / det;
+		frFocalOffZ = (-jyx * sx + jxx * sy) / det;
+		frFocalValid = true;
+		return true;
 	}
 
 	private boolean anyAttackTimer()
