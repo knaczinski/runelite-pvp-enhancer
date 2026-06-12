@@ -739,7 +739,8 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			applyCombatTabLayout();
 			dumpResizableToplevelOnce();
-			applyFixedResizableLayout();
+			// The fixed-layout pins are applied in onBeforeRender (the last hook before drawing), so
+			// they beat any per-frame position override (e.g. a widget you moved by Alt-drag).
 		}
 		catch (Exception ex)
 		{
@@ -1389,35 +1390,30 @@ public class PvpEnhancerPlugin extends Plugin
 	@Subscribe
 	public void onBeforeRender(BeforeRender event)
 	{
-		Widget chat = client.getWidget(162, 0); // chatbox interface root
-		if (chat == null || chat.isHidden())
-		{
-			return;
-		}
-		boolean pin = config.fixedResizableLayout() && config.frChat() && client.getWidget(161, 0) != null;
 		try
 		{
-			if (!pin)
+			// Run the whole pin here (last hook before drawing) so it wins over any per-frame layout
+			// override — including a widget you moved by Alt-drag, whose saved position re-applies
+			// each frame and beat the old game-tick pin.
+			applyFixedResizableLayout();
+
+			// The chatbox is a separate interface (162) nested in slot 96; revalidate it so it follows
+			// the moved slot when pinned, and force it back to native (0,0) when unpinned so a
+			// previously-displaced chat reappears.
+			Widget chat = client.getWidget(162, 0);
+			if (chat != null && !chat.isHidden())
 			{
-				restoreChatNative(chat);
-				return;
+				boolean pin = config.fixedResizableLayout() && config.frChat()
+					&& client.getWidget(161, 0) != null;
+				if (pin)
+				{
+					chat.revalidate();
+				}
+				else
+				{
+					restoreChatNative(chat);
+				}
 			}
-			java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
-			java.awt.Rectangle b = chat.getBounds();
-			if (origin == null || b == null)
-			{
-				return;
-			}
-			// Move the chat content by the delta between where it currently renders and the target,
-			// applied to its originalX/Y. Self-correcting whether its position is parent- or
-			// canvas-relative, and re-applied every frame after the layout script resets it.
-			int targetX = origin.x + FixedLayoutGeometry.CHAT_FX;
-			int targetY = origin.y + FixedLayoutGeometry.CHAT_FY;
-			chat.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
-			chat.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
-			chat.setOriginalX(chat.getOriginalX() + (targetX - b.x));
-			chat.setOriginalY(chat.getOriginalY() + (targetY - b.y));
-			chat.revalidate();
 		}
 		catch (Exception ignored)
 		{
@@ -1871,9 +1867,10 @@ public class PvpEnhancerPlugin extends Plugin
 			origin.x + FixedLayoutGeometry.INV_FX, origin.y + FixedLayoutGeometry.INV_FY);
 		applyOrRestoreFrBlock(config.frMinimap(), FR_MM_ROOT,
 			origin.x + FixedLayoutGeometry.MM_FX, origin.y + FixedLayoutGeometry.MM_FY);
-		// Chat is handled per-frame in onBeforeRender: moving toplevel slot 96 does NOT move the
-		// chatbox (it's a separate interface, group 162, positioned by the layout script each frame),
-		// so its content widget is repositioned directly there instead.
+		// Chat: move the toplevel slot 96; the nested chatbox interface (162) is revalidated in
+		// onBeforeRender so it follows. (When unpinned it's restored to native there too.)
+		applyOrRestoreFrBlock(config.frChat(), FR_CHAT_ROOT,
+			origin.x + FixedLayoutGeometry.CHAT_FX, origin.y + FixedLayoutGeometry.CHAT_FY);
 	}
 
 	/** Pins a block to (targetX,targetY) when enabled, else restores it to its native position. */
