@@ -182,9 +182,10 @@ public class OverlayDemoService
 			}
 			misses = 0;
 			Widget[] kids = w.getChildren();
-			log.info("  {}: id={} bounds={} hidden={} oy={} oh={} dynKids={}",
-				child, w.getId(), w.getBounds(), w.isHidden(), w.getOriginalY(), w.getOriginalHeight(),
-				kids == null ? 0 : kids.length);
+			log.info("  {}: id={} parent={} bounds={} hidden={} ox={} oy={} ow={} oh={} xm={} ym={} dynKids={}",
+				child, w.getId(), w.getParentId(), w.getBounds(), w.isHidden(),
+				w.getOriginalX(), w.getOriginalY(), w.getOriginalWidth(), w.getOriginalHeight(),
+				w.getXPositionMode(), w.getYPositionMode(), kids == null ? 0 : kids.length);
 			// Dynamic children carry the spec-bar fill segments — log their bounds so the taller-bar
 			// resize can target the right widgets (the green fill, not just the frame).
 			if (kids != null && kids.length > 0)
