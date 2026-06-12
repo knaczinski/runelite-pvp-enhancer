@@ -374,23 +374,10 @@ public interface PvpEnhancerConfig extends Config
 		section = layoutSection, position = 3)
 	default boolean frChat() { return false; }
 
-	@Range(min = -400, max = 400)
-	@ConfigItem(keyName = "frNudgeX", name = "Nudge X",
-		description = "Fine-tune: shift all pinned blocks horizontally (px). Tip: with 'Show guide' on, "
-			+ "hold Alt and drag the guide outline to set this visually.",
-		section = layoutSection, position = 4)
-	default int frNudgeX() { return 0; }
-
-	@Range(min = -400, max = 400)
-	@ConfigItem(keyName = "frNudgeY", name = "Nudge Y",
-		description = "Fine-tune: shift all pinned blocks vertically (px).",
-		section = layoutSection, position = 5)
-	default int frNudgeY() { return 0; }
-
 	@ConfigItem(keyName = "frShowGuide", name = "Show guide",
-		description = "Draw reference outlines of the fixed-mode client (scene + inventory, minimap "
-			+ "and chat boxes) at their pinned positions, so you can gauge the layout. Visual only.",
-		section = layoutSection, position = 6)
+		description = "Show the fixed-mode outline (scene + inventory/minimap/chat boxes). Hold Alt and "
+			+ "drag it (yellow outline) to position the whole fixed layout — the pinned blocks follow.",
+		section = layoutSection, position = 4)
 	default boolean frShowGuide() { return false; }
 
 	// ─── Developer ────────────────────────────────────────────────────────────

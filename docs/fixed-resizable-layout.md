@@ -22,21 +22,25 @@ Block root top-left in fixed → offset from fixed scene centre:
 - Minimap+orbs panel ≈ (516, 4) → **(256, -167)**.
 - Chatbox = (0,338) → **(-260, 167)**.
 
-## Anchor: viewport TOP-LEFT, not centre
+## Anchor: drag the movable guide
 
-The virtual fixed scene is anchored at the **real viewport's top-left**, not its centre. The fixed
-scene is always 512×334, so its centre is a constant `(256,167)` from its left/top edge regardless
-of how wide the resizable window is. Earlier we used `viewportWidth/2`, which pushed every block
-further right as the window widened (and mis-drew the guide). Now:
+The guide is a real RuneLite **movable overlay** (`OverlayPosition.DETACHED`, `setMovable(true)`), so
+it gets the standard Alt-drag affordance (yellow outline) for free. Its on-screen top-left is the
+fixed-client origin. A block's live target is simply:
 
 ```
-cx = viewportXOffset + 256 + nudgeX      // 256 = SCENE_HALF_X, not window/2
-cy = viewportYOffset + 167 + nudgeY
-target(block) = (cx, cy) + offset(block)
+target(block) = guideTopLeft + (blockFixedX, blockFixedY)
 ```
 
-So the pinned scene starts at the same X/Y the client's scene starts, reproducing fixed-mode screen
-positions. The constants live in `util/FixedLayoutGeometry`, shared by the plugin and the guide.
+where `blockFixedX/Y` is the block's fixed-mode top-left within the 765×503 client (inventory
+(516,167), minimap (516,4), chat (0,338)). The guide draws its boxes at the same offsets, so the
+outline always matches where the live blocks land. Drag the guide to place the whole layout; on
+first use it centres itself on the canvas.
+
+Earlier iterations anchored to the viewport centre + Nudge sliders (and a viewport-centre auto-fit).
+That was replaced because the user wanted to drag the guide directly (and a custom MouseManager hack
+can't get the yellow-outline drag — RuneLite's own overlay-drag consumes Alt). The Nudge sliders and
+the `FixedLayoutGeometry.anchor(...)` auto-fit were removed.
 
 ## Per-block restore
 
@@ -51,15 +55,10 @@ reflecting into another plugin's state — fragile and Hub-disallowed). They are
 position them by hand. A native-buff-bar pin was tried and removed: most PKers use the Boost
 Information plugin instead, which this can't move.
 
-## Auto-fit on narrow windows (replaces the per-block clamp)
+## Narrow windows
 
-`FixedLayoutGeometry.anchor(...)` computes the anchor as the viewport centre, then — only when the
-enabled blocks don't fit — shifts the whole anchor as a group to bring them back on-screen,
-preserving their relative fixed-mode arrangement. Horizontal overflow is right-biased so the
-inventory stays fully visible and the character ends up right-of-centre of the fixed overlay (like
-fixed mode). On a wide window the shift is zero, so the centre-anchor behaviour is unchanged. The
-plugin and the guide overlay share this helper so they always agree. This replaced the old
-per-block on-screen clamp (which distorted the relative layout on narrow windows).
+With the movable guide, narrow windows are no longer a special case: the user drags the guide where
+it fits (it may extend past an edge — their choice). No clamp, no auto-fit.
 
 ## Fixed-size guide overlay (visual only)
 

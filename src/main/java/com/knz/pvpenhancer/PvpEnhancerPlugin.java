@@ -196,8 +196,6 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private PvpEnhancerPanel panel;
 	@Inject private DevPanel devPanel;
 	@Inject private EventBus eventBus;
-	@Inject private net.runelite.client.input.MouseManager mouseManager;
-	@Inject private com.knz.pvpenhancer.service.FixedLayoutGuideDragger guideDragger;
 	private NavigationButton navButton;
 	private NavigationButton devNavButton;
 	private boolean devNavAdded;
@@ -318,7 +316,6 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(ghostifyOutlineOverlay);
 		overlayManager.add(fixedLayoutGuideOverlay);
 		overlayManager.add(specBarOverlay);
-		mouseManager.registerMouseListener(guideDragger);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 		panel.setOnOpenDevPanel(() ->
@@ -366,7 +363,6 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(ghostifyOutlineOverlay);
 		overlayManager.remove(fixedLayoutGuideOverlay);
 		overlayManager.remove(specBarOverlay);
-		mouseManager.unregisterMouseListener(guideDragger);
 		restoreAllSkulls();
 		restoreCombatTab();
 		restoreFixedResizable();
@@ -1785,13 +1781,12 @@ public class PvpEnhancerPlugin extends Plugin
 	private static final int FR_CHAT_ROOT = 96;  // [0,338,519×165]  chatbox
 
 	/**
-	 * Fixed-layout-in-resizable (B030): in Resizable-Classic, repositions enabled UI blocks so they
-	 * sit at fixed-mode's distance from the character (viewport centre), preserving muscle memory.
+	 * Fixed-layout-in-resizable (B030): in Resizable-Classic, pins each enabled UI block so it sits at
+	 * the position the movable guide overlay shows — drag the guide to place the whole fixed layout.
 	 * Only each block's ROOT container is relocated (ABSOLUTE from the interface root); its children
-	 * ride along. The target is clamped on-screen so a narrow window can't push a block out of view.
-	 * A block that is currently un-pinned is restored individually (not just on master-off), so
-	 * unchecking one toggle returns that block to its native place. EXPERIMENTAL — fights the
-	 * relayout; offsets are tunable via frNudgeX/Y.
+	 * ride along. A block that is currently un-pinned is restored individually (not just on
+	 * master-off), so unchecking one toggle returns that block to its native place. EXPERIMENTAL —
+	 * fights the relayout.
 	 */
 	private void applyFixedResizableLayout()
 	{
@@ -1800,22 +1795,20 @@ public class PvpEnhancerPlugin extends Plugin
 			restoreFixedResizable();
 			return;
 		}
-		// Anchor at the viewport CENTRE (character) on a wide window; auto-shift the whole anchor when
-		// the window is too narrow so the inventory still fits (the character then sits right-of-centre
-		// of the fixed overlay, like fixed mode). Shared with the guide overlay so both match.
-		int[] a = FixedLayoutGeometry.anchor(client.getViewportXOffset(), client.getViewportYOffset(),
-			client.getViewportWidth(), client.getViewportHeight(),
-			client.getCanvasWidth(), client.getCanvasHeight(), config.frNudgeX(), config.frNudgeY(),
-			config.frInventory(), config.frMinimap(), config.frChat());
-		int cx = a[0];
-		int cy = a[1];
+		// The guide overlay's on-screen top-left is the fixed-client origin; blocks pin to it + their
+		// fixed-mode offset, so the live UI lands exactly where the guide shows it.
+		java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
+		if (origin == null)
+		{
+			return; // guide not laid out yet this frame — pin next tick
+		}
 
 		applyOrRestoreFrBlock(config.frInventory(), FR_INV_ROOT,
-			cx + FixedLayoutGeometry.INV_OFF_X, cy + FixedLayoutGeometry.INV_OFF_Y);
+			origin.x + FixedLayoutGeometry.INV_FX, origin.y + FixedLayoutGeometry.INV_FY);
 		applyOrRestoreFrBlock(config.frMinimap(), FR_MM_ROOT,
-			cx + FixedLayoutGeometry.MM_OFF_X, cy + FixedLayoutGeometry.MM_OFF_Y);
+			origin.x + FixedLayoutGeometry.MM_FX, origin.y + FixedLayoutGeometry.MM_FY);
 		applyOrRestoreFrBlock(config.frChat(), FR_CHAT_ROOT,
-			cx + FixedLayoutGeometry.CHAT_OFF_X, cy + FixedLayoutGeometry.CHAT_OFF_Y);
+			origin.x + FixedLayoutGeometry.CHAT_FX, origin.y + FixedLayoutGeometry.CHAT_FY);
 	}
 
 	/** Pins a block to (targetX,targetY) when enabled, else restores it to its native position. */
@@ -1848,14 +1841,12 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return; // hidden / not laid out yet — capture once it appears
 		}
-		// No per-block clamp: the anchor auto-fit (FixedLayoutGeometry.anchor) already keeps the
-		// enabled blocks on-screen as a group, preserving their relative fixed-mode arrangement.
-		int x = targetX;
-		int y = targetY;
+		// The user positions the whole layout by dragging the guide, so no per-block clamp — blocks
+		// land exactly where the guide shows them (off-screen is the user's choice).
 		w.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
 		w.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
-		w.setOriginalX(x);
-		w.setOriginalY(y);
+		w.setOriginalX(targetX);
+		w.setOriginalY(targetY);
 		w.revalidate();
 	}
 

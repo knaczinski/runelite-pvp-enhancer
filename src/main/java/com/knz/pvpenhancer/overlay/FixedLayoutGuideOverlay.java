@@ -6,6 +6,7 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.Stroke;
 import javax.inject.Inject;
 import net.runelite.api.Client;
@@ -14,22 +15,23 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
 /**
- * Visual-only reference for the fixed-layout-in-resizable feature (B030). Draws the fixed-mode
- * client footprint and scene, plus the inventory / minimap / chat boxes at the exact positions the
- * pin would move them to (viewport centre + each block's fixed offset + Nudge). Lets the user gauge
- * the layout and where clicks would land, without committing to actually moving the live widgets.
+ * The fixed-layout guide (B030): a movable overlay outlining the fixed-mode client (scene +
+ * inventory / minimap / chat boxes). Because it is a real RuneLite movable overlay, it gets the
+ * standard Alt-drag affordance (yellow outline) for free; drag it to position the fixed layout. Its
+ * on-screen top-left is the fixed-client origin — the plugin pins the live UI blocks to it via
+ * {@link #clientTopLeft()}.
  *
- * <p>Anchoring matches {@code applyFixedResizableLayout}: blocks are placed relative to the
- * viewport centre and clamped on-screen, so the guide reflects the real pinned result.
+ * <p>It always reports its size (so it stays positioned + draggable) while the feature is enabled,
+ * but only draws the outlines when "Show guide" is on.
  */
 public class FixedLayoutGuideOverlay extends Overlay
 {
-	private static final Color CLIENT_LINE = new Color(0xFF, 0xFF, 0xFF, 80);
-	private static final Color SCENE_LINE = new Color(0x4D, 0x96, 0xFF, 180);
-	private static final Color INV_LINE = new Color(0x6B, 0xCB, 0x77, 200);
-	private static final Color MM_LINE = new Color(0xFF, 0xD9, 0x3D, 200);
-	private static final Color CHAT_LINE = new Color(0xFF, 0x6B, 0x6B, 200);
-	private static final Color LABEL = new Color(0xFF, 0xFF, 0xFF, 220);
+	private static final Color CLIENT_LINE = new Color(0xFF, 0xFF, 0xFF, 110);
+	private static final Color SCENE_LINE = new Color(0x4D, 0x96, 0xFF, 190);
+	private static final Color INV_LINE = new Color(0x6B, 0xCB, 0x77, 210);
+	private static final Color MM_LINE = new Color(0xFF, 0xD9, 0x3D, 210);
+	private static final Color CHAT_LINE = new Color(0xFF, 0x6B, 0x6B, 210);
+	private static final Color LABEL = new Color(0xFF, 0xFF, 0xFF, 230);
 
 	private static final Stroke SOLID = new BasicStroke(1.5f);
 	private static final Stroke DASHED = new BasicStroke(1f, BasicStroke.CAP_BUTT,
@@ -38,77 +40,82 @@ public class FixedLayoutGuideOverlay extends Overlay
 	private final Client client;
 	private final PvpEnhancerConfig config;
 
-	/** The fixed-client outline = the Alt-drag handle, in canvas coords; null when the guide is hidden. */
-	private volatile java.awt.Rectangle dragBounds;
-
-	/** @return the current drag-handle bounds (canvas coords), or null if the guide isn't shown. */
-	public java.awt.Rectangle getDragBounds()
-	{
-		return dragBounds;
-	}
-
 	@Inject
 	FixedLayoutGuideOverlay(Client client, PvpEnhancerConfig config)
 	{
 		this.client = client;
 		this.config = config;
-		setPosition(OverlayPosition.DYNAMIC);
+		setPosition(OverlayPosition.DETACHED);
 		setLayer(OverlayLayer.ABOVE_SCENE);
-		setMovable(false);
+		setMovable(true);   // standard Alt-drag (yellow outline) handled by RuneLite
+		setSnappable(false);
+		setResizable(false);
+	}
+
+	/** @return the guide's current on-screen top-left = the fixed-client origin, or null if unplaced. */
+	public Point clientTopLeft()
+	{
+		java.awt.Rectangle b = getBounds();
+		return (b == null || b.width == 0) ? null : new Point(b.x, b.y);
 	}
 
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (!config.fixedResizableLayout() || !config.frShowGuide())
+		if (!config.fixedResizableLayout())
 		{
-			dragBounds = null;
 			return null;
 		}
 
-		// Shared anchor (centre + auto-fit) — matches the live pin in applyFixedResizableLayout.
-		int[] a = FixedLayoutGeometry.anchor(client.getViewportXOffset(), client.getViewportYOffset(),
-			client.getViewportWidth(), client.getViewportHeight(),
-			client.getCanvasWidth(), client.getCanvasHeight(), config.frNudgeX(), config.frNudgeY(),
-			config.frInventory(), config.frMinimap(), config.frChat());
-		int cx = a[0];
-		int cy = a[1];
+		// First placement: centre the fixed client on the canvas so it starts somewhere sensible.
+		if (getPreferredLocation() == null)
+		{
+			int x = Math.max(0, (client.getCanvasWidth() - FixedLayoutGeometry.CLIENT_W) / 2);
+			int y = Math.max(0, (client.getCanvasHeight() - FixedLayoutGeometry.CLIENT_H) / 2);
+			setPreferredLocation(new Point(x, y));
+		}
 
-		// Fixed scene (3D viewport) centred on the resizable viewport centre.
-		int sceneX = cx - FixedLayoutGeometry.SCENE_HALF_X;
-		int sceneY = cy - FixedLayoutGeometry.SCENE_HALF_Y;
+		// Only paint when the guide is shown; still report size so it stays positioned + draggable.
+		if (config.frShowGuide())
+		{
+			drawGuide(graphics);
+		}
+		return new Dimension(FixedLayoutGeometry.CLIENT_W, FixedLayoutGeometry.CLIENT_H);
+	}
 
-		// Whole fixed client footprint (scene sits SCENE_INSET inside it). Also the Alt-drag handle.
-		int clientX = sceneX - FixedLayoutGeometry.SCENE_INSET;
-		int clientY = sceneY - FixedLayoutGeometry.SCENE_INSET;
-		dragBounds = new java.awt.Rectangle(clientX, clientY,
-			FixedLayoutGeometry.CLIENT_W, FixedLayoutGeometry.CLIENT_H);
+	/** Draws everything relative to the overlay origin (0,0) = the fixed-client top-left. */
+	private void drawGuide(Graphics2D graphics)
+	{
+		graphics.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+			java.awt.RenderingHints.VALUE_ANTIALIAS_OFF);
+
+		// Client footprint (the drag handle).
 		graphics.setStroke(DASHED);
 		graphics.setColor(CLIENT_LINE);
-		graphics.drawRect(clientX, clientY, FixedLayoutGeometry.CLIENT_W, FixedLayoutGeometry.CLIENT_H);
+		graphics.drawRect(0, 0, FixedLayoutGeometry.CLIENT_W - 1, FixedLayoutGeometry.CLIENT_H - 1);
 
+		// Fixed scene.
 		graphics.setStroke(SOLID);
 		graphics.setColor(SCENE_LINE);
-		graphics.drawRect(sceneX, sceneY, FixedLayoutGeometry.SCENE_W, FixedLayoutGeometry.SCENE_H);
-		label(graphics, "scene", sceneX + 3, sceneY + 12);
+		graphics.drawRect(FixedLayoutGeometry.SCENE_INSET, FixedLayoutGeometry.SCENE_INSET,
+			FixedLayoutGeometry.SCENE_W, FixedLayoutGeometry.SCENE_H);
+		label(graphics, "scene", FixedLayoutGeometry.SCENE_INSET + 3, FixedLayoutGeometry.SCENE_INSET + 12);
 
-		// Block boxes — only those that are (or would be) pinned.
 		if (config.frInventory())
 		{
-			box(graphics, INV_LINE, "inventory", cx + FixedLayoutGeometry.INV_OFF_X,
-				cy + FixedLayoutGeometry.INV_OFF_Y, FixedLayoutGeometry.INV_W, FixedLayoutGeometry.INV_H);
+			box(graphics, INV_LINE, "inventory", FixedLayoutGeometry.INV_FX, FixedLayoutGeometry.INV_FY,
+				FixedLayoutGeometry.INV_W, FixedLayoutGeometry.INV_H);
 		}
 		if (config.frMinimap())
 		{
-			box(graphics, MM_LINE, "minimap", cx + FixedLayoutGeometry.MM_OFF_X,
-				cy + FixedLayoutGeometry.MM_OFF_Y, FixedLayoutGeometry.MM_W, FixedLayoutGeometry.MM_H);
+			box(graphics, MM_LINE, "minimap", FixedLayoutGeometry.MM_FX, FixedLayoutGeometry.MM_FY,
+				FixedLayoutGeometry.MM_W, FixedLayoutGeometry.MM_H);
 		}
 		if (config.frChat())
 		{
-			box(graphics, CHAT_LINE, "chat", cx + FixedLayoutGeometry.CHAT_OFF_X,
-				cy + FixedLayoutGeometry.CHAT_OFF_Y, FixedLayoutGeometry.CHAT_W, FixedLayoutGeometry.CHAT_H);
+			box(graphics, CHAT_LINE, "chat", FixedLayoutGeometry.CHAT_FX, FixedLayoutGeometry.CHAT_FY,
+				FixedLayoutGeometry.CHAT_W, FixedLayoutGeometry.CHAT_H);
 		}
-		return null;
 	}
 
 	private void box(Graphics2D g, Color color, String text, int x, int y, int w, int h)
