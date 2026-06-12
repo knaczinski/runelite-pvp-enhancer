@@ -1850,7 +1850,14 @@ public class PvpEnhancerPlugin extends Plugin
 		w.revalidate();
 	}
 
-	/** @return captured [xMode, yMode, origX, origY, nativeAbsX, nativeAbsY, w, h], or null if not laid out. */
+	/**
+	 * Captures a block-root's native position mode + originalX/Y for restore, returning the base.
+	 * Only the mode + originalX/Y are needed (the absolute target is computed from the guide), so
+	 * this no longer rejects widgets by their on-screen bounds — a chat that was moved off-screen or
+	 * sits at unusual coords still pins. Skips only widgets that don't exist or are hidden.
+	 *
+	 * @return captured [xMode, yMode, origX, origY], or null if the widget is absent/hidden.
+	 */
 	private int[] captureFr(int child)
 	{
 		int[] existing = frBase.get(child);
@@ -1859,17 +1866,11 @@ public class PvpEnhancerPlugin extends Plugin
 			return existing;
 		}
 		Widget w = client.getWidget(161, child);
-		if (w == null)
+		if (w == null || w.isHidden())
 		{
-			return null;
+			return null; // not present / collapsed — nothing to pin yet
 		}
-		java.awt.Rectangle bb = w.getBounds();
-		if (bb == null || bb.x < 0 || bb.y < 0 || bb.width <= 0 || bb.height <= 0)
-		{
-			return null; // hidden / not laid out — capture native position later
-		}
-		int[] base = {w.getXPositionMode(), w.getYPositionMode(), w.getOriginalX(), w.getOriginalY(),
-			bb.x, bb.y, bb.width, bb.height};
+		int[] base = {w.getXPositionMode(), w.getYPositionMode(), w.getOriginalX(), w.getOriginalY()};
 		frBase.put(child, base);
 		return base;
 	}
