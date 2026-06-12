@@ -38,6 +38,15 @@ public class FixedLayoutGuideOverlay extends Overlay
 	private final Client client;
 	private final PvpEnhancerConfig config;
 
+	/** The fixed-client outline = the Alt-drag handle, in canvas coords; null when the guide is hidden. */
+	private volatile java.awt.Rectangle dragBounds;
+
+	/** @return the current drag-handle bounds (canvas coords), or null if the guide isn't shown. */
+	public java.awt.Rectangle getDragBounds()
+	{
+		return dragBounds;
+	}
+
 	@Inject
 	FixedLayoutGuideOverlay(Client client, PvpEnhancerConfig config)
 	{
@@ -53,6 +62,7 @@ public class FixedLayoutGuideOverlay extends Overlay
 	{
 		if (!config.fixedResizableLayout() || !config.frShowGuide())
 		{
+			dragBounds = null;
 			return null;
 		}
 
@@ -68,11 +78,14 @@ public class FixedLayoutGuideOverlay extends Overlay
 		int sceneX = cx - FixedLayoutGeometry.SCENE_HALF_X;
 		int sceneY = cy - FixedLayoutGeometry.SCENE_HALF_Y;
 
-		// Whole fixed client footprint (scene sits SCENE_INSET inside it).
+		// Whole fixed client footprint (scene sits SCENE_INSET inside it). Also the Alt-drag handle.
+		int clientX = sceneX - FixedLayoutGeometry.SCENE_INSET;
+		int clientY = sceneY - FixedLayoutGeometry.SCENE_INSET;
+		dragBounds = new java.awt.Rectangle(clientX, clientY,
+			FixedLayoutGeometry.CLIENT_W, FixedLayoutGeometry.CLIENT_H);
 		graphics.setStroke(DASHED);
 		graphics.setColor(CLIENT_LINE);
-		graphics.drawRect(sceneX - FixedLayoutGeometry.SCENE_INSET, sceneY - FixedLayoutGeometry.SCENE_INSET,
-			FixedLayoutGeometry.CLIENT_W, FixedLayoutGeometry.CLIENT_H);
+		graphics.drawRect(clientX, clientY, FixedLayoutGeometry.CLIENT_W, FixedLayoutGeometry.CLIENT_H);
 
 		graphics.setStroke(SOLID);
 		graphics.setColor(SCENE_LINE);

@@ -376,8 +376,8 @@ public interface PvpEnhancerConfig extends Config
 
 	@Range(min = -400, max = 400)
 	@ConfigItem(keyName = "frNudgeX", name = "Nudge X",
-		description = "Fine-tune: shift all pinned blocks horizontally (px). Tune until clicks land "
-			+ "where fixed-mode muscle memory expects.",
+		description = "Fine-tune: shift all pinned blocks horizontally (px). Tip: with 'Show guide' on, "
+			+ "hold Alt and drag the guide outline to set this visually.",
 		section = layoutSection, position = 4)
 	default int frNudgeX() { return 0; }
 

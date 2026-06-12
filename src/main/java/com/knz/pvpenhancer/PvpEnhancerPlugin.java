@@ -196,6 +196,8 @@ public class PvpEnhancerPlugin extends Plugin
 	@Inject private PvpEnhancerPanel panel;
 	@Inject private DevPanel devPanel;
 	@Inject private EventBus eventBus;
+	@Inject private net.runelite.client.input.MouseManager mouseManager;
+	@Inject private com.knz.pvpenhancer.service.FixedLayoutGuideDragger guideDragger;
 	private NavigationButton navButton;
 	private NavigationButton devNavButton;
 	private boolean devNavAdded;
@@ -316,6 +318,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.add(ghostifyOutlineOverlay);
 		overlayManager.add(fixedLayoutGuideOverlay);
 		overlayManager.add(specBarOverlay);
+		mouseManager.registerMouseListener(guideDragger);
 
 		panel.setOnOpenConfig(() -> eventBus.post(new OverlayMenuClicked(configMenuEntry, configAnchor)));
 		panel.setOnOpenDevPanel(() ->
@@ -363,6 +366,7 @@ public class PvpEnhancerPlugin extends Plugin
 		overlayManager.remove(ghostifyOutlineOverlay);
 		overlayManager.remove(fixedLayoutGuideOverlay);
 		overlayManager.remove(specBarOverlay);
+		mouseManager.unregisterMouseListener(guideDragger);
 		restoreAllSkulls();
 		restoreCombatTab();
 		restoreFixedResizable();
