@@ -1389,6 +1389,7 @@ public class PvpEnhancerPlugin extends Plugin
 				{
 					shiftFrRoot(FR_CHAT_ROOT, origin.x + FixedLayoutGeometry.CHAT_FX,
 						origin.y + FixedLayoutGeometry.CHAT_FY);
+					revalidateChatContent(); // nested chatbox interface must follow the moved slot
 				}
 				catch (Exception ignored)
 				{
@@ -1829,6 +1830,21 @@ public class PvpEnhancerPlugin extends Plugin
 			origin.x + FixedLayoutGeometry.MM_FX, origin.y + FixedLayoutGeometry.MM_FY);
 		applyOrRestoreFrBlock(config.frChat(), FR_CHAT_ROOT,
 			origin.x + FixedLayoutGeometry.CHAT_FX, origin.y + FixedLayoutGeometry.CHAT_FY);
+		revalidateChatContent();
+	}
+
+	/**
+	 * The chatbox is a separate interface (group 162) nested into toplevel slot 96; revalidating the
+	 * slot does NOT re-lay-out the nested interface, so the chat doesn't follow the slot's move until
+	 * we revalidate its content explicitly.
+	 */
+	private void revalidateChatContent()
+	{
+		Widget chat = client.getWidget(162, 0);
+		if (chat != null)
+		{
+			chat.revalidate();
+		}
 	}
 
 	/** Pins a block to (targetX,targetY) when enabled, else restores it to its native position. */
