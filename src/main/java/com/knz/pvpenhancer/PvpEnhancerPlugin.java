@@ -1389,27 +1389,25 @@ public class PvpEnhancerPlugin extends Plugin
 	@Subscribe
 	public void onBeforeRender(BeforeRender event)
 	{
-		if (!config.fixedResizableLayout() || !config.frChat() || client.getWidget(161, 0) == null)
-		{
-			return;
-		}
-		java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
-		if (origin == null)
-		{
-			return;
-		}
 		Widget chat = client.getWidget(162, 0); // chatbox interface root
 		if (chat == null || chat.isHidden())
 		{
 			return;
 		}
-		java.awt.Rectangle b = chat.getBounds();
-		if (b == null)
-		{
-			return;
-		}
+		boolean pin = config.fixedResizableLayout() && config.frChat() && client.getWidget(161, 0) != null;
 		try
 		{
+			if (!pin)
+			{
+				restoreChatNative(chat);
+				return;
+			}
+			java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
+			java.awt.Rectangle b = chat.getBounds();
+			if (origin == null || b == null)
+			{
+				return;
+			}
 			// Move the chat content by the delta between where it currently renders and the target,
 			// applied to its originalX/Y. Self-correcting whether its position is parent- or
 			// canvas-relative, and re-applied every frame after the layout script resets it.
@@ -1424,6 +1422,23 @@ public class PvpEnhancerPlugin extends Plugin
 		catch (Exception ignored)
 		{
 			// experimental relayout hack — never let it break the frame
+		}
+	}
+
+	/**
+	 * Restores the chatbox root to its native layout (originalX/Y = 0, absolute top-left = it fills
+	 * its slot) so a previously-pinned chat reappears when Pin chat is turned off. Guarded so it only
+	 * revalidates when actually displaced — the layout script then keeps it native each frame.
+	 */
+	private void restoreChatNative(Widget chat)
+	{
+		if (chat.getOriginalX() != 0 || chat.getOriginalY() != 0)
+		{
+			chat.setXPositionMode(WidgetPositionMode.ABSOLUTE_LEFT);
+			chat.setYPositionMode(WidgetPositionMode.ABSOLUTE_TOP);
+			chat.setOriginalX(0);
+			chat.setOriginalY(0);
+			chat.revalidate();
 		}
 	}
 
