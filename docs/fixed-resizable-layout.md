@@ -55,27 +55,16 @@ reflecting into another plugin's state — fragile and Hub-disallowed). They are
 position them by hand. A native-buff-bar pin was tried and removed: most PKers use the Boost
 Information plugin instead, which this can't move.
 
-## Camera follows the guide (exact fixed replica)
+## Camera
 
-Dragging the guide moves the whole fixed client: the UI blocks pin to it (via the WidgetOverlays)
-AND the camera pans so the **local player projects to the exact centre of the guide's scene box**,
-in both axes — i.e. the character sits where it would in fixed mode, wherever you place the guide.
-
-Mechanism (`applyFixedLayoutCamera`, every frame in `onBeforeRender`): enter free-camera mode
-(`setCameraMode(1)` — the focal-point setters do nothing otherwise) and solve the focal point
-analytically. With the focal at the player, the player renders at the viewport centre; moving the
-focal by ΔF shifts the player on screen by −J·ΔF, where J is the projection Jacobian built from
-`Perspective.localToCanvas(player)` and two unit-offset ground points. So
-`focal = player + J⁻¹·(viewportCentre − guideSceneCentre)`. This is correct under any yaw / pitch /
-zoom, so manual camera control keeps working and the character stays pinned. Restored to camera mode
-0 when the feature is off / not in Resizable-Classic / on shutdown — the master Enable is the only
-escape. Void at scene edges is accepted (rare in PvP). There are no Lock/Align/Strength configs —
-the camera always tracks the guide exactly.
+No camera manipulation. A free-camera-mode approach (pan the camera so the character sits in the
+guide's scene box) was prototyped and **removed** — keeping it exact, tremor-free, and non-fighting
+with manual rotate/zoom proved too fragile across the easing/feedback behaviour. The feature now only
+repositions the UI blocks; the character renders wherever the normal camera puts it.
 
 ## Narrow windows
 
-With the movable guide + camera, narrow windows are no longer a special case: drag the guide where
-it fits and the camera keeps the character in its scene box.
+The user drags the guide (and thus the pinned UI) wherever it fits; no clamp, no camera.
 
 ## Fixed-size guide overlay (visual only)
 

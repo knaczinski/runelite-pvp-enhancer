@@ -94,8 +94,6 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.Perspective;
-import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.BeforeRender;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameTick;
@@ -367,11 +365,6 @@ public class PvpEnhancerPlugin extends Plugin
 		restoreAllSkulls();
 		restoreCombatTab();
 		restoreFixedResizable();
-		if (cameraModeOverridden)
-		{
-			client.setCameraMode(0);
-			cameraModeOverridden = false;
-		}
 		unregisterGhostifyListener();
 		clientToolbar.removeNavigation(navButton);
 		if (devNavAdded)
@@ -1395,12 +1388,10 @@ public class PvpEnhancerPlugin extends Plugin
 	@Subscribe
 	public void onBeforeRender(BeforeRender event)
 	{
-		// Set the WidgetOverlay preferredLocations before overlay rendering positions the widgets, then
-		// drive the camera so the character lands at the guide's scene centre.
+		// Set the WidgetOverlay preferredLocations before overlay rendering positions the widgets.
 		try
 		{
 			applyFixedResizableLayout();
-			applyFixedLayoutCamera();
 		}
 		catch (Exception ignored)
 		{
@@ -1818,14 +1809,6 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Overlay name → the user's preferredLocation before we overrode it (value may be null). */
 	private final Map<String, java.awt.Point> frSavedLoc = new HashMap<>();
 
-	/** True while we hold the camera in free mode for the experimental align feature (for restore). */
-	private boolean cameraModeOverridden;
-
-	/** Integrated world focal offset that lands the player on the guide target (feedback-controlled). */
-	private double frFocalOffX;
-	private double frFocalOffZ;
-	private boolean frFocalActive;
-
 	/**
 	 * Fixed-layout-in-resizable (B030): positions the minimap/inventory/chat where the movable guide
 	 * shows by setting each native WidgetOverlay's preferredLocation (RuneLite then places the
@@ -1924,97 +1907,6 @@ public class PvpEnhancerPlugin extends Plugin
 		restoreFrOverlay(frInvOverlay);
 		restoreFrOverlay(frMmOverlay);
 		restoreFrOverlay(frChatOverlay);
-	}
-
-	/** Probe step (world units, 4 tiles) for the projection Jacobian — large to keep it low-noise. */
-	private static final int FR_CAM_STEP = 512;
-	/** Fraction of the screen error corrected per frame (integral gain). Low enough to never overshoot. */
-	private static final double FR_CAM_DAMP = 0.35;
-	/** Don't nudge the camera once the player is within this many px of the target (kills idle shimmer). */
-	private static final int FR_CAM_DEADZONE = 3;
-
-	/**
-	 * Keeps the local player at the guide's scene-box centre by driving the free-camera focal point
-	 * with a damped feedback loop: each frame it measures where the player actually projects
-	 * ({@link Perspective#localToCanvas}), and nudges the focal offset toward landing it on the target
-	 * — by a fraction of the error (no overshoot), and not at all inside a small deadzone (no idle
-	 * tremor). Self-correcting (assumes nothing about free-camera framing), tracks rotation/zoom, and
-	 * converges exactly. Walking is free (a settled world offset projects to a fixed screen spot).
-	 * Self-restoring: drops back to camera mode 0 when inactive.
-	 */
-	private void applyFixedLayoutCamera()
-	{
-		Player local = client.getLocalPlayer();
-		java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
-		boolean active = config.fixedResizableLayout() && client.getWidget(161, 0) != null
-			&& local != null && origin != null;
-		if (!active)
-		{
-			if (cameraModeOverridden)
-			{
-				client.setCameraMode(0); // hand the camera back to normal player-follow
-				client.setCameraShakeDisabled(false);
-				cameraModeOverridden = false;
-			}
-			frFocalActive = false;
-			return;
-		}
-		LocalPoint lp = local.getLocalLocation();
-		if (lp == null)
-		{
-			return;
-		}
-		int plane = client.getPlane();
-		if (!frFocalActive)
-		{
-			frFocalOffX = 0;
-			frFocalOffZ = 0;
-			frFocalActive = true;
-		}
-		if (!cameraModeOverridden)
-		{
-			client.setCameraMode(1); // free camera — required for the focal-point setters to take effect
-			client.setCameraShakeDisabled(true);
-			cameraModeOverridden = true;
-		}
-
-		// Where the player currently projects vs where we want it (guide scene centre).
-		net.runelite.api.Point sp = Perspective.localToCanvas(client, lp, plane);
-		if (sp != null)
-		{
-			int tx = origin.x + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_W / 2;
-			int ty = origin.y + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_H / 2;
-			double errX = tx - sp.getX();
-			double errY = ty - sp.getY();
-			if (Math.abs(errX) > FR_CAM_DEADZONE || Math.abs(errY) > FR_CAM_DEADZONE)
-			{
-				// Jacobian (screen delta per +X east / +Y north world step), from a large probe.
-				net.runelite.api.Point pe = Perspective.localToCanvas(client,
-					new LocalPoint(lp.getX() + FR_CAM_STEP, lp.getY()), plane);
-				net.runelite.api.Point pn = Perspective.localToCanvas(client,
-					new LocalPoint(lp.getX(), lp.getY() + FR_CAM_STEP), plane);
-				if (pe != null && pn != null)
-				{
-					double jxx = (pe.getX() - sp.getX()) / (double) FR_CAM_STEP;
-					double jyx = (pe.getY() - sp.getY()) / (double) FR_CAM_STEP;
-					double jxy = (pn.getX() - sp.getX()) / (double) FR_CAM_STEP;
-					double jyy = (pn.getY() - sp.getY()) / (double) FR_CAM_STEP;
-					double det = jxx * jyy - jxy * jyx;
-					if (Math.abs(det) > 1e-6)
-					{
-						// Move the focal opposite the desired player shift: δF = -J⁻¹·error.
-						double dX = -(jyy * errX - jxy * errY) / det;
-						double dZ = -(-jyx * errX + jxx * errY) / det;
-						frFocalOffX += FR_CAM_DAMP * dX;
-						frFocalOffZ += FR_CAM_DAMP * dZ;
-					}
-				}
-			}
-		}
-
-		client.setCameraFocalPointX(lp.getX() + frFocalOffX);
-		client.setCameraFocalPointZ(lp.getY() + frFocalOffZ);
-		client.setCameraFocalPointY(Perspective.getTileHeight(client, lp, plane) - 200);
 	}
 
 	private boolean anyAttackTimer()

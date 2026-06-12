@@ -353,9 +353,8 @@ public interface PvpEnhancerConfig extends Config
 
 	@ConfigItem(keyName = "fixedResizableLayout", name = "Enable",
 		description = "Master switch (Resizable-Classic only). Pins the inventory/minimap/chat to "
-			+ "fixed-mode positions and pans the camera (free-camera mode) so your character renders "
-			+ "exactly where it would in fixed mode — drag the guide to move the whole fixed client. "
-			+ "EXPERIMENTAL: this takes over the camera; disable to restore normal camera.",
+			+ "fixed-mode positions relative to where you place the guide, so fixed-mode muscle memory "
+			+ "carries over. EXPERIMENTAL.",
 		section = layoutSection, position = 0)
 	default boolean fixedResizableLayout() { return false; }
 
@@ -377,9 +376,7 @@ public interface PvpEnhancerConfig extends Config
 
 	@ConfigItem(keyName = "frShowGuide", name = "Show guide",
 		description = "Show the fixed-mode outline (scene + inventory/minimap/chat boxes). Hold Alt and "
-			+ "drag it (yellow outline) to move the whole fixed client anywhere — the pinned UI blocks "
-			+ "follow AND the camera pans (free-camera) so your character stays at the exact fixed "
-			+ "scene position. Disable the feature to restore the normal camera.",
+			+ "drag it (yellow outline) to position the layout — the pinned UI blocks follow.",
 		section = layoutSection, position = 4)
 	default boolean frShowGuide() { return false; }
 
