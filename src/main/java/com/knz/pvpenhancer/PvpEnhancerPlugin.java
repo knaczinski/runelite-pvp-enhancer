@@ -366,6 +366,11 @@ public class PvpEnhancerPlugin extends Plugin
 		restoreAllSkulls();
 		restoreCombatTab();
 		restoreFixedResizable();
+		if (cameraModeOverridden)
+		{
+			client.setCameraMode(0);
+			cameraModeOverridden = false;
+		}
 		unregisterGhostifyListener();
 		clientToolbar.removeNavigation(navButton);
 		if (devNavAdded)
@@ -1392,6 +1397,7 @@ public class PvpEnhancerPlugin extends Plugin
 		// Set the WidgetOverlay preferredLocations before overlay rendering positions the widgets.
 		try
 		{
+			lockGuideToCharacter();
 			applyFixedResizableLayout();
 			applyFixedLayoutCamera();
 		}
@@ -1399,6 +1405,24 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			// experimental relayout hack — never let it break the frame
 		}
+	}
+
+	/**
+	 * When "Lock to character" is on, forces the guide's scene box centred on the viewport centre
+	 * (where the character renders) — the exact fixed-mode replica. The user can't drag it while
+	 * locked; unlock to position it freely.
+	 */
+	private void lockGuideToCharacter()
+	{
+		if (!config.fixedResizableLayout() || !config.frLockGuide())
+		{
+			return;
+		}
+		int cx = client.getViewportXOffset() + client.getViewportWidth() / 2;
+		int cy = client.getViewportYOffset() + client.getViewportHeight() / 2;
+		int gx = cx - (FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_W / 2);
+		int gy = cy - (FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_H / 2);
+		fixedLayoutGuideOverlay.setPreferredLocation(new java.awt.Point(gx, gy));
 	}
 
 	/** Drops debuff timers + skull state for a player who leaves the scene (e.g. teleports away). */
@@ -1811,6 +1835,9 @@ public class PvpEnhancerPlugin extends Plugin
 	/** Overlay name → the user's preferredLocation before we overrode it (value may be null). */
 	private final Map<String, java.awt.Point> frSavedLoc = new HashMap<>();
 
+	/** True while we hold the camera in free mode for the experimental align feature (for restore). */
+	private boolean cameraModeOverridden;
+
 	/**
 	 * Fixed-layout-in-resizable (B030): positions the minimap/inventory/chat where the movable guide
 	 * shows by setting each native WidgetOverlay's preferredLocation (RuneLite then places the
@@ -1920,8 +1947,15 @@ public class PvpEnhancerPlugin extends Plugin
 	 */
 	private void applyFixedLayoutCamera()
 	{
-		if (!config.fixedResizableLayout() || !config.frCameraAlign() || client.getWidget(161, 0) == null)
+		boolean active = config.fixedResizableLayout() && config.frCameraAlign()
+			&& client.getWidget(161, 0) != null;
+		if (!active)
 		{
+			if (cameraModeOverridden)
+			{
+				client.setCameraMode(0); // back to the normal player-follow camera
+				cameraModeOverridden = false;
+			}
 			return;
 		}
 		Player local = client.getLocalPlayer();
@@ -1934,6 +1968,13 @@ public class PvpEnhancerPlugin extends Plugin
 		if (lp == null)
 		{
 			return;
+		}
+		// The focal-point setters only take effect in free-camera mode; enter it (yaw/pitch/zoom still
+		// orbit the focal point we set each frame, so it tracks the player + offset).
+		if (!cameraModeOverridden)
+		{
+			client.setCameraMode(1);
+			cameraModeOverridden = true;
 		}
 		// Pixel gap: where we want the character (guide scene centre) minus where it renders now
 		// (viewport centre).
@@ -1957,6 +1998,8 @@ public class PvpEnhancerPlugin extends Plugin
 
 		client.setCameraFocalPointX(lp.getX() + offX);
 		client.setCameraFocalPointZ(lp.getY() + offZ);
+		// Look at roughly the player's mid-height so free-camera framing matches the normal camera.
+		client.setCameraFocalPointY(net.runelite.api.Perspective.getTileHeight(client, lp, client.getPlane()) - 200);
 	}
 
 	private boolean anyAttackTimer()
