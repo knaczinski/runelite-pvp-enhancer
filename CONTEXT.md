@@ -6,9 +6,35 @@ format: caveman lite. re-baseline the full narrative at session end, not just la
 
 # PROJECT STATE
 
-latest_session: S015
-phase: Phases 1-5 code-complete + S015 prayer/hit-cue/attack-timer/spec-bar batch. Only B008 open (live-data-gated). Live validation pending.
+latest_session: S016
+phase: Phases 1-5 code-complete + S016 fix/feature batch + B030 fixed-layout-in-resizable landed (camera dropped). Only B008 open (live-data-gated). Live validation pending.
 status: active
+
+## Current Focus (S016)
+
+Long live-tested turn. Big fix/feature batch + B030 breakthrough.
+- **Combos**: eat + gear over a 2-tick sliding window (consecutive-tick clusters register). New
+  `comboPopups` (Never/In combat/Always). Combo detection moved early in onGameTick + relayout
+  try/catch so a cosmetic NPE can't kill combos.
+- **Duel/PvP Arena**: hit predict + combat-state work where XP is blocked (fallback to own hitsplat,
+  `Hitsplat.isMine()`, de-duped vs XP).
+- **Attack timer**: decoupled from AnimationStyleMap (unmapped weapons like Eclipse atlatl work).
+- **PID**: small over-head star + "pid" label over the likely holder, 1v1-only, shows from fight start.
+- **Hit predict**: `hitPredictAnchor` (over opponent / over me). **Heal**: `healNumberStyle` breakdown
+  "65 + 25 = 90". **Ghostify**: Others "Can't attack here + idle". **Heartbeat**: size + intensity.
+- **Spec bar**: native resize abandoned (fill layers auto-sized) → new movable `SpecBarOverlay` HUD
+  (reads VarPlayerID.SA_ENERGY). Removed specBarExtraHeight + applyCombatTabLayout.
+- **Config reorg**: Screen alerts / Targeting aids / PID / Click helpers / etc.; short names; keyNames
+  unchanged.
+- **B030 fixed-layout-in-resizable**: drive RuneLite's native WidgetOverlays (set preferredLocation)
+  instead of moving widgets directly — they reposition each frame during overlay render and the user's
+  Alt-drag saves there. Movable DETACHED guide (Alt-drag, yellow outline) positions the layout;
+  blocks pin to guideTopLeft+fixedOffset; per-block restore. A free-camera "keep character in scene"
+  prototype was built then **removed** (tremor + framing-assumption fragility).
+Build green, 82 tests. NEXT: live-validate spec-bar HUD, duel-arena predict, PID star, heal breakdown,
+ghostify idle. User already confirmed pinning + chat + combos + atlatl timer live.
+
+--- S015 detail (prior) ---
 
 ## Current Focus (S015)
 
@@ -169,6 +195,17 @@ API gotchas (do not relearn):
 - Special-attack use = SPECIAL_ATTACK_PERCENT varp (client.getVarpValue) dropping between ticks.
 - An overlay fed by a shared service must be @Singleton, else Guice creates a 2nd instance
   that is never registered in the OverlayManager (demo would feed a dead overlay).
+- Resizable-Classic minimap/inventory/chat are repositioned every frame by RuneLite's native
+  draggable WidgetOverlays (RESIZABLE_MINIMAP_STONES_WIDGET / RESIZABLE_VIEWPORT_INVENTORY_PARENT /
+  RESIZABLE_VIEWPORT_CHATBOX_PARENT). Moving the widgets directly always loses; set the overlay's
+  preferredLocation instead. OverlayManager.getOverlays() is package-private — enumerate via the
+  public anyMatch(Predicate) as a side-effect.
+- Chatbox = its own interface InterfaceID.CHATBOX (162) nested in toplevel slot 96; moving the slot
+  doesn't move it (the WidgetOverlay owns its position).
+- Hitsplat.isMine() = own damage (use for hit-predict where XP is blocked, e.g. Duel/PvP Arena).
+- VarPlayerID.SA_ENERGY = spec % (0..1000). InterfaceID.BuffBar = group 651.
+- Camera: setCameraFocalPointX/Y/Z only act in setCameraMode(1) (free); that + camera easing make
+  per-frame focal control tremor-prone — a "keep player in a screen box" feature was tried + removed.
 
 Design doc: docs/tick-history-design.md. Build/test: docs/building-and-testing.md.
 API reference: .ai/game/ops/runelite-plugin-dev.md, .ai/game/pvp/pvp-combat-events.md.

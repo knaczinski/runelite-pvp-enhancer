@@ -8,9 +8,9 @@ rule: read this file first. read CONTEXT.md second. read PROJECT.md before any c
 
 project: runelite-pvp-enhancer
 platform: RuneLite (OSRS client plugin)
-phase: Phases 1-5 code-complete (PvP overlay suite + Ghostify + experimental PID). Docs refreshed S014. B008 open (live-gated). Live validation pending.
+phase: Phases 1-5 code-complete + S016 fix/feature batch + B030 fixed-layout-in-resizable (WidgetOverlay pinning + draggable guide; camera dropped). B008 open (live-gated). Live validation pending.
 status: active
-latest_session: S015
+latest_session: S016
 
 ## State
 
