@@ -94,6 +94,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.events.BeforeRender;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GraphicChanged;
@@ -1377,25 +1378,35 @@ public class PvpEnhancerPlugin extends Plugin
 			}
 		}
 
-		// The resizable layout re-positions the bottom-anchored chatbox every frame (far more often
-		// than the game tick), so re-pin it here too or it snaps back and looks like "Pin chat" does
-		// nothing. The inventory/minimap are static enough to hold from the game-tick pin.
-		if (config.fixedResizableLayout() && config.frChat() && client.getWidget(161, 0) != null)
+	}
+
+	/**
+	 * Re-pins the chatbox right before the frame is drawn — the last hook, after the resizable layout
+	 * script has re-positioned the bottom-anchored chat. Re-pinning only per game/client tick loses
+	 * to that script (the chat snaps back to the corner), so "Pin chat" looked like a no-op. The
+	 * inventory/minimap aren't re-laid-out per frame, so they hold from the game-tick pin.
+	 */
+	@Subscribe
+	public void onBeforeRender(BeforeRender event)
+	{
+		if (!config.fixedResizableLayout() || !config.frChat() || client.getWidget(161, 0) == null)
 		{
-			java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
-			if (origin != null)
-			{
-				try
-				{
-					shiftFrRoot(FR_CHAT_ROOT, origin.x + FixedLayoutGeometry.CHAT_FX,
-						origin.y + FixedLayoutGeometry.CHAT_FY);
-					revalidateChatContent(); // nested chatbox interface must follow the moved slot
-				}
-				catch (Exception ignored)
-				{
-					// experimental relayout hack — never let it break the frame
-				}
-			}
+			return;
+		}
+		java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
+		if (origin == null)
+		{
+			return;
+		}
+		try
+		{
+			shiftFrRoot(FR_CHAT_ROOT, origin.x + FixedLayoutGeometry.CHAT_FX,
+				origin.y + FixedLayoutGeometry.CHAT_FY);
+			revalidateChatContent(); // nested chatbox interface must follow the moved slot
+		}
+		catch (Exception ignored)
+		{
+			// experimental relayout hack — never let it break the frame
 		}
 	}
 
