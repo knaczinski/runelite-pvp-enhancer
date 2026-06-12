@@ -352,9 +352,10 @@ public interface PvpEnhancerConfig extends Config
 	// ─── Fixed layout in resizable ───────────────────────────────────────────────
 
 	@ConfigItem(keyName = "fixedResizableLayout", name = "Enable",
-		description = "Master switch. Only acts in Resizable-Classic. Pins enabled UI blocks to "
-			+ "fixed-mode positions relative to your character. EXPERIMENTAL — fights the native "
-			+ "relayout; expect tuning.",
+		description = "Master switch (Resizable-Classic only). Pins the inventory/minimap/chat to "
+			+ "fixed-mode positions and pans the camera (free-camera mode) so your character renders "
+			+ "exactly where it would in fixed mode — drag the guide to move the whole fixed client. "
+			+ "EXPERIMENTAL: this takes over the camera; disable to restore normal camera.",
 		section = layoutSection, position = 0)
 	default boolean fixedResizableLayout() { return false; }
 
@@ -375,31 +376,12 @@ public interface PvpEnhancerConfig extends Config
 	default boolean frChat() { return false; }
 
 	@ConfigItem(keyName = "frShowGuide", name = "Show guide",
-		description = "Show the fixed-mode outline (scene + inventory/minimap/chat boxes). With 'Lock "
-			+ "to character' OFF, hold Alt and drag it (yellow outline) to position the layout freely.",
+		description = "Show the fixed-mode outline (scene + inventory/minimap/chat boxes). Hold Alt and "
+			+ "drag it (yellow outline) to move the whole fixed client anywhere — the pinned UI blocks "
+			+ "follow AND the camera pans (free-camera) so your character stays at the exact fixed "
+			+ "scene position. Disable the feature to restore the normal camera.",
 		section = layoutSection, position = 4)
 	default boolean frShowGuide() { return false; }
-
-	@ConfigItem(keyName = "frLockGuide", name = "Lock to character",
-		description = "Keep the guide's scene centred on your character — the EXACT fixed-mode replica "
-			+ "(inventory/minimap/chat at fixed distance from you). Leave ON for fixed muscle memory; "
-			+ "turn OFF to drag the guide somewhere custom (Alt-drag).",
-		section = layoutSection, position = 5)
-	default boolean frLockGuide() { return true; }
-
-	@ConfigItem(keyName = "frCameraAlign", name = "Align camera (exp)",
-		description = "VERY EXPERIMENTAL. Only useful with 'Lock to character' OFF on a narrow window: "
-			+ "pans the camera (free-camera mode) so your character lines up with the dragged guide's "
-			+ "scene box. Self-restoring — turn off and the camera returns to normal. Tune Strength.",
-		section = layoutSection, position = 6)
-	default boolean frCameraAlign() { return false; }
-
-	@Range(min = 0, max = 400)
-	@ConfigItem(keyName = "frCameraStrength", name = "Camera strength",
-		description = "How strongly the camera shifts per pixel of guide offset. Tune until your "
-			+ "character sits in the guide's scene box. 0 = no shift.",
-		section = layoutSection, position = 7)
-	default int frCameraStrength() { return 100; }
 
 	// ─── Developer ────────────────────────────────────────────────────────────
 

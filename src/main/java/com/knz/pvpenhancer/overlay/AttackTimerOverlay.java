@@ -2,6 +2,8 @@ package com.knz.pvpenhancer.overlay;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.util.Collections;
@@ -24,10 +26,11 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 @Singleton
 public class AttackTimerOverlay extends Overlay
 {
-	private static final int RADIUS = 9;
+		private static final int RADIUS = 9;
 	private static final int Z_OFFSET = 175; // above the resized skull
 	private static final Color DISC_BG = new Color(0, 0, 0, 150);
 	private static final Color OUTLINE = new Color(0, 0, 0, 200);
+	private static final Font MS_FONT = new Font("Arial", Font.BOLD, 8);
 
 	private Map<Actor, long[]> timers = Collections.emptyMap();
 
@@ -87,6 +90,18 @@ public class AttackTimerOverlay extends Overlay
 
 			graphics.setColor(OUTLINE);
 			graphics.drawOval(cx - RADIUS, cy - RADIUS, d, d);
+
+			// Remaining ms text centered over the disc
+			long remainingMs = window[1] - now;
+			String msText = String.valueOf(remainingMs);
+			Font orig = graphics.getFont();
+			graphics.setFont(MS_FONT);
+			FontMetrics fm = graphics.getFontMetrics();
+			int tx = cx - fm.stringWidth(msText) / 2;
+			int ty = cy + (fm.getAscent() - fm.getDescent()) / 2;
+			graphics.setColor(Color.WHITE);
+			graphics.drawString(msText, tx, ty);
+			graphics.setFont(orig);
 		}
 		return null;
 	}

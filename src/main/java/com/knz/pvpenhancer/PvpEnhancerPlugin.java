@@ -94,6 +94,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetPositionMode;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.Perspective;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.BeforeRender;
 import net.runelite.api.events.ClientTick;
@@ -196,6 +197,7 @@ public class PvpEnhancerPlugin extends Plugin
 	private Hooks.RenderableDrawListener ghostifyListener;
 
 	@Inject private ClientToolbar clientToolbar;
+
 	@Inject private PvpEnhancerPanel panel;
 	@Inject private DevPanel devPanel;
 	@Inject private EventBus eventBus;
@@ -325,7 +327,6 @@ public class PvpEnhancerPlugin extends Plugin
 				clientToolbar.openPanel(devNavButton);
 			}
 		});
-
 		navButton = NavigationButton.builder()
 			.tooltip("PvP Enhancer")
 			.icon(buildIcon())
@@ -843,7 +844,7 @@ public class PvpEnhancerPlugin extends Plugin
 				attack.getAttacker(),
 				attack.getStyle(),
 				attack.getTarget(),
-				attack.getTargetPrayer() != null ? PrayerNames.label(attack.getTargetPrayer()) : null,
+				attack.getTargetPrayer(),
 				offenPray,
 				direction
 			);
@@ -1394,10 +1395,10 @@ public class PvpEnhancerPlugin extends Plugin
 	@Subscribe
 	public void onBeforeRender(BeforeRender event)
 	{
-		// Set the WidgetOverlay preferredLocations before overlay rendering positions the widgets.
+		// Set the WidgetOverlay preferredLocations before overlay rendering positions the widgets, then
+		// drive the camera so the character lands at the guide's scene centre.
 		try
 		{
-			lockGuideToCharacter();
 			applyFixedResizableLayout();
 			applyFixedLayoutCamera();
 		}
@@ -1405,24 +1406,6 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			// experimental relayout hack — never let it break the frame
 		}
-	}
-
-	/**
-	 * When "Lock to character" is on, forces the guide's scene box centred on the viewport centre
-	 * (where the character renders) — the exact fixed-mode replica. The user can't drag it while
-	 * locked; unlock to position it freely.
-	 */
-	private void lockGuideToCharacter()
-	{
-		if (!config.fixedResizableLayout() || !config.frLockGuide())
-		{
-			return;
-		}
-		int cx = client.getViewportXOffset() + client.getViewportWidth() / 2;
-		int cy = client.getViewportYOffset() + client.getViewportHeight() / 2;
-		int gx = cx - (FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_W / 2);
-		int gy = cy - (FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_H / 2);
-		fixedLayoutGuideOverlay.setPreferredLocation(new java.awt.Point(gx, gy));
 	}
 
 	/** Drops debuff timers + skull state for a player who leaves the scene (e.g. teleports away). */
@@ -1938,30 +1921,30 @@ public class PvpEnhancerPlugin extends Plugin
 		restoreFrOverlay(frChatOverlay);
 	}
 
+	/** Probe step (world units, ~half a tile) for measuring the projection Jacobian. */
+	private static final int FR_CAM_STEP = 64;
+
 	/**
-	 * VERY EXPERIMENTAL: pans the camera so the local player lines up with the guide's scene box, by
-	 * overriding the camera focal point each frame (after the game points it at the player). The
-	 * offset is the pixel gap between the guide scene centre and the viewport centre, projected into
-	 * world space along the camera's facing and scaled by Strength. Self-restoring: when off we never
-	 * touch the camera, so the game's normal follow resumes next frame.
+	 * Keeps the local player projected to the EXACT centre of the guide's scene box (both axes) by
+	 * driving the free-camera focal point. Solves the focal offset analytically from the projection
+	 * Jacobian (via {@link Perspective#localToCanvas}): with focal at the player the player renders at
+	 * the viewport centre, and moving the focal by ΔF shifts the player on screen by −J·ΔF, so
+	 * {@code F = player + J⁻¹·(viewportCentre − guideSceneCentre)}. Correct under any yaw/pitch/zoom,
+	 * so manual camera control still works. Self-restoring: when inactive we drop back to camera mode 0.
 	 */
 	private void applyFixedLayoutCamera()
 	{
-		boolean active = config.fixedResizableLayout() && config.frCameraAlign()
-			&& client.getWidget(161, 0) != null;
+		Player local = client.getLocalPlayer();
+		java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
+		boolean active = config.fixedResizableLayout() && client.getWidget(161, 0) != null
+			&& local != null && origin != null;
 		if (!active)
 		{
 			if (cameraModeOverridden)
 			{
-				client.setCameraMode(0); // back to the normal player-follow camera
+				client.setCameraMode(0); // hand the camera back to normal player-follow
 				cameraModeOverridden = false;
 			}
-			return;
-		}
-		Player local = client.getLocalPlayer();
-		java.awt.Point origin = fixedLayoutGuideOverlay.clientTopLeft();
-		if (local == null || origin == null)
-		{
 			return;
 		}
 		LocalPoint lp = local.getLocalLocation();
@@ -1969,37 +1952,47 @@ public class PvpEnhancerPlugin extends Plugin
 		{
 			return;
 		}
-		// The focal-point setters only take effect in free-camera mode; enter it (yaw/pitch/zoom still
-		// orbit the focal point we set each frame, so it tracks the player + offset).
+		int plane = client.getPlane();
+		// Project the player + two unit-offset ground points to build the screen-space Jacobian.
+		net.runelite.api.Point p0 = Perspective.localToCanvas(client, lp, plane);
+		net.runelite.api.Point pe = Perspective.localToCanvas(client,
+			new LocalPoint(lp.getX() + FR_CAM_STEP, lp.getY()), plane);
+		net.runelite.api.Point pn = Perspective.localToCanvas(client,
+			new LocalPoint(lp.getX(), lp.getY() + FR_CAM_STEP), plane);
+		if (p0 == null || pe == null || pn == null)
+		{
+			return; // off-screen this frame — try again next frame
+		}
+		// J columns: screen delta per +X (east) and per +Y (north) world step.
+		double jxx = (pe.getX() - p0.getX()) / (double) FR_CAM_STEP;
+		double jyx = (pe.getY() - p0.getY()) / (double) FR_CAM_STEP;
+		double jxy = (pn.getX() - p0.getX()) / (double) FR_CAM_STEP;
+		double jyy = (pn.getY() - p0.getY()) / (double) FR_CAM_STEP;
+		double det = jxx * jyy - jxy * jyx;
+		if (Math.abs(det) < 1e-6)
+		{
+			return; // degenerate view (e.g. top-down) — can't solve this frame
+		}
+
+		// Desired player screen pos = guide scene centre; reference = viewport centre (where the
+		// focal renders). worldOffset = J⁻¹ · (centre − target).
+		double cxScreen = client.getViewportXOffset() + client.getViewportWidth() / 2.0;
+		double cyScreen = client.getViewportYOffset() + client.getViewportHeight() / 2.0;
+		double tx = origin.x + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_W / 2.0;
+		double ty = origin.y + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_H / 2.0;
+		double sx = cxScreen - tx;
+		double sy = cyScreen - ty;
+		double offX = (jyy * sx - jxy * sy) / det;
+		double offZ = (-jyx * sx + jxx * sy) / det;
+
 		if (!cameraModeOverridden)
 		{
-			client.setCameraMode(1);
+			client.setCameraMode(1); // free camera — required for the focal-point setters to take effect
 			cameraModeOverridden = true;
 		}
-		// Pixel gap: where we want the character (guide scene centre) minus where it renders now
-		// (viewport centre).
-		double dxPix = (origin.x + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_W / 2.0)
-			- (client.getViewportXOffset() + client.getViewportWidth() / 2.0);
-		double dyPix = (origin.y + FixedLayoutGeometry.SCENE_INSET + FixedLayoutGeometry.SCENE_H / 2.0)
-			- (client.getViewportYOffset() + client.getViewportHeight() / 2.0);
-
-		// Approximate world units per screen pixel from the zoom, scaled by Strength.
-		double wpp = (config.frCameraStrength() / 100.0) * (700.0 / Math.max(128, client.getScale()));
-
-		// Shift the focal point opposite the desired character shift (moving the look-at right makes
-		// the character appear left), along the camera facing. Yaw is 0..2047 over a full turn.
-		double yaw = client.getCameraYaw() * (Math.PI * 2.0 / 2048.0);
-		double sin = Math.sin(yaw);
-		double cos = Math.cos(yaw);
-		double right = -dxPix * wpp;
-		double fwd = dyPix * wpp;
-		double offX = right * cos + fwd * sin;
-		double offZ = -right * sin + fwd * cos;
-
 		client.setCameraFocalPointX(lp.getX() + offX);
 		client.setCameraFocalPointZ(lp.getY() + offZ);
-		// Look at roughly the player's mid-height so free-camera framing matches the normal camera.
-		client.setCameraFocalPointY(net.runelite.api.Perspective.getTileHeight(client, lp, client.getPlane()) - 200);
+		client.setCameraFocalPointY(Perspective.getTileHeight(client, lp, plane) - 200);
 	}
 
 	private boolean anyAttackTimer()

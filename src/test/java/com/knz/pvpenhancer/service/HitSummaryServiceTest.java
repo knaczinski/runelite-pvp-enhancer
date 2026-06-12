@@ -5,6 +5,7 @@ import com.knz.pvpenhancer.model.HitDirection;
 import com.knz.pvpenhancer.service.AttackHitsplatCorrelator.Correlation;
 import com.knz.pvpenhancer.model.HitSummaryRow;
 import java.util.List;
+import net.runelite.api.HeadIcon;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -22,7 +23,7 @@ public class HitSummaryServiceTest
 		AttackHitsplatCorrelator correlator = new AttackHitsplatCorrelator();
 
 		correlator.recordAttack("me", "opp", AttackStyle.MELEE, 10);
-		service.addAttack(10, "me", AttackStyle.MELEE, "opp", "pro mage", "Piety", HitDirection.OUTGOING);
+		service.addAttack(10, "me", AttackStyle.MELEE, "opp", HeadIcon.MAGIC, "Piety", HitDirection.OUTGOING);
 
 		Correlation corr = correlator.recordHitsplat("opp", 25, 10);
 		assertNotNull(corr);

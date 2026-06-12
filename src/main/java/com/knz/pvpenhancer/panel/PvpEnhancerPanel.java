@@ -1,6 +1,7 @@
 package com.knz.pvpenhancer.panel;
 
 import com.knz.pvpenhancer.PvpEnhancerConfig;
+import com.knz.pvpenhancer.model.AttackStyle;
 import com.knz.pvpenhancer.model.CombatEvent;
 import com.knz.pvpenhancer.model.EventCategory;
 import com.knz.pvpenhancer.model.HitDirection;
@@ -12,15 +13,22 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
@@ -31,13 +39,16 @@ import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import net.runelite.api.HeadIcon;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
+
 
 /**
  * RuneLite sidebar panel for the PvP Enhancer.
@@ -69,8 +80,13 @@ public class PvpEnhancerPanel extends PluginPanel
 	private final JButton configButton = new JButton("⚙");
 	private final JPanel tickList = new JPanel();
 
+	// Programmatically-drawn icons for the hit summary table
+	private final Map<AttackStyle, Icon> styleIcons = new HashMap<>();
+	private final Map<HeadIcon, Icon> prayerIcons = new HashMap<>();
+	private static final int ICON_SIZE = 14;
+
 	// Hit summary table
-	private final DefaultTableModel hitModel = new DefaultTableModel(new Object[]{"Tk", "Atk", "Tgt", "Hit"}, 0)
+	private final DefaultTableModel hitModel = new DefaultTableModel(new Object[]{"Atk", "", "Tgt", "", "Hit"}, 0)
 	{
 		@Override
 		public boolean isCellEditable(int row, int column)
@@ -164,7 +180,95 @@ public class PvpEnhancerPanel extends PluginPanel
 
 		add(container, BorderLayout.NORTH);
 
+		initIcons();
 		rebuild();
+	}
+
+	/** Builds small Java2D icons for attack styles and prayers. */
+	private void initIcons()
+	{
+		Color swordColor = new Color(220, 50, 50);
+		Color arrowColor = new Color(50, 200, 50);
+		Color magicColor = new Color(60, 120, 255);
+		Color prayerColor = new Color(120, 200, 255);
+		Color retriColor = new Color(255, 160, 40);
+		Color redeemColor = new Color(255, 100, 150);
+		Color smiteColor = new Color(255, 220, 50);
+
+		styleIcons.put(AttackStyle.MELEE, drawIcon(swordColor, g -> {
+			g.setStroke(new java.awt.BasicStroke(2.5f));
+			g.drawLine(7, 1, 7, 13);
+			g.drawLine(3, 5, 11, 5);
+		}));
+
+		styleIcons.put(AttackStyle.RANGED, drawIcon(arrowColor, g -> {
+			g.setStroke(new java.awt.BasicStroke(2.5f));
+			g.drawLine(2, 12, 12, 2);
+			g.drawLine(12, 2, 7, 2);
+			g.drawLine(12, 2, 12, 7);
+		}));
+
+		styleIcons.put(AttackStyle.MAGIC, drawIcon(magicColor, g -> {
+			g.setStroke(new java.awt.BasicStroke(2.5f));
+			g.drawLine(7, 1, 13, 7);
+			g.drawLine(13, 7, 7, 13);
+			g.drawLine(7, 13, 1, 7);
+			g.drawLine(1, 7, 7, 1);
+		}));
+
+		prayerIcons.put(HeadIcon.MELEE, drawIcon(prayerColor, g -> {
+			g.setStroke(new java.awt.BasicStroke(2));
+			g.drawLine(4, 2, 10, 2);
+			g.drawLine(4, 2, 3, 12);
+			g.drawLine(10, 2, 11, 12);
+			g.drawLine(3, 12, 11, 12);
+		}));
+
+		prayerIcons.put(HeadIcon.RANGED, drawIcon(prayerColor, g -> {
+			g.setStroke(new java.awt.BasicStroke(2));
+			g.drawLine(2, 12, 12, 2);
+			g.drawLine(12, 2, 8, 2);
+			g.drawLine(12, 2, 12, 6);
+		}));
+
+		prayerIcons.put(HeadIcon.MAGIC, drawIcon(prayerColor, g -> {
+			g.setStroke(new java.awt.BasicStroke(2));
+			g.drawLine(7, 1, 13, 7);
+			g.drawLine(13, 7, 7, 13);
+			g.drawLine(7, 13, 1, 7);
+			g.drawLine(1, 7, 7, 1);
+		}));
+
+		prayerIcons.put(HeadIcon.RETRIBUTION, drawIcon(retriColor, g -> {
+			g.setStroke(new java.awt.BasicStroke(2.5f));
+			g.drawLine(3, 3, 11, 11);
+			g.drawLine(3, 11, 11, 3);
+		}));
+
+		prayerIcons.put(HeadIcon.REDEMPTION, drawIcon(redeemColor, g -> {
+			g.setStroke(new java.awt.BasicStroke(2));
+			g.drawOval(2, 2, 10, 10);
+			g.drawLine(6, 7, 6, 10);
+			g.drawLine(5, 8, 7, 8);
+		}));
+
+		prayerIcons.put(HeadIcon.SMITE, drawIcon(smiteColor, g -> {
+			g.setStroke(new java.awt.BasicStroke(2.5f));
+			g.drawLine(5, 2, 9, 6);
+			g.drawLine(9, 6, 5, 10);
+			g.drawLine(5, 10, 9, 14);
+		}));
+	}
+
+	private static Icon drawIcon(Color color, java.util.function.Consumer<Graphics2D> drawer)
+	{
+		BufferedImage img = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setColor(color);
+		drawer.accept(g);
+		g.dispose();
+		return new ImageIcon(img);
 	}
 
 	/** Called by the plugin to wire the config-open action. */
@@ -257,9 +361,10 @@ public class PvpEnhancerPanel extends PluginPanel
 			for (HitSummaryRow row : lastRows)
 			{
 				hitModel.addRow(new Object[]{
-					String.format("%04d", row.tickSequence),
 					abbrev(row.player, 6),
+					styleIcons.getOrDefault(row.style, null),
 					abbrev(row.target, 6),
+					row.targetPrayer != null ? prayerIcons.get(row.targetPrayer) : null,
 					row.hit != null ? String.valueOf(row.hit) : "-"
 				});
 				rowDirections.add(row.direction);
@@ -377,6 +482,18 @@ public class PvpEnhancerPanel extends PluginPanel
 			public Component getTableCellRendererComponent(JTable table, Object value,
 				boolean isSelected, boolean hasFocus, int row, int column)
 			{
+				if (value instanceof Icon)
+				{
+					JLabel label = new JLabel((Icon) value);
+					label.setHorizontalAlignment(SwingConstants.CENTER);
+					label.setVerticalAlignment(SwingConstants.CENTER);
+					HitDirection d = row >= 0 && row < rowDirections.size() ? rowDirections.get(row) : HitDirection.OTHER;
+					label.setForeground(d == HitDirection.OUTGOING ? COLOR_OUTGOING
+						: d == HitDirection.INCOMING ? COLOR_INCOMING : Color.WHITE);
+					label.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+					label.setOpaque(true);
+					return label;
+				}
 				Component c = super.getTableCellRendererComponent(table, value, false, false, row, column);
 				HitDirection d = row >= 0 && row < rowDirections.size() ? rowDirections.get(row) : HitDirection.OTHER;
 				c.setForeground(d == HitDirection.OUTGOING ? COLOR_OUTGOING
@@ -386,9 +503,10 @@ public class PvpEnhancerPanel extends PluginPanel
 			}
 		};
 		hitTable.setDefaultRenderer(Object.class, renderer);
-		// Narrow the Tick + Hit columns; let names take the rest.
-		hitTable.getColumnModel().getColumn(0).setMaxWidth(34);
-		hitTable.getColumnModel().getColumn(3).setMaxWidth(34);
+		// Icon columns (1, 3) are narrow; Hit column (4) narrow; names take the rest.
+		hitTable.getColumnModel().getColumn(1).setMaxWidth(ICON_SIZE + 4);
+		hitTable.getColumnModel().getColumn(3).setMaxWidth(ICON_SIZE + 4);
+		hitTable.getColumnModel().getColumn(4).setMaxWidth(34);
 
 		JScrollPane sp = new JScrollPane(hitTable);
 		sp.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);

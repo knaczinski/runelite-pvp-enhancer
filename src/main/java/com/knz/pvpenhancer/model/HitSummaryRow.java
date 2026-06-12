@@ -1,5 +1,7 @@
 package com.knz.pvpenhancer.model;
 
+import net.runelite.api.HeadIcon;
+
 /**
  * One row in the Hit Summary overlay — one per attack, filled progressively.
  *
@@ -20,7 +22,7 @@ public class HitSummaryRow
 	public final String target;
 
 	/** The overhead protection prayer the target had when the attack was thrown. May be null. */
-	public final String targetPrayer;
+	public final HeadIcon targetPrayer;
 
 	/** The attacker's offensive prayer (Piety/Rigour/Augury). Null for opponents. */
 	public final String offensivePrayer;
@@ -32,7 +34,7 @@ public class HitSummaryRow
 	public volatile Integer hit;
 
 	public HitSummaryRow(int id, int tickSequence, String player, AttackStyle style,
-		String target, String targetPrayer, String offensivePrayer, HitDirection direction)
+		String target, HeadIcon targetPrayer, String offensivePrayer, HitDirection direction)
 	{
 		this.id = id;
 		this.tickSequence = tickSequence;

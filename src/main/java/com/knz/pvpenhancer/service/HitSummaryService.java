@@ -10,6 +10,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Singleton;
+import net.runelite.api.HeadIcon;
 
 /**
  * Maintains the row data for the Hit Summary overlay. One row per attack; the "Hit" column
@@ -40,12 +41,12 @@ public class HitSummaryService
 	 * @param player       attacker name
 	 * @param style        inferred attack style
 	 * @param target       target name
-	 * @param targetPrayer short label for the target's overhead prayer at attack time (may be null)
+	 * @param targetPrayer the target's overhead prayer icon at attack time (may be null)
 	 * @param offenPrayer  attacker's active offensive prayer label (Piety/Rigour/Augury); null
 	 *                     for opponents (not readable by the API)
 	 */
 	public void addAttack(int tickSequence, String player, AttackStyle style,
-		String target, String targetPrayer, String offenPrayer, HitDirection direction)
+		String target, HeadIcon targetPrayer, String offenPrayer, HitDirection direction)
 	{
 		int id = nextId.incrementAndGet();
 		rows.addFirst(new HitSummaryRow(id, tickSequence, player, style, target, targetPrayer, offenPrayer, direction));
