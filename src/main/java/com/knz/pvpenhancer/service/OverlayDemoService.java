@@ -158,6 +158,7 @@ public class OverlayDemoService
 			dumpGroup(548, "FIXED");
 			dumpGroup(161, "RESIZABLE_CLASSIC");
 			dumpGroup(593, "COMBAT_TAB");
+			dumpGroup(162, "CHATBOX");
 		});
 	}
 
