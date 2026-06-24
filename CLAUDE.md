@@ -26,6 +26,7 @@ readme: README.md
 rules_dir: .ai/rules/
 sessions_dir: .ai/sessions/
 design_docs_dir: docs/
+harness_doc: docs/harness/01-harness.md (+ harness-status.svg — keep both in sync when the environment changes)
 
 ## Communication Style
 

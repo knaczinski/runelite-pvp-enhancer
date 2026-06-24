@@ -1,0 +1,38 @@
+<svg width="100%" viewBox="0 0 680 415" role="img" xmlns="http://www.w3.org/2000/svg" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <title>Harness status - runelite-pvp-enhancer</title>
+  <desc>Three layers: Control, Agency, Runtime. Green = ready, amber = partial or pending, gray = absent.</desc>
+
+  <text x="40" y="24" font-size="16" font-weight="600" fill="#2C2C2A">Harness — runelite-pvp-enhancer</text>
+
+  <!-- Control -->
+  <rect x="40" y="44" width="600" height="100" rx="12" fill="#F7F6F2" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="56" y="70" font-size="14" font-weight="600" fill="#2C2C2A">Control</text>
+  <text x="128" y="70" font-size="12" fill="#5F5E5A">reads before acting</text>
+  <rect x="56" y="86" width="132" height="40" rx="8" fill="#EAF3DE" stroke="#639922" stroke-width="0.5"/><text x="122" y="106" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#27500A">Context</text>
+  <rect x="200" y="86" width="132" height="40" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/><text x="266" y="106" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#633806">Specs (prose)</text>
+  <rect x="344" y="86" width="132" height="40" rx="8" fill="#EAF3DE" stroke="#639922" stroke-width="0.5"/><text x="410" y="106" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#27500A">Rules</text>
+  <rect x="488" y="86" width="132" height="40" rx="8" fill="#EAF3DE" stroke="#639922" stroke-width="0.5"/><text x="554" y="106" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#27500A">API refs</text>
+
+  <!-- Agency -->
+  <rect x="40" y="160" width="600" height="100" rx="12" fill="#F7F6F2" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="56" y="186" font-size="14" font-weight="600" fill="#2C2C2A">Agency</text>
+  <text x="128" y="186" font-size="12" fill="#5F5E5A">what it can do</text>
+  <rect x="56" y="202" width="132" height="40" rx="8" fill="#EAF3DE" stroke="#639922" stroke-width="0.5"/><text x="122" y="222" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#27500A">Agent (CC)</text>
+  <rect x="200" y="202" width="132" height="40" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/><text x="266" y="222" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#633806">Skills (global)</text>
+  <rect x="344" y="202" width="132" height="40" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="410" y="222" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">Slash cmds</text>
+  <rect x="488" y="202" width="132" height="40" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="554" y="222" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">Subagents</text>
+
+  <!-- Runtime -->
+  <rect x="40" y="276" width="600" height="100" rx="12" fill="#F7F6F2" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="56" y="302" font-size="14" font-weight="600" fill="#2C2C2A">Runtime</text>
+  <text x="128" y="302" font-size="12" fill="#5F5E5A">verify · gate · state</text>
+  <rect x="56" y="318" width="132" height="40" rx="8" fill="#EAF3DE" stroke="#639922" stroke-width="0.5"/><text x="122" y="338" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#27500A">Build+tests</text>
+  <rect x="200" y="318" width="132" height="40" rx="8" fill="#EAF3DE" stroke="#639922" stroke-width="0.5"/><text x="266" y="338" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#27500A">Stop-build</text>
+  <rect x="344" y="318" width="132" height="40" rx="8" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/><text x="410" y="338" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#633806">Live testing</text>
+  <rect x="488" y="318" width="132" height="40" rx="8" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="554" y="338" font-size="14" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">Push gate</text>
+
+  <!-- Legend -->
+  <rect x="56" y="392" width="14" height="14" rx="3" fill="#EAF3DE" stroke="#639922" stroke-width="0.5"/><text x="78" y="399" font-size="12" dominant-baseline="central" fill="#5F5E5A">ready</text>
+  <rect x="150" y="392" width="14" height="14" rx="3" fill="#FAEEDA" stroke="#BA7517" stroke-width="0.5"/><text x="172" y="399" font-size="12" dominant-baseline="central" fill="#5F5E5A">partial / pending</text>
+  <rect x="320" y="392" width="14" height="14" rx="3" fill="#F1EFE8" stroke="#888780" stroke-width="0.5"/><text x="342" y="399" font-size="12" dominant-baseline="central" fill="#5F5E5A">absent</text>
+</svg>
